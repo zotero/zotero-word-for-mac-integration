@@ -25,7 +25,31 @@
 const ZOTEROMACWORDINTEGRATION_ID = "zoteroMacWordIntegration@zotero.org";
 const ZOTEROMACWORDINTEGRATION_PREF = "extensions.zoteroMacWordIntegration.version";
 
+function ZoteroMacWordIntegration_checkVersion(name, url, id, minVersion) {
+	// check Zotero version
+	try {
+		var ext = Components.classes['@mozilla.org/extensions/manager;1']
+		   .getService(Components.interfaces.nsIExtensionManager).getItemForID(id);
+		var comp = Components.classes["@mozilla.org/xpcom/version-comparator;1"]
+			.getService(Components.interfaces.nsIVersionComparator)
+			.compare(ext.version, minVersion);
+	} catch(e) {
+		var comp = -1;
+	}
+	
+	if(comp < 0) {
+		var err = 'This version of Zotero MacWord Integration requires '+name+' '+minVersion+
+			' or later to run. Please download the latest version of '+name+' from '+url+'.';
+		var prompts = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
+			.getService(Components.interfaces.nsIPromptService)
+			.alert(null, 'Zotero Word Integration Error', err);
+		throw err;
+	}
+}
+
 function ZoteroMacWordIntegration_firstRun() {
+	ZoteroMacWordIntegration_checkVersion("Zotero", "zotero.org", "zotero@chnm.gmu.edu", "2.0b7.SVN");
+	ZoteroMacWordIntegration_checkVersion("PythonExt", "pyxpcomext.mozdev.org", "pythonext@mozdev.org", "2.6");
 	try {
 		// run AppleScript to set up
 		var installScript = Components.classes["@mozilla.org/extensions/manager;1"].
