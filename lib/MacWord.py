@@ -154,7 +154,7 @@ class Document:
 		field = None
 		selection = self.asApp.selection
 		
-		if fieldType == 0:
+		if fieldType == "Field":
 			fields = selection.fields.get()
 			if fields:
 				field = fields[0]
@@ -188,7 +188,7 @@ class Document:
 				for prefix in FIELD_PREFIXES:
 					if code.startswith(prefix):
 						return Field(self, field)
-		elif fieldType == 1:
+		elif fieldType == "Bookmark":
 			bookmarks = selection.bookmarks.get()
 			if bookmarks == k.missing_value:
 				return None
@@ -454,7 +454,7 @@ class Document:
 					newField = self.insertField(toFieldType, cnv.toNoteType, where)
 				elif cnv.fromNoteType == cnv.toNoteType or inlineNoteField:
 					# Convert fields inside a note to bookmarks
-					newField = self.insertField(toFieldType, -1, fieldRange)
+					newField = self.insertField(toFieldType, 0, fieldRange)
 					newField.field.start_of_bookmark.set(newField.field.end_of_bookmark.get()+1)
 					asField.delete()
 				else:
