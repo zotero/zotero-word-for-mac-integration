@@ -1,0 +1,2 @@
+overlay    chrome://browser/content/browser.xul chrome://zotero-macword-integration/content/browser-overlay.xul
+content    zotero-macword-integration chrome/
