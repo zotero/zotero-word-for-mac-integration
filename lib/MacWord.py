@@ -208,7 +208,6 @@ class Document:
 	
 	def setDocumentData(self, documentData):
 		"""Sets persistent data for this document. documentData is a string."""
-		print documentData
 		self.properties.setProperty(PREFS_PROPERTIES[0], documentData)
 	
 	def insertField(self, fieldType, noteType, rangeToInsert=None, bookmarkName=None):
@@ -285,6 +284,11 @@ class Document:
 				with_properties={k.text_object:where,
 				k.name:bookmarkName})
 			field = Bookmark(self, field)
+			
+			# Select past bookmark
+			newEnd = field.field.end_of_bookmark.get();
+			self.asApp.selection.selection_start.set(newEnd);
+			self.asApp.selection.selection_end.set(newEnd);
 		
 		if not rangeToInsert:
 			# Add placeholder text and set code only if no rangeToInsert
@@ -700,10 +704,10 @@ class Bookmark(Field):
 			# sometimes the only way of doing things
 			fieldName = repr(field)
 			for prop in BOOKMARK_REFERENCE_PROPERTIES:
-				nameIndex = fieldName.index(prop)
-				if nameIndex == -1:
+				nameIndex = fieldName.find(prop)
+				if nameIndex != -1:
+					self.bookmarkName = fieldName[nameIndex:fieldName.rindex("'")]
 					break
-			self.bookmarkName = fieldName[nameIndex:fieldName.rindex("'")]
 			
 		# Re-index by field name
 		self.field = wpDoc.asDoc.bookmarks[self.bookmarkName]
