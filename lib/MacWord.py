@@ -228,8 +228,13 @@ class Document:
 			apNoteType = k.footnote
 			if noteType == NOTE_ENDNOTE:
 				apNoteType = k.endnote
-			where = self.asApp.make(new=apNoteType, at=self.asDoc, with_properties={k.text_object:where}).text_object
+			newNote = self.asApp.make(new=apNoteType, at=self.asDoc, with_properties={k.text_object:where})
+			where = newNote.text_object
 			where.content.set("")
+			
+			newEnd = newNote.note_reference.end_of_content.get();
+			self.asApp.selection.selection_start.set(newEnd);
+			self.asApp.selection.selection_end.set(newEnd);
 		
 		# Make note
 		if fieldType == "Field":		# Fields
@@ -448,7 +453,11 @@ class Document:
 				continue
 			
 			if cnv.fromFieldType == "Field":
-				code = cnv.ref.getCode()
+				rawCode = asField.field_code.content.get()
+				for prefix in FIELD_PREFIXES:
+					if(rawCode.startswith(prefix)):
+						code = rawCode[len(prefix):-1]
+				
 				if not cnv.fromNoteType:	# Convert from in-text citation
 					# Delete field, but preserve range
 					fieldStart = asField.field_code.start_of_content.get()
