@@ -675,7 +675,7 @@ class Field:
 		"""Returns the index of the note in which this field resides"""
 		if self.note:
 			return self.note.entry_index.get()
-		return None
+		return 0
 	
 	def _getTextLocation(self):
 		"""Adds note and textLocation properties to this instance. This is
