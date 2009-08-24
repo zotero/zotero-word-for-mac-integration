@@ -39,6 +39,7 @@ FIELD_PLACEHOLDER = '{Citation}'
 FIELD_PREFIXES = [u' ADDIN ZOTERO_', u' ADDIN CITE_']
 BOOKMARK_PREFIXES = [u'ZOTERO_', u'CITE_']
 RTF_TEMP_BOOKMARK = u'ZOTERO_TEMP_BOOKMARK'
+SAVE_PROPERTIES = [u'font_size', u'name', u'other_name', u'color']
 
 MAX_PROPERTY_LENGTH = 255
 MAX_BOOKMARK_LENGTH = 50
@@ -163,8 +164,8 @@ class Document:
 				fields = selection.paragraphs[1].text_object.fields.get()
 				if fields:
 					# Check if they are in the selection
-					selectionStart = selection.text_object.start_of_content.get();
-					selectionEnd = selection.text_object.end_of_content.get();
+					selectionStart = selection.selection_start.get();
+					selectionEnd = selection.selection_end.get();
 					for test_field in fields:
 						fieldStart = test_field.result_range.start_of_content.get()
 						fieldEnd = test_field.result_range.end_of_content.get()
@@ -645,6 +646,10 @@ class Field:
 			except:
 				pass
 			
+			# Save properties
+			savedProperties = [getattr(self.displayFieldRange.font_object, prop).get() \
+				for prop in SAVE_PROPERTIES]
+			
 			# Write RTF to a file
 			hfsPath = self.wpDoc.tempFile.write("{\\rtf {\\bkmkstart "+RTF_TEMP_BOOKMARK+"}"+ \
 				string[6:-1]+"{\\bkmkend "+RTF_TEMP_BOOKMARK+"}}")
@@ -652,6 +657,10 @@ class Field:
 			self.wpDoc.asApp.insert_file(at=self.displayFieldRange, \
 				file_name=self.wpDoc.tempFile.hfsPath, file_range=RTF_TEMP_BOOKMARK)
 			self.displayFieldRange.bookmarks[RTF_TEMP_BOOKMARK].delete()
+			
+			# Set properties back to saved
+			[getattr(self.displayFieldRange.font_object, SAVE_PROPERTIES[i]).set(savedProperties[i]) \
+				for i in range(len(SAVE_PROPERTIES))]
 		else:
 			# Just set content of text object
 			self.displayFieldRange.content.set(string)
@@ -769,7 +778,15 @@ class Bookmark(Field):
 				self.wpDoc.asDoc.bookmarks[RTF_TEMP_BOOKMARK].delete()
 			except:
 				pass
-				
+			
+			# Check whether cursor is at end of citation
+			selection = self.wpDoc.asApp.selection
+			selectionAtEnd = selection.selection_end.get() == self.fieldRange.end_of_content.get()
+			
+			# Save properties
+			savedProperties = [getattr(self.displayFieldRange.font_object, prop).get() \
+				for prop in SAVE_PROPERTIES]
+			
 			# Rename bookmark
 			tempBookmark = self.wpDoc.asDoc.make(new=k.bookmark, at=self.fieldRange,
 				with_properties={k.name:RTF_TEMP_BOOKMARK})
@@ -789,6 +806,15 @@ class Bookmark(Field):
 				self.wpDoc.asDoc.bookmarks[RTF_TEMP_BOOKMARK].delete()
 			except:
 				pass
+			
+			# Set properties back to saved
+			[getattr(self.displayFieldRange.font_object, SAVE_PROPERTIES[i]).set(savedProperties[i]) \
+				for i in range(len(SAVE_PROPERTIES))]
+			
+			# If selection was at end of mark, put it there again
+			if selectionAtEnd:
+				selection.selection_start.set(self.fieldRange.end_of_content.get())
+				selection.font_object.reset()
 		else:
 			# Find a reference point in the appropriate story
 			if self.noteType == NOTE_FOOTNOTE:
