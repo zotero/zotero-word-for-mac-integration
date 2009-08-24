@@ -671,6 +671,12 @@ class Field:
 		"""Returns true if field and this field refer to the same field"""
 		return xpcom.server.UnwrapObject(field) == self
 	
+	def getNoteIndex(self):
+		"""Returns the index of the note in which this field resides"""
+		if self.note:
+			return self.note.entry_index.get()
+		return null
+	
 	def _getTextLocation(self):
 		"""Adds note and textLocation properties to this instance. This is
 		protected and not private, so that the Bookmark class can get at it, but
