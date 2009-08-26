@@ -185,10 +185,11 @@ class Document:
 			
 			# See if this is a Zotero field
 			if field:
-				code = field.field_code.content.get()
+				codeRange = field.field_code
+				rawCode = codeRange.content.get()
 				for prefix in FIELD_PREFIXES:
-					if code.startswith(prefix):
-						return Field(self, field)
+					if rawCode.startswith(prefix):
+						return Field(self, field, None, codeRange, rawCode)
 		elif fieldType == "Bookmark":
 			bookmarks = selection.bookmarks.get()
 			if bookmarks == k.missing_value:
@@ -197,7 +198,7 @@ class Document:
 				bookmarkName = bookmark.name.get()
 				for prefix in BOOKMARK_PREFIXES:
 					if bookmarkName.startswith(prefix):
-						return Bookmark(self, bookmark)
+						return Bookmark(self, bookmark, None, bookmarkName)
 		
 	def getDocumentData(self):
 		"""Retrieves persistent data from this document. Returns a string."""
@@ -322,10 +323,12 @@ class Document:
 					continue
 				
 				for i in range(1, maxField+1):
-					fieldCode = collectionFields[i].field_code.content.get()
+					field = collectionFields[i];
+					codeRange = field.field_code;
+					rawCode = codeRange.content.get()
 					for prefix in FIELD_PREFIXES:
-						if fieldCode.startswith(prefix):
-							fields.append(Field(self, collectionFields[i], noteType))
+						if rawCode.startswith(prefix):
+							fields.append(Field(self, field, noteType, codeRange, rawCode))
 		elif fieldType == "Bookmark":	# Bookmarks
 			getBookmarks = self.asDoc.bookmarks.get()
 			if getBookmarks:
@@ -333,7 +336,7 @@ class Document:
 					bookmarkName = bookmark.name.get()
 					for prefix in BOOKMARK_PREFIXES:
 						if bookmarkName.startswith(prefix):
-							fields.append(Bookmark(self, bookmark))
+							fields.append(Bookmark(self, bookmark, None, bookmarkName))
 		
 		fields.sort()
 		return XPCOMEnumerator(fields.__iter__())
@@ -598,11 +601,14 @@ class Field:
 	_reg_contractid_ = "@zotero.org/Zotero/integration/field?agent=MacWord&type=Field;1"
 	_reg_desc_ = "MacWord Field"
 	
-	def __init__(self, wpDoc, field, noteType=None):
+	def __init__(self, wpDoc, field, noteType=None, codeRange=None, rawCode=None):
 		self.wpDoc = wpDoc
 		self.field = field
-		self.fieldRange = field.field_code
-		self.displayFieldRange = field.result_range
+		self.rawCode = rawCode
+		if codeRange:
+			self.fieldRange = codeRange
+		else:
+			self.fieldRange = field.field_code;
 		self.noteType = noteType
 		self._getTextLocation()
 	
@@ -623,7 +629,9 @@ class Field:
 	
 	def delete(self):
 		"""Deletes this field"""
-		if self.note and self.note.text_object.content.get() == self.displayFieldRange.content.get():
+		if self.note \
+			and self.note.text_object.start_of_content.get() == self.fieldRange.start_of_content.get()-1 \
+			and self.note.text_object.end_of_content.get() == self.displayFieldRange.end_of_content.get()+1:
 			self.note.delete()
 		else:
 			self.field.delete()
@@ -667,14 +675,16 @@ class Field:
 	
 	def setCode(self, code):
 		"""Sets some (non-user-readable) code to accompany this field"""
-		self.field.field_code.content.set(FIELD_PREFIXES[0]+code+" ")
+		self.rawCode = FIELD_PREFIXES[0]+code+" "
+		self.field.field_code.content.set(self.rawCode)
 	
 	def getCode(self):
 		"""Returns the current code"""
-		rawCode = self.field.field_code.content.get()
+		if not self.rawCode:
+			self.rawCode = self.field.field_code.content.get()
 		for prefix in FIELD_PREFIXES:
-			if(rawCode.startswith(prefix)):
-				return rawCode[len(prefix):-1]
+			if(self.rawCode.startswith(prefix)):
+				return self.rawCode[len(prefix):-1]
 	
 	def equals(self, field):
 		"""Returns true if field and this field refer to the same field"""
@@ -702,36 +712,43 @@ class Field:
 		
 		# Save note and textLocation
 		if self.noteType == NOTE_FOOTNOTE:
-			self.note = self.displayFieldRange.footnotes[1]
+			self.note = self.fieldRange.footnotes[1]
 			self.textLocation = self.note.note_reference.start_of_content.get()
 			self.noteLocation = None
 		elif self.noteType == NOTE_ENDNOTE:
-			self.note = self.displayFieldRange.endnotes[1]
+			self.note = self.fieldRange.endnotes[1]
 			self.textLocation = self.note.note_reference.start_of_content.get()
 			self.noteLocation = None
 		else:
 			self.note = None
 			self.textLocation = self.fieldRange.start_of_content.get()
+	
+	@property
+	def displayFieldRange(self):
+		return self.field.result_range
 
 class Bookmark(Field):
 	_reg_clsid_ = "{92771357-7c15-4a49-b963-7cd91886b06b}"
 	_reg_contractid_ = "@zotero.org/Zotero/integration/field?agent=MacWord&type=Bookmark;1"
 	_reg_desc_ = "MacWord Bookmark"
 	
-	def __init__(self, wpDoc, field, noteType=None):
+	def __init__(self, wpDoc, field, noteType=None, bookmarkName=None):
 		self.wpDoc = wpDoc
 		
 		# Save useful information
-		self.bookmarkName = field.name.get()
-		if self.bookmarkName == k.missing_value:
-			# This is not the clean way of doing things, but apparently in Office 2004, it is
-			# sometimes the only way of doing things
-			fieldName = repr(field)
-			for prop in BOOKMARK_REFERENCE_PROPERTIES:
-				nameIndex = fieldName.find(prop)
-				if nameIndex != -1:
-					self.bookmarkName = fieldName[nameIndex:fieldName.rindex("'")]
-					break
+		if bookmarkName:
+			self.bookmarkName = bookmarkName
+		else:
+			self.bookmarkName = field.name.get()
+			if self.bookmarkName == k.missing_value:
+				# This is not the clean way of doing things, but apparently in Office 2004, it is
+				# sometimes the only way of doing things
+				fieldName = repr(field)
+				for prop in BOOKMARK_REFERENCE_PROPERTIES:
+					nameIndex = fieldName.find(prop)
+					if nameIndex != -1:
+						self.bookmarkName = fieldName[nameIndex:fieldName.rindex("'")]
+						break
 			
 		# Re-index by field name
 		self.field = wpDoc.asDoc.bookmarks[self.bookmarkName]
@@ -742,8 +759,6 @@ class Bookmark(Field):
 	
 	def delete(self):
 		"""Deletes this bookmark, and any properties"""
-		storyType = self.fieldRange.story_type.get()
-		
 		if self.note and self.note.text_object.content.get() == self.fieldRange.content.get():
 			self.note.delete()
 		else:
