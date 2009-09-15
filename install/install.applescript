@@ -112,7 +112,10 @@ on error err
 end try
 
 if installed2004 is false and installed2008 is false then
-	tell application "System Events" to display alert "Zotero MacWord Integration could not be installed because an error occurred." message "Neither Word 2004 nor Word 2008 appear to be installed on this computer. Please install Word, then try again." as critical
+	tell application "System Events"
+		activate
+		display alert "Zotero MacWord Integration could not be installed because an error occurred." message "Neither Word 2004 nor Word 2008 appear to be installed on this computer. Please install Word, then try again." as critical
+	end tell
 else
 	tell application "System Events"
 		set isOpen to every process whose name is "Microsoft Word"
