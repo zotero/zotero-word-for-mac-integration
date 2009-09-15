@@ -323,8 +323,8 @@ class Document:
 					continue
 				
 				for i in range(1, maxField+1):
-					field = collectionFields[i];
-					codeRange = field.field_code;
+					field = collectionFields[i]
+					codeRange = field.field_code
 					rawCode = codeRange.content.get()
 					for prefix in FIELD_PREFIXES:
 						if rawCode.startswith(prefix):

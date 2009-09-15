@@ -58,7 +58,7 @@ try
 		end if
 		if scriptMenuItemsFolder is false then
 			try
-				set scriptMenuItemsFolder to choose folder with prompt "Select the Word Script Menu Items folder, usually located within the Microsoft User Data folder." default location (path to documents folder)
+				tell application "Firefox" to set scriptMenuItemsFolder to choose folder with prompt "Select the Word Script Menu Items folder, usually located within the Microsoft User Data folder." default location (path to documents folder)
 			end try
 		end if
 		
@@ -107,4 +107,12 @@ end try
 
 if installed2004 is false and installed2008 is false then
 	tell application "Firefox" to display alert "Zotero MacWord Integration could not be installed because an error occurred." message "Neither Word 2004 nor Word 2008 appear to be installed on this computer. Please install Word, then try again." as critical
+else
+	tell application "System Events"
+		set isOpen to every process whose name is "Microsoft Word"
+	end tell
+	if isOpen is not {} then
+		do shell script "killall -s 'Microsoft Word'"
+		tell application "Firefox" to display alert "Zotero MacWord Integration has been successfully installed, but Word must be restarted before it can be used." message "Please restart Word before continuing." as warning
+	end if
 end if
