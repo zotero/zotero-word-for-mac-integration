@@ -47,6 +47,33 @@ function ZoteroMacWordIntegration_checkVersion(name, url, id, minVersion) {
 	}
 }
 
+function ZoteroMacWordIntegration_clearComponentCache() {
+	// Delete relevant files
+	var profileDirectory = Components.classes["@mozilla.org/file/directory_service;1"]
+									 .getService(Components.interfaces.nsIProperties)
+									 .get("ProfD", Components.interfaces.nsIFile);
+	for each(var filename in ["compreg.dat", "extensions.cache", "xpti.dat"]) {
+		var file = profileDirectory.clone();
+		file.append(filename);
+		if(file.exists()) file.remove(false);
+	}
+	
+	// The following code was borrowed from extensions.js
+	// Notify all windows that an application quit has been requested.
+	var os = Components.classes["@mozilla.org/observer-service;1"]
+					   .getService(Components.interfaces.nsIObserverService);
+	var cancelQuit = Components.classes["@mozilla.org/supports-PRBool;1"]
+							   .createInstance(Components.interfaces.nsISupportsPRBool);
+	os.notifyObservers(cancelQuit, "quit-application-requested", "restart");
+	
+	// Something aborted the quit process.
+	if (cancelQuit.data)
+	return;
+	
+	Components.classes["@mozilla.org/toolkit/app-startup;1"].getService(Components.interfaces.nsIAppStartup)
+			  .quit(Components.interfaces.nsIAppStartup.eRestart | Components.interfaces.nsIAppStartup.eAttemptQuit);
+}
+
 function ZoteroMacWordIntegration_firstRun() {
 	ZoteroMacWordIntegration_checkVersion("Zotero", "zotero.org", "zotero@chnm.gmu.edu", "2.0b7.SVN");
 	ZoteroMacWordIntegration_checkVersion("PythonExt", "pyxpcomext.mozdev.org", "pythonext@mozdev.org", "2.6");
@@ -72,6 +99,17 @@ function ZoteroMacWordIntegration_firstRun() {
 			.alert(null, 'Zotero Word Integration Error',
 			'Zotero Word Integration could not complete installation because an error occurred. Please ensure that Word is closed, then restart Firefox.');
 		throw e;
+	}
+	
+	// see if component is registered
+	if(!Components.classes["@zotero.org/Zotero/integration/application?agent=MacWord2008;1"]) {		
+		var prompt = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
+			.getService(Components.interfaces.nsIPromptService)
+			.confirm(null, 'Zotero MacWord Integration Error',
+			'The Zotero MacWord Integration installation is complete, but a necessary '+
+			'component does not appear to be loaded properly. \n\nZotero can attempt to correct '+
+			'this for you. A Firefox restart will be required. Continue?');
+		if(prompt) ZoteroMacWordIntegration_clearComponentCache();
 	}
 }
 
