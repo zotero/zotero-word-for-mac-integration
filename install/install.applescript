@@ -41,9 +41,15 @@ try
 	-- See if Office 2008 is installed
 	set installed2008 to false
 	try
-		application id "com.Microsoft.Word"
+		alias ((path to applications folder as text) & "Microsoft Office 2008:Microsoft Word.app")
 		set installed2008 to true
 	end try
+	if not installed2008 then
+		try
+			application id "com.Microsoft.Word"
+			set installed2008 to true
+		end try
+	end if
 	
 	if installed2008 then
 		-- Look for Script Menu Items
