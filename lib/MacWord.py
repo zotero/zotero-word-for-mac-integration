@@ -684,7 +684,10 @@ class Field:
 			self.rawCode = self.field.field_code.content.get()
 		for prefix in FIELD_PREFIXES:
 			if(self.rawCode.startswith(prefix)):
-				return self.rawCode[len(prefix):-1]
+				if self.rawCode[-1] == " ":
+					return self.rawCode[len(prefix):-1]
+				else:
+					return self.rawCode[len(prefix):]
 	
 	def equals(self, field):
 		"""Returns true if field and this field refer to the same field"""
