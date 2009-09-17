@@ -668,7 +668,7 @@ class Field:
 			
 			# Set properties back to saved
 			[getattr(self.displayFieldRange.font_object, SAVE_PROPERTIES[i]).set(savedProperties[i]) \
-				for i in range(len(SAVE_PROPERTIES))]
+				for i in range(len(SAVE_PROPERTIES)) if savedProperties[i] != k.missing_value]
 		else:
 			# Just set content of text object
 			self.displayFieldRange.content.set(string)
