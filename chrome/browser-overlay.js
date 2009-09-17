@@ -76,7 +76,7 @@ function ZoteroMacWordIntegration_clearComponentCache() {
 
 function ZoteroMacWordIntegration_firstRun() {
 	ZoteroMacWordIntegration_checkVersion("Zotero", "zotero.org", "zotero@chnm.gmu.edu", "2.0b7.SVN");
-	ZoteroMacWordIntegration_checkVersion("PythonExt", "pyxpcomext.mozdev.org", "pythonext@mozdev.org", "2.6");
+	ZoteroMacWordIntegration_checkVersion("PythonExt", "pyxpcomext.mozdev.org", "pythonext@mozdev.org", "2.5");
 	try {
 		// run AppleScript to set up
 		var installScript = Components.classes["@mozilla.org/extensions/manager;1"].
