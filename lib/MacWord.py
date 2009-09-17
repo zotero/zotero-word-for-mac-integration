@@ -827,7 +827,7 @@ class Bookmark(Field):
 			
 			# Set properties back to saved
 			[getattr(self.displayFieldRange.font_object, SAVE_PROPERTIES[i]).set(savedProperties[i]) \
-				for i in range(len(SAVE_PROPERTIES))]
+				for i in range(len(SAVE_PROPERTIES)) if savedProperties[i] != k.missing_value]
 			
 			# If selection was at end of mark, put it there again
 			if selectionAtEnd:
