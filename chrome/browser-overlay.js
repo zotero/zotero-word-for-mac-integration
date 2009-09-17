@@ -47,17 +47,7 @@ function ZoteroMacWordIntegration_checkVersion(name, url, id, minVersion) {
 	}
 }
 
-function ZoteroMacWordIntegration_clearComponentCache() {
-	// Delete relevant files
-	var profileDirectory = Components.classes["@mozilla.org/file/directory_service;1"]
-									 .getService(Components.interfaces.nsIProperties)
-									 .get("ProfD", Components.interfaces.nsIFile);
-	for each(var filename in ["compreg.dat", "extensions.cache", "xpti.dat"]) {
-		var file = profileDirectory.clone();
-		file.append(filename);
-		if(file.exists()) file.remove(false);
-	}
-	
+function ZoteroMacWordIntegration_restartFirefox() {	
 	// The following code was borrowed from extensions.js
 	// Notify all windows that an application quit has been requested.
 	var os = Components.classes["@mozilla.org/observer-service;1"]
@@ -74,9 +64,19 @@ function ZoteroMacWordIntegration_clearComponentCache() {
 			  .quit(Components.interfaces.nsIAppStartup.eRestart | Components.interfaces.nsIAppStartup.eAttemptQuit);
 }
 
+function ZoteroMacWordIntegration_clearComponentCache() {
+	// Delete relevant files
+	var profileDirectory = Components.classes["@mozilla.org/file/directory_service;1"]
+									 .getService(Components.interfaces.nsIProperties)
+									 .get("ProfD", Components.interfaces.nsIFile);
+	for each(var filename in ["compreg.dat", "extensions.cache", "xpti.dat"]) {
+		var file = profileDirectory.clone();
+		file.append(filename);
+		if(file.exists()) file.remove(false);
+	}
+}
+
 function ZoteroMacWordIntegration_firstRun() {
-	ZoteroMacWordIntegration_checkVersion("Zotero", "zotero.org", "zotero@chnm.gmu.edu", "2.0b7.SVN");
-	ZoteroMacWordIntegration_checkVersion("PythonExt", "pyxpcomext.mozdev.org", "pythonext@mozdev.org", "2.5");
 	try {
 		// run AppleScript to set up
 		var installScript = Components.classes["@mozilla.org/extensions/manager;1"].
@@ -100,24 +100,60 @@ function ZoteroMacWordIntegration_firstRun() {
 			'Zotero Word Integration could not complete installation because an error occurred. Please ensure that Word is closed, then restart Firefox.');
 		throw e;
 	}
+}
+
+function ZoteroMacWordIntegration_checkInstall() {
+	var ext = Components.classes['@mozilla.org/extensions/manager;1']
+	   .getService(Components.interfaces.nsIExtensionManager).getItemForID(ZOTEROMACWORDINTEGRATION_ID);
+	var zoteroMacWordIntegration_prefService = Components.classes["@mozilla.org/preferences-service;1"].
+		getService(Components.interfaces.nsIPrefBranch);
+		
+	ZoteroMacWordIntegration_checkVersion("Zotero", "zotero.org", "zotero@chnm.gmu.edu", "2.0b7.SVN");
+	ZoteroMacWordIntegration_checkVersion("PythonExt", "pyxpcomext.mozdev.org", "pythonext@mozdev.org", "2.5");
 	
+	var pythonExt = Components.classes['@mozilla.org/extensions/manager;1'].
+		getService(Components.interfaces.nsIExtensionManager).
+		getInstallLocation("pythonext@mozdev.org").
+		getItemLocation("pythonext@mozdev.org");
+	var pythonExtComponents = pythonExt.clone();
+	pythonExtComponents.append("components");
+	if(!pythonExtComponents.directoryEntries.hasMoreElements()) {
+		var prompt = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
+			.getService(Components.interfaces.nsIPromptService)
+			.confirm(null, 'Zotero MacWord Integration Error',
+			'Zotero MacWord Integration requires PythonExt to run. While PythonExt is currently '+
+			'installed, it appears to be corrupted or incompletely deleted. As such, the Firefox '+
+			'Add-on manager may not be able to remove or reinstall it. Would you like Zotero '+
+			'Integration to remove it for you and restart Firefox?\n\n'+
+			'Upon restart, you may receive an error '+
+			'stating that PythonExt is not installed, and you will need to reinstall PythonExt '+
+			'before Zotero MacWord Integration will function properly.');
+		if(prompt) {
+			pythonExt.remove(true);
+			ZoteroMacWordIntegration_restartFirefox();
+		}
+		throw "PythonExt is missing the extension helper; Zotero MacWord Integration will not function."
+	}
+	
+	if(zoteroMacWordIntegration_prefService.getCharPref(ZOTEROMACWORDINTEGRATION_PREF) != ext.version) {
+		ZoteroMacWordIntegration_firstRun();
+		zoteroMacWordIntegration_prefService.setCharPref(ZOTEROMACWORDINTEGRATION_PREF, ext.version);
+	}
+		
 	// see if component is registered
 	if(!Components.classes["@zotero.org/Zotero/integration/application?agent=MacWord2008;1"]) {		
 		var prompt = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
 			.getService(Components.interfaces.nsIPromptService)
 			.confirm(null, 'Zotero MacWord Integration Error',
-			'The Zotero MacWord Integration installation is complete, but a necessary '+
+			'The Zotero MacWord Integration installation succeeded, but a necessary '+
 			'component does not appear to be loaded properly. \n\nZotero can attempt to correct '+
 			'this for you. A Firefox restart will be required. Continue?');
-		if(prompt) ZoteroMacWordIntegration_clearComponentCache();
+		if(prompt) {
+			ZoteroMacWordIntegration_clearComponentCache();
+			ZoteroMacWordIntegration_restartFirefox();
+		}
+		throw "The Zotero MacWord Integration Python component is not registered."
 	}
 }
 
-var ext = Components.classes['@mozilla.org/extensions/manager;1']
-   .getService(Components.interfaces.nsIExtensionManager).getItemForID(ZOTEROMACWORDINTEGRATION_ID);
-var zoteroMacWordIntegration_prefService = Components.classes["@mozilla.org/preferences-service;1"].
-	getService(Components.interfaces.nsIPrefBranch);
-if(zoteroMacWordIntegration_prefService.getCharPref(ZOTEROMACWORDINTEGRATION_PREF) != ext.version) {
-	ZoteroMacWordIntegration_firstRun();
-	zoteroMacWordIntegration_prefService.setCharPref(ZOTEROMACWORDINTEGRATION_PREF, ext.version);
-}
+ZoteroMacWordIntegration_checkInstall();
