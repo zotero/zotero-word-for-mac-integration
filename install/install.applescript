@@ -54,7 +54,7 @@ try
 			try
 				tell application "System Events"
 					activate
-					set scriptMenuItemsFolder to choose folder with prompt "Select the Word Script Menu Items folder, usually located within the Microsoft User Data folder." default location (path to documents folder)
+					set scriptMenuItemsFolder to choose folder with prompt "Select the Word Script Menu Items folder, usually located in Documents/Microsoft User Data" default location (path to documents folder)
 				end tell
 			end try
 		end if
@@ -88,10 +88,22 @@ try
 		-- Create startup folder if it doesn't exist
 		set AppleScript's text item delimiters to ":"
 		set pathToOffice to (text items 1 thru -2 of (installed2004 as text) as text)
-		set startupDirectory to (quoted form of POSIX path of pathToOffice) & "/Office/Startup/Word"
-		do shell script "mkdir -p " & startupDirectory
-		do shell script "cp " & (quoted form of POSIX path of (text items 1 thru -2 of (path to me as text) as text)) & "/Zotero.dot " & startupDirectory
-		set dot to alias (pathToOffice & ":Office:Startup:Word:Zotero.dot")
+		
+		-- Get Startup directory, creating it if necessary. On some systems, this is "Start"
+		try
+			set startupDirectory to alias (pathToOffice & ":Office:Startup:Word:")
+		on error
+			try
+				set startupDirectory to alias (pathToOffice & ":Office:Start:Word:")
+			on error
+				do shell script "mkdir -p " & (quoted form of POSIX path of pathToOffice) & "/Office/Startup/Word"
+				set startupDirectory to alias (pathToOffice & ":Office:Startup:Word:")
+			end try
+		end try
+		
+		-- Copy template to startup directory
+		do shell script "cp " & (quoted form of POSIX path of (text items 1 thru -2 of (path to me as text) as text)) & "/Zotero.dot " & (quoted form of POSIX path of startupDirectory)
+		set dot to alias ((startupDirectory as text) & "Zotero.dot")
 		tell application "Finder"
 			set creator type of dot to "MSWD"
 			set file type of dot to "W8TN"
