@@ -23,20 +23,8 @@
 *)
 
 try
-	set W2008_SCRIPT_NAMES to {"Add Bibliography\\cob.scpt", Â
-		"Add Citation\\coa.scpt", Â
-		"Edit Bibliography\\cod.scpt", Â
-		"Edit Citation\\coe.scpt", Â
-		"Refresh\\cor.scpt", Â
-		"Remove Field Codes.scpt", Â
-		"Set Document Preferences\\cop.scpt"}
-	set W2008_SCRIPT_COMMANDS to {"addBibliography", Â
-		"addCitation", Â
-		"editBibliography", Â
-		"editCitation", Â
-		"refresh", Â
-		"removeCodes", Â
-		"setDocPrefs"}
+	set W2008_SCRIPT_NAMES to {"Add Bibliography\\cob.scpt", "Add Citation\\coa.scpt", "Edit Bibliography\\cod.scpt", "Edit Citation\\coe.scpt", "Refresh\\cor.scpt", "Remove Field Codes.scpt", "Set Document Preferences\\cop.scpt"}
+	set W2008_SCRIPT_COMMANDS to {"addBibliography", "addCitation", "editBibliography", "editCitation", "refresh", "removeCodes", "setDocPrefs"}
 	
 	-- See if Office 2008 is installed
 	set installed2008 to false
@@ -46,7 +34,7 @@ try
 	end try
 	if not installed2008 then
 		try
-			application id "com.Microsoft.Word"
+			run script "application id \"com.Microsoft.Word\""
 			set installed2008 to true
 		end try
 	end if

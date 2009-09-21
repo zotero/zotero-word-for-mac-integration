@@ -44,11 +44,10 @@ SAVE_PROPERTIES = [u'font_size', u'name', u'other_name', u'color']
 MAX_PROPERTY_LENGTH = 255
 MAX_BOOKMARK_LENGTH = 50
 
-import random, string, copy, os, tempfile, sys, traceback, pprint, xpcom.server
+import random, string, copy, os, tempfile, sys, traceback, xpcom.server
 
 from appscript import *
 from xpcom import components, ServerException, nsError
-
 
 DIALOG_ICON_STOP = components.interfaces.zoteroIntegrationDocument.DIALOG_ICON_STOP;
 DIALOG_ICON_NOTICE = components.interfaces.zoteroIntegrationDocument.DIALOG_ICON_NOTICE;

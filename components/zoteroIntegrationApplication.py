@@ -27,14 +27,7 @@
 from xpcom import components, ServerException, nsError
 
 import os, sys, subprocess
-libDir = os.path.dirname(__file__)+'/../lib'
-sys.path.insert(0, libDir)
-sys.path.insert(0, libDir+'/setuptools-0.6c9-py2.6.egg')
-sys.path.insert(0, libDir+'/appscript-0.19.0-py2.5-macosx-10.3-fat.egg')
-
-# Hack to fix pythonext issues
 sys.exec_prefix = sys.prefix
-
 from MacWord import Document, Document_2004, Field, Bookmark
 import appscript
 
