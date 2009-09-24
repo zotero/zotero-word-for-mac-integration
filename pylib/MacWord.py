@@ -662,7 +662,8 @@ class Field:
 				string[6:-1]+"{\\bkmkend "+RTF_TEMP_BOOKMARK+"}}")
 			self.displayFieldRange.content.set("")
 			self.wpDoc.asApp.insert_file(at=self.displayFieldRange, \
-				file_name=self.wpDoc.tempFile.hfsPath, file_range=RTF_TEMP_BOOKMARK)
+				file_name=self.wpDoc.tempFile.hfsPath, file_range=RTF_TEMP_BOOKMARK, \
+				confirm_conversions=False)
 			self.displayFieldRange.bookmarks[RTF_TEMP_BOOKMARK].delete()
 			
 			# Set properties back to saved
@@ -814,7 +815,8 @@ class Bookmark(Field):
 			hfsPath = self.wpDoc.tempFile.write("{\\rtf {\\bkmkstart "+self.bookmarkName+"}"+ \
 				string[6:-1]+"{\\bkmkend "+self.bookmarkName+"}}")
 			self.wpDoc.asApp.insert_file(at=tempBookmark.text_object, \
-				file_name=self.wpDoc.tempFile.hfsPath, file_range=self.bookmarkName)
+				file_name=self.wpDoc.tempFile.hfsPath, file_range=self.bookmarkName, \
+				confirm_conversions=False)
 			
 			# Delete old bookmark
 			tempBookmark.text_object.content.set("")
