@@ -29,7 +29,7 @@ try
 	-- See if Office 2008 is installed
 	set installed2008 to false
 	try
-		alias ((path to applications folder as text) & "Microsoft Office 2008:Microsoft Word.app")
+		tell application "Finder" to file "Microsoft Word.app" of folder "Microsoft Office 2008" of (path to applications folder)
 		set installed2008 to true
 	end try
 	if not installed2008 then
@@ -43,11 +43,11 @@ try
 		-- Look for Script Menu Items
 		set scriptMenuItemsFolder to false
 		try
-			set scriptMenuItemsFolder to alias ((path to home folder as text) & "Documents:Microsoft User Data:Word Script Menu Items")
+			tell application "Finder" to set scriptMenuItemsFolder to (folder "Word Script Menu Items" of folder "Microsoft User Data" of (path to documents folder)) as alias
 		end try
 		if scriptMenuItemsFolder is false then
 			try
-				set scriptMenuItemsFolder to alias ((path to preferences folder from user domain as text) & "Microsoft User Data:Word Script Menu Items")
+				tell application "Finder" to set scriptMenuItemsFolder to (folder "Word Script Menu Items" of folder "Microsoft User Data" of (path to preferences folder from user domain)) as alias
 			end try
 		end if
 		if scriptMenuItemsFolder is false then
@@ -64,7 +64,7 @@ try
 			set posixPathToScripts to quoted form of POSIX path of scriptMenuItemsFolder & "/Zotero/"
 			do shell script "rm -rf " & posixPathToScripts & "; mkdir " & posixPathToScripts
 			repeat with i from 1 to length of W2008_SCRIPT_NAMES
-				do shell script "osacompile -d -e \"try\" -e \"alias ((path to home folder as text) & \\\".zoteroIntegrationPipe\\\")\" -e \"do shell script \\\"echo 'MacWord2008 " & (item i of W2008_SCRIPT_COMMANDS) & "' > ~/.zoteroIntegrationPipe\\\"\" -e \"on error\" -e \"display alert \\\"Word could not communicate with Zotero. Please ensure that Firefox is open and try again.\\\" as critical\" -e \"end try\" -o " & posixPathToScripts & "'" & (item i of W2008_SCRIPT_NAMES) & "'"
+				do shell script "osacompile -d -e \"try\" -e \"do shell script \\\"ls ~/.zoteroIntegrationPipe && echo 'MacWord2008 " & (item i of W2008_SCRIPT_COMMANDS) & "' > ~/.zoteroIntegrationPipe\\\"\" -e \"on error\" -e \"display alert \\\"Word could not communicate with Zotero. Please ensure that Firefox is open and try again.\\\" as critical\" -e \"end try\" -o " & posixPathToScripts & "'" & (item i of W2008_SCRIPT_NAMES) & "'"
 			end repeat
 		end if
 	end if
@@ -72,7 +72,7 @@ try
 	-- See if Office 2004 is installed
 	set installed2004 to false
 	try
-		set installed2004 to alias ((path to applications folder as text) & "Microsoft Office 2004:Microsoft Word")
+		tell application "Finder" to set installed2004 to (file "Microsoft Word" of folder "Microsoft Office 2004" of (path to applications folder)) as alias
 	end try
 	if installed2004 is false then
 		try
@@ -86,25 +86,25 @@ try
 	
 	if installed2004 is not false then
 		-- Create startup folder if it doesn't exist
-		set AppleScript's text item delimiters to ":"
-		set pathToOffice to (text items 1 thru -2 of (installed2004 as text) as text)
+		tell application "Finder" to set pathToOffice to container of installed2004
 		
 		-- Get Startup directory, creating it if necessary. On some systems, this is "Start"
 		try
-			set startupDirectory to alias (pathToOffice & ":Office:Startup:Word:")
+			tell application "Finder" to set startupDirectory to (folder "Word" of folder "Startup" of folder "Office" of pathToOffice) as alias
 		on error
 			try
-				set startupDirectory to alias (pathToOffice & ":Office:Start:Word:")
+				tell application "Finder" to set startupDirectory to (folder "Word" of folder "Start" of folder "Office" of pathToOffice) as alias
 			on error
 				do shell script "mkdir -p " & (quoted form of POSIX path of pathToOffice) & "/Office/Startup/Word"
-				set startupDirectory to alias (pathToOffice & ":Office:Startup:Word:")
+				tell application "Finder" to set startupDirectory to (folder "Word" of folder "Startup" of folder "Office" of pathToOffice) as alias
 			end try
 		end try
 		
 		-- Copy template to startup directory
-		do shell script "cp " & (quoted form of POSIX path of (text items 1 thru -2 of (path to me as text) as text)) & "/Zotero.dot " & (quoted form of POSIX path of startupDirectory)
-		set dot to alias ((startupDirectory as text) & "Zotero.dot")
+		set AppleScript's text item delimiters to "/"
+		do shell script "cp " & quoted form of (text items 1 thru -2 of (POSIX path of (path to me)) as text) & "/Zotero.dot " & (quoted form of POSIX path of startupDirectory)
 		tell application "Finder"
+			set dot to file "Zotero.dot" of startupDirectory
 			set creator type of dot to "MSWD"
 			set file type of dot to "W8TN"
 		end tell
