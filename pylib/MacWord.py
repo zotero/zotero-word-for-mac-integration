@@ -325,17 +325,19 @@ class Document:
 					field = collectionFields[i]
 					codeRange = field.field_code
 					rawCode = codeRange.content.get()
-					for prefix in FIELD_PREFIXES:
-						if rawCode.startswith(prefix):
-							fields.append(Field(self, field, noteType, codeRange, rawCode))
+					if rawCode != k.missing_value:
+						for prefix in FIELD_PREFIXES:
+							if rawCode.startswith(prefix):
+								fields.append(Field(self, field, noteType, codeRange, rawCode))
 		elif fieldType == "Bookmark":	# Bookmarks
 			getBookmarks = self.asDoc.bookmarks.get()
 			if getBookmarks:
 				for bookmark in getBookmarks:
 					bookmarkName = bookmark.name.get()
-					for prefix in BOOKMARK_PREFIXES:
-						if bookmarkName.startswith(prefix):
-							fields.append(Bookmark(self, bookmark, None, bookmarkName))
+					if bookmarkName != k.missing_value:
+						for prefix in BOOKMARK_PREFIXES:
+							if bookmarkName.startswith(prefix):
+								fields.append(Bookmark(self, bookmark, None, bookmarkName))
 		
 		fields.sort()
 		return XPCOMEnumerator(fields.__iter__())
