@@ -86,24 +86,26 @@ try
 	
 	if installed2004 is not false then
 		-- Create startup folder if it doesn't exist
-		tell application "Finder" to set pathToOffice to container of installed2004
-		
-		-- Get Startup directory, creating it if necessary. On some systems, this is "Start"
-		try
-			tell application "Finder" to set startupDirectory to (folder "Word" of folder "Startup" of folder "Office" of pathToOffice) as alias
-		on error
+		tell application "Finder"
+			set pathToOffice to container of installed2004
+			
+			-- Get Startup directory, creating it if necessary. On some systems, this is "Start"
 			try
-				tell application "Finder" to set startupDirectory to (folder "Word" of folder "Start" of folder "Office" of pathToOffice) as alias
+				set startupDirectory to (folder "Word" of folder "Startup" of folder "Office" of pathToOffice) as alias
 			on error
-				do shell script "mkdir -p " & (quoted form of POSIX path of pathToOffice) & "/Office/Startup/Word"
-				tell application "Finder" to set startupDirectory to (folder "Word" of folder "Startup" of folder "Office" of pathToOffice) as alias
+				try
+					set startupDirectory to (folder "Word" of folder "Start" of folder "Office" of pathToOffice) as alias
+				on error
+					do shell script "mkdir -p " & (quoted form of POSIX path of pathToOffice) & "/Office/Startup/Word"
+					set startupDirectory to (folder "Word" of folder "Startup" of folder "Office" of pathToOffice) as alias
+				end try
 			end try
-		end try
+		end tell
 		
 		-- Copy template to startup directory
 		set AppleScript's text item delimiters to "/"
-		do shell script "cp " & quoted form of (text items 1 thru -2 of (POSIX path of (path to me)) as text) & "/Zotero.dot " & (quoted form of POSIX path of startupDirectory)
 		tell application "Finder"
+			do shell script "cp " & quoted form of (text items 1 thru -2 of (POSIX path of (path to me)) as text) & "/Zotero.dot " & (quoted form of POSIX path of startupDirectory)
 			set dot to file "Zotero.dot" of startupDirectory
 			set creator type of dot to "MSWD"
 			set file type of dot to "W8TN"
