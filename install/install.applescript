@@ -87,7 +87,7 @@ try
 	if installed2004 is not false then
 		-- Create startup folder if it doesn't exist
 		tell application "Finder"
-			set pathToOffice to container of installed2004
+			set pathToOffice to container of installed2004 as alias
 			
 			-- Get Startup directory, creating it if necessary. On some systems, this is "Start"
 			try
