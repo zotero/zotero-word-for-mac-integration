@@ -114,7 +114,7 @@ try
 on error err
 	tell application "System Events"
 		activate
-		display alert "Zotero MacWord Integration could not be installed because an error occured." message err as critical
+		display alert "Zotero MacWord Integration could not be installed because an error occurred." message err as critical
 	end tell
 	return
 end try
