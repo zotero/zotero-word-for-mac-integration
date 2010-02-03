@@ -69,7 +69,7 @@ function ZoteroMacWordIntegration_clearComponentCache() {
 	var profileDirectory = Components.classes["@mozilla.org/file/directory_service;1"]
 									 .getService(Components.interfaces.nsIProperties)
 									 .get("ProfD", Components.interfaces.nsIFile);
-	for each(var filename in ["compreg.dat", "extensions.cache", "xpti.dat"]) {
+	for each(var filename in ["compreg.dat", "extensions.cache", "xpti.dat", "extensions.rdf"]) {
 		var file = profileDirectory.clone();
 		file.append(filename);
 		if(file.exists()) file.remove(false);
