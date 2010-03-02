@@ -34,8 +34,7 @@ try
 	end try
 	if not installed2008 then
 		try
-			run script "application id \"com.Microsoft.Word\""
-			set installed2008 to true
+			set installed2008 to characters 1 thru 2 of (run script "version of application id \"com.Microsoft.Word\"") as text ³ 12
 		end try
 	end if
 	
@@ -64,7 +63,7 @@ try
 			set posixPathToScripts to quoted form of POSIX path of scriptMenuItemsFolder & "/Zotero/"
 			do shell script "rm -rf " & posixPathToScripts & "; mkdir " & posixPathToScripts
 			repeat with i from 1 to length of W2008_SCRIPT_NAMES
-				do shell script "osacompile -d -e \"try\" -e \"do shell script \\\"ls ~/.zoteroIntegrationPipe && echo 'MacWord2008 " & (item i of W2008_SCRIPT_COMMANDS) & "' > ~/.zoteroIntegrationPipe\\\"\" -e \"on error\" -e \"display alert \\\"Word could not communicate with Zotero. Please ensure that Firefox is open and try again.\\\" as critical\" -e \"end try\" -o " & posixPathToScripts & "'" & (item i of W2008_SCRIPT_NAMES) & "'"
+				do shell script "osacompile -d -e \"try\" -e \"do shell script \\\"PIPE=/Users/Shared/.zoteroIntegrationPipe_\\$LOGNAME;  if [ ! -p \\$PIPE ]; then PIPE=~/.zoteroIntegrationPipe; fi; if [ -p \\$PIPE ]; then echo 'MacWord2008 " & (item i of W2008_SCRIPT_COMMANDS) & "' > \\$PIPE; else exit 1; fi;\\\"\" -e \"on error\" -e \"display alert \\\"Word could not communicate with Zotero. Please ensure that Firefox is open and try again.\\\" as critical\" -e \"end try\" -o " & posixPathToScripts & "'" & (item i of W2008_SCRIPT_NAMES) & "'"
 			end repeat
 		end if
 	end if
@@ -105,10 +104,10 @@ try
 		-- Copy template to startup directory
 		set AppleScript's text item delimiters to "/"
 		tell application "Finder"
-			do shell script "cp " & quoted form of (text items 1 thru -2 of (POSIX path of (path to me)) as text) & "/Zotero.dot " & (quoted form of POSIX path of startupDirectory)
-			set dot to file "Zotero.dot" of startupDirectory
+			set dot to file "Zotero.dot" of parent of (path to me)
 			set creator type of dot to "MSWD"
 			set file type of dot to "W8TN"
+			do shell script "cp " & quoted form of POSIX path of (dot as alias) & " " & (quoted form of POSIX path of startupDirectory)
 		end tell
 	end if
 on error err
