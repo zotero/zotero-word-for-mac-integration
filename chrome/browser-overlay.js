@@ -97,7 +97,7 @@ function ZoteroMacWordIntegration_firstRun() {
 		var prompts = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
 			.getService(Components.interfaces.nsIPromptService)
 			.alert(null, 'Zotero Word Integration Error',
-			'Zotero Word Integration could not complete installation because an error occurred. Please ensure that Word is closed, then restart Firefox.');
+			'Zotero Word Integration could not complete installation because an error occurred. Please ensure that Word is closed, and then restart Firefox.');
 		throw e;
 	}
 }
