@@ -63,7 +63,7 @@ try
 			set posixPathToScripts to quoted form of POSIX path of scriptMenuItemsFolder & "/Zotero/"
 			do shell script "rm -rf " & posixPathToScripts & "; mkdir " & posixPathToScripts
 			repeat with i from 1 to length of W2008_SCRIPT_NAMES
-				do shell script "osacompile -d -e \"try\" -e \"do shell script \\\"PIPE=/Users/Shared/.zoteroIntegrationPipe_\\$LOGNAME;  if [ ! -p \\$PIPE ]; then PIPE=~/.zoteroIntegrationPipe; fi; if [ -p \\$PIPE ]; then echo 'MacWord2008 " & (item i of W2008_SCRIPT_COMMANDS) & "' > \\$PIPE; else exit 1; fi;\\\"\" -e \"on error\" -e \"display alert \\\"Word could not communicate with Zotero. Please ensure that Firefox is open and try again.\\\" as critical\" -e \"end try\" -o " & posixPathToScripts & "'" & (item i of W2008_SCRIPT_NAMES) & "'"
+				do shell script "osacompile -d -e \"try\" -e \"do shell script \\\"PIPE=\\\\\\\"/Users/Shared/.zoteroIntegrationPipe_\\$LOGNAME\\\\\\\";  if [ ! -p \\\\\\\"\\$PIPE\\\\\\\" ]; then PIPE='~/.zoteroIntegrationPipe'; fi; if [ -p \\\\\\\"\\$PIPE\\\\\\\" ]; then echo 'MacWord2008 " & (item i of W2008_SCRIPT_COMMANDS) & "' > \\\\\\\"\\$PIPE\\\\\\\"; else exit 1; fi;\\\"\" -e \"on error\" -e \"display alert \\\"Word could not communicate with Zotero. Please ensure that Firefox is open and try again.\\\" as critical\" -e \"end try\" -o " & posixPathToScripts & "'" & (item i of W2008_SCRIPT_NAMES) & "'"
 			end repeat
 		end if
 	end if
@@ -128,7 +128,6 @@ else
 		set isOpen to every process whose name is "Microsoft Word"
 	end tell
 	if isOpen is not {} then
-		do shell script "killall -s 'Microsoft Word'"
 		tell application "System Events"
 			activate
 			display alert "Zotero MacWord Integration has been successfully installed, but Word must be restarted before it can be used." message "Please restart Word before continuing." as informational
