@@ -84,7 +84,7 @@ function ZoteroMacWordIntegration_firstRun() {
 			getInstallLocation(ZOTEROMACWORDINTEGRATION_ID).
 			getItemLocation(ZOTEROMACWORDINTEGRATION_ID);
 		installScript.append("install");
-		installScript.append("install.applescript");
+		installScript.append("install.scpt");
 		
 		var osascript = Components.classes["@mozilla.org/file/local;1"].
 			createInstance(Components.interfaces.nsILocalFile);
