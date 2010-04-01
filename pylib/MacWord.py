@@ -126,7 +126,7 @@ class Document:
 			'"}'
 		
 		(stdin, stdout) = os.popen2('/usr/bin/osascript')
-		stdin.write(script)
+		stdin.write(script.encode("utf-8"))
 		stdin.close()
 		output = stdout.read()
 		stdout.close()
