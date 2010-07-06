@@ -44,7 +44,7 @@ SAVE_PROPERTIES = [u'font_size', u'name', u'other_name', u'color']
 MAX_PROPERTY_LENGTH = 255
 MAX_BOOKMARK_LENGTH = 50
 
-import random, string, copy, os, tempfile, sys, traceback, xpcom.server
+import random, string, copy, os, tempfile, sys, traceback, xpcom.server, subprocess
 
 from appscript import *
 from xpcom import components, ServerException, nsError
@@ -125,11 +125,11 @@ class Document:
 			 '", "'.join([butt.replace('\\', '\\\\').replace('"', '\\"') for butt in buttons])+ \
 			'"}'
 		
-		(stdin, stdout) = os.popen2('/usr/bin/osascript')
-		stdin.write(script.encode("utf-8"))
-		stdin.close()
-		output = stdout.read()
-		stdout.close()
+		p = subprocess.Popen('/usr/bin/osascript', stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+		p.stdin.write(script.encode("utf-8"))
+		p.stdin.close()
+		output = p.stdout.read()
+		p.stdout.close()
 		
 		if buttons:
 			for i in range(len(buttons)):
@@ -520,6 +520,27 @@ class Document:
 			if toFieldType == "Field":
 				offsets[cnv.toNoteType] += 1
 	
+	def setBibliographyStyle(self, firstLineIndent, bodyIndent, lineSpacing, entrySpacing, tabStops):
+		"""Sets the style for the bibliography."""
+		# Get or make bibliography style
+		try:
+			bibStyle = self.asDoc.Word_styles["Bibliography"].get()
+			existingTabStops = bibStyle.paragraph_format.tab_stops.get()
+			if existingTabStops != k.missing_value:
+				[existingTabStop.clear() for existingTabStop in existingTabStops];
+		except:
+			bibStyle = self.asDoc.make(new=k.Word_style, with_properties={ \
+				k.name_local:"Bibliography", k.style_type:k.style_type_paragraph, \
+				k.base_style:k.style_normal})
+		
+		# Set properties
+		bibStyle.paragraph_format.first_line_indent.set(firstLineIndent/20)
+		bibStyle.paragraph_format.paragraph_format_left_indent.set(bodyIndent/20)
+		bibStyle.paragraph_format.line_spacing.set(lineSpacing/20)
+		bibStyle.paragraph_format.space_after.set(entrySpacing/20)
+		[bibStyle.paragraph_format.make(new=k.tab_stop, with_properties={k.alignment:k.align_tab_left, \
+			k.tab_leader:k.tab_leader_spaces, k.tab_stop_position:tabStop/20}) for tabStop in tabStops]		
+	
 	def cleanup(self):
 		"""Run on exit to clean up anything we played with..."""
 		if self.tempFile.path:
@@ -667,6 +688,14 @@ class Field:
 				file_name=self.wpDoc.tempFile.hfsPath, file_range=RTF_TEMP_BOOKMARK, \
 				confirm_conversions=False)
 			self.displayFieldRange.bookmarks[RTF_TEMP_BOOKMARK].delete()
+			
+			# Set style
+			if self.getCode().startswith("BIBL"):
+				try:
+					# oddly, it wants a string and not a style object
+					self.displayFieldRange.style.set("Bibliography")
+				except:
+					pass
 			
 			# Set properties back to saved
 			[getattr(self.displayFieldRange.font_object, SAVE_PROPERTIES[i]).set(savedProperties[i]) \
@@ -827,6 +856,14 @@ class Bookmark(Field):
 				self.wpDoc.asDoc.bookmarks[RTF_TEMP_BOOKMARK].delete()
 			except:
 				pass
+			
+			# Set style
+			if self.getCode().startswith("BIBL"):
+				try:
+					# oddly, it wants a string and not a style object
+					self.displayFieldRange.style.set("Bibliography")
+				except:
+					pass
 			
 			# Set properties back to saved
 			[getattr(self.displayFieldRange.font_object, SAVE_PROPERTIES[i]).set(savedProperties[i]) \
