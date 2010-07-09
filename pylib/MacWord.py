@@ -538,8 +538,10 @@ class Document:
 		bibStyle.paragraph_format.paragraph_format_left_indent.set(bodyIndent/20)
 		bibStyle.paragraph_format.line_spacing.set(lineSpacing/20)
 		bibStyle.paragraph_format.space_after.set(entrySpacing/20)
-		[bibStyle.paragraph_format.make(new=k.tab_stop, with_properties={k.alignment:k.align_tab_left, \
-			k.tab_leader:k.tab_leader_spaces, k.tab_stop_position:tabStop/20}) for tabStop in tabStops]		
+		[self.asApp.make(at=bibStyle.paragraph_format, new=k.tab_stop, \
+			with_properties={k.alignment:k.align_tab_left, \
+			k.tab_leader:k.tab_leader_spaces, k.tab_stop_position:tabStop/20}) \
+			for tabStop in tabStops]		
 	
 	def cleanup(self):
 		"""Run on exit to clean up anything we played with..."""
