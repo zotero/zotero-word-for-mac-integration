@@ -65,12 +65,15 @@ class AppData(aem.Codecs):
 	#######
 	# initialiser
 	
-	def __init__(self, aemapplicationclass, constructor, identifier, terms):
+	def __init__(self, aemapplicationclass, constructor, identifier, terms, aemconstructoroptions={}):
 		"""
 			aemapplicationclass : class -- aem.Application or equivalent
 			constructor : str -- indicates how to construct the aem.Application instance ('path', 'pid', 'url', 'aemapp', 'current')
 			identifier : any -- value identifying the target application (its type is dependent on constructor parameter)
-			terms : bool | module | tuple
+			terms : bool | module | tuple -- if True, retrieve terminology from target application dynamically; 
+					if false, use only default terminology; if static glue module or tuple, use terminology from that
+			aemconstructoroptions -- any additional keyword arguments to pass to aemapplicationclass constructor
+					(e.g. newinstance, hide)
 		"""
 		# initialise codecs
 		aem.Codecs.__init__(self)
@@ -91,9 +94,11 @@ class AppData(aem.Codecs):
 		# store parameters for later use
 		self._aemapplicationclass = aemapplicationclass
 		self.constructor, self.identifier = constructor, identifier
+		self.aemconstructoroptions = aemconstructoroptions
 		self._relaunchmode = 'limited'
 		self._terms = terms
 		self._helpagent = None
+		self._isconnected = False
 	
 	
 	#######
@@ -122,7 +127,7 @@ class AppData(aem.Codecs):
 				try:
 					keyCode = self.typebyname()[key.AS_name].code
 				except KeyError:
-					raise KeyError("Unknown Keyword: k.%s" % key.AS_name)
+					raise ValueError("Unknown Keyword: k.%s" % key.AS_name)
 				record.setparam(keyCode, self.pack(value))
 			elif isinstance(key, aem.AETypeBase): # AEType/AEProp (AEType is normally used in practice)
 				record.setparam(key.code, self.pack(value))
@@ -192,16 +197,17 @@ class AppData(aem.Codecs):
 			return app(url=desc.data)
 	
 	def unpackapplicationbysignature(self, desc):
-		return app(creator=struct.pack('>L', struct.unpack('L', desc.data)[0]))
+		return app(creator=struct.pack('>I', struct.unpack('I', desc.data)[0]))
 	
 	def unpackapplicationbypid(self, desc):
-		return app(pid=struct.unpack('L', desc.data)[0])
+		return app(pid=struct.unpack('I', desc.data)[0])
 	
 	def unpackapplicationbydesc(self, desc):
 		return app(aemapp=aem.Application(desc=desc))
 
 	#######
 	
+	isconnected = property(lambda self: self._isconnected)
 	
 	def connect(self):
 		"""Initialises application target and terminology lookup tables.
@@ -215,7 +221,9 @@ class AppData(aem.Codecs):
 		elif self.constructor == 'current':
 			t = self._target = self._aemapplicationclass()
 		else:
-			t = self._target = self._aemapplicationclass(**{self.constructor: self.identifier})
+			kargs = {self.constructor: self.identifier}
+			kargs.update(self.aemconstructoroptions)
+			t = self._target = self._aemapplicationclass(**kargs)
 		# initialise translation tables
 		if self._terms == True: # obtain terminology from application
 			self._terms = terminology.tablesforapp(t)
@@ -230,6 +238,7 @@ class AppData(aem.Codecs):
 		self.typebyname = lambda: d2
 		self.referencebycode = lambda: d3
 		self.referencebyname = lambda: d4
+		self._isconnected = True
 	
 	def target(self):
 		self.connect()
@@ -262,7 +271,7 @@ class AppData(aem.Codecs):
 			try:
 				data = self.typebyname()[data.AS_name]
 			except KeyError:
-				raise KeyError("Unknown Keyword: k.%s" % data.AS_name)
+				raise ValueError("Unknown Keyword: k.%s" % data.AS_name)
 		return aem.Codecs.pack(self, data)
 	
 	# Relaunch mode
@@ -283,21 +292,7 @@ class AppData(aem.Codecs):
 	def _inithelpagent(self):
 		try:
 			apppath = aem.findapp.byid(self.kHelpAgentBundleID)
-			asdictionaryisrunning = aem.Application.processexistsforpath(apppath)
-			self._helpagent = aem.Application(apppath)
-			if not asdictionaryisrunning:
-				# tell System Events hide ASDictionary after it's launched (kludgy, but does the job)
-				aem.Application(aem.findapp.byid('com.apple.systemevents')).event('coresetd', {
-						'----': aem.app.elements('prcs').byname('ASDictionary').property('pvis'), 
-						'data': False}).send()
-				self._helpagent.event('AppSHelp', {
-						'Cons': self.constructor,
-						'Iden': self.identifier,
-						'Styl': 'py-appscript',
-						'Flag': '-h',
-						'aRef': None,
-						'CNam': ''
-						}).send()
+			self._helpagent = aem.Application(apppath, hide=True)
 			return True
 		except aem.findapp.ApplicationNotFoundError:
 			self._write("No help available: ASDictionary application not found.")
@@ -347,7 +342,7 @@ class AppData(aem.Codecs):
 # Considering/ignoring constants
 
 def _packuint32(n): # used to pack csig attributes
-	return newdesc(kae.typeUInt32, struct.pack('L', n))
+	return newdesc(kae.typeUInt32, struct.pack('I', n))
 
 # 'csig' attribute flags (see ASRegistry.h; note: there's no option for 'numeric strings' in 10.4)
 
@@ -717,7 +712,8 @@ class Application(Reference):
 	# use in place of the standard version.
 	_Application = aem.Application
 	
-	def __init__(self, name=None, id=None, creator=None, pid=None, url=None, aemapp=None, terms=True):
+	def __init__(self, name=None, id=None, creator=None, pid=None, url=None, aemapp=None, 
+			terms=True, newinstance=False, hide=False):
 		"""
 			app(name=None, id=None, creator=None, pid=None, url=None, terms=True)
 				name : str -- name or path of application, e.g. 'TextEdit', 'TextEdit.app', '/Applications/Textedit.app'
@@ -726,8 +722,15 @@ class Application(Reference):
 				pid : int -- Unix process id, e.g. 955
 				url : str -- eppc:// URL, e.g. eppc://G4.local/TextEdit'
 				aemapp : aem.Application
-				terms : module | bool -- if a module, get terminology from it; if True, get terminology from target application; if False, use built-in terminology only
-    		"""
+				terms : module | bool -- if a module, get terminology from it; if True, get terminology 
+						from target application; if False, use built-in terminology only
+				newinstance : bool -- launch a new application instance?
+				hide : bool -- hide after launch?
+			
+			Notes: 
+			
+			- The newinstance and hide options only apply when specifying application by name, id, or creator.
+		"""
 		if len([i for i in [name, id, creator, pid, url, aemapp] if i]) > 1:
 			raise TypeError('app() received more than one of the following arguments: name, id, creator, pid, url, aemapp')
 		if name:
@@ -750,7 +753,9 @@ class Application(Reference):
 		# will launch TE without it creating any new documents (i.e. app receives 'ascrnoop' as its first event), but:
 		#     te = app('TextEdit'); d = app.documents; te.launch()
 		# will launch TE normally (i.e. app receives 'aevtoapp' as its first event), causing it to open a new, empty window.
-		Reference.__init__(self, AppData(self._Application, constructor, identifier, terms), aem.app)
+		Reference.__init__(self, 
+				AppData(self._Application, constructor, identifier, terms, {'newinstance': newinstance, 'hide': hide}), 
+				aem.app)
 	
 	def AS_newreference(self, ref):
 		"""Create a new appscript reference from an aem reference."""

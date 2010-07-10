@@ -5,7 +5,7 @@
 		windowtype="zotero:pref" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
 	<prefpane id="zotero-macword-integration-general">
 		<description>Click the button below to reinstall the Zotero add-on for Microsoft Word.</description>
-		<button label="Reinstall Word Components" oncommand="ZoteroMacWordIntegration_firstRun()"/>
+		<button label="Reinstall Word Components" oncommand="ZoteroMacWordIntegration_firstRun(); alert('Zotero MacWord Integration was successfully installed.')"/>
 	</prefpane>
     <script type="application/x-javascript" src="chrome://zotero/content/include.js"/>
 	<script type="application/x-javascript" src="chrome://zotero-macword-integration/content/browser-overlay.js"/>
