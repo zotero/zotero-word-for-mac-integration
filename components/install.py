@@ -110,7 +110,6 @@ class Installer:
 			
 			# Check to make sure this is really Word 2004
 			appVersion = appscript.app(u'Finder').files[mactypes.Alias(wordPath).hfspath].version.get()
-			print appVersion
 			if appVersion[0:2] == "11":
 				installed2004 = True
 			else:
@@ -137,11 +136,11 @@ class Installer:
 				self.__showError(ERROR_WORD_X_TITLE, ERROR_WORD_X_STRING)
 			else:
 				self.__showError(ERROR_NO_WORD_TITLE, ERROR_NO_WORD_STRING)
-		
-		## Check whether Word is running
-		p = subprocess.Popen(['/bin/ps', '-xo', 'command'], stdout=subprocess.PIPE)
-		output = p.stdout.read()
-		p.stdout.close()
-		m = re.search(r'LaunchCFMApp [^\n]*Microsoft Word|\n[^\n]*\.app/Contents/MacOS/Microsoft Word', output)
-		if m:
-			self.__showError(ERROR_WORD_RUNNING_TITLE, ERROR_WORD_RUNNING_STRING)
+		else:
+			## Check whether Word is running
+			p = subprocess.Popen(['/bin/ps', '-xo', 'command'], stdout=subprocess.PIPE)
+			output = p.stdout.read()
+			p.stdout.close()
+			m = re.search(r'LaunchCFMApp [^\n]*Microsoft Word|\n[^\n]*\.app/Contents/MacOS/Microsoft Word', output)
+			if m:
+				self.__showError(ERROR_WORD_RUNNING_TITLE, ERROR_WORD_RUNNING_STRING)
