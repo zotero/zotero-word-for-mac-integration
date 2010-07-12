@@ -119,7 +119,7 @@ function ZoteroMacWordIntegration_checkInstall() {
 	var zoteroMacWordIntegration_prefService = Components.classes["@mozilla.org/preferences-service;1"].
 		getService(Components.interfaces.nsIPrefBranch);
 		
-	ZoteroMacWordIntegration_checkVersion("Zotero", "zotero.org", "zotero@chnm.gmu.edu", "2.0b7.SVN");
+	ZoteroMacWordIntegration_checkVersion("Zotero", "zotero.org", "zotero@chnm.gmu.edu", "2.1a1.SVN");
 	ZoteroMacWordIntegration_checkVersion("PythonExt", "zotero.org", "pythonext@mozdev.org", "2.5");
 	
 	var pythonExt = Components.classes['@mozilla.org/extensions/manager;1'].
