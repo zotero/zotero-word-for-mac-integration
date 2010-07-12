@@ -12,7 +12,7 @@ ERROR_WORD_RUNNING_TITLE = "Zotero MacWord Integration has been successfully ins
 ERROR_WORD_RUNNING_STRING = "Please restart Word before continuing."
 
 SCRIPT_TEMPLATE = string.Template(r"""try
-	do shell script "PIPE=\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\";  if [ ! -p \"$PIPE\" ]; then PIPE='~/.zoteroIntegrationPipe'; fi; if [ -p \"$PIPE\" ]; then echo 'MacWord2008 ${command}' > \"$PIPE\"; else exit 1; fi;"
+	do shell script "PIPE=\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\";  if [ ! -p \"$PIPE\" ]; then PIPE='~/.zoteroIntegrationPipe'; fi; if [ -p \"$PIPE\" ]; then echo 'MacWord2008 ${command} '" & quoted form of POSIX path of (path to current application) & " > \"$PIPE\"; else exit 1; fi;"
 on error
 	display alert "Word could not communicate with Zotero. Please ensure that Firefox is open and try again." as critical
 end try""")

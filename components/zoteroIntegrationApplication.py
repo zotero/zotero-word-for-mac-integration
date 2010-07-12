@@ -39,6 +39,9 @@ class Application_2008:
 	primaryFieldType = "Field"
 	secondaryFieldType = "Bookmark"
 	
+	def getDocument(self, wordPath):
+		return Document(appscript.app(wordPath))
+	
 	def getActiveDocument(self):
 		return Document(appscript.app(id='com.Microsoft.Word'))
 
@@ -49,6 +52,9 @@ class Application_2004:
 	_reg_desc_ = "MacWord 2004 Application"
 	primaryFieldType = "Field"
 	secondaryFieldType = "Bookmark"
+	
+	def getDocument(self, wordPath):
+		return Document(appscript.app(wordPath))
 	
 	def getActiveDocument(self):
 		return Document_2004(appscript.app('Microsoft Word'))
