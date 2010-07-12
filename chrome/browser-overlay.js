@@ -79,25 +79,36 @@ function ZoteroMacWordIntegration_clearComponentCache() {
 function ZoteroMacWordIntegration_firstRun() {
 	try {
 		// run AppleScript to set up
-		var installScript = Components.classes["@mozilla.org/extensions/manager;1"].
-			getService(Components.interfaces.nsIExtensionManager).
-			getInstallLocation(ZOTEROMACWORDINTEGRATION_ID).
-			getItemLocation(ZOTEROMACWORDINTEGRATION_ID);
-		installScript.append("install");
-		installScript.append("install.scpt");
-		
-		var osascript = Components.classes["@mozilla.org/file/local;1"].
-			createInstance(Components.interfaces.nsILocalFile);
-		osascript.initWithPath("/usr/bin/osascript");
-		var proc = Components.classes["@mozilla.org/process/util;1"].
-				createInstance(Components.interfaces.nsIProcess);
-		proc.init(osascript);
-		proc.run(true, [installScript.path], 1);
+		var installScript = Components.classes["@zotero.org/Zotero/integration/installer?agent=MacWord;1"].
+			createInstance(Components.interfaces.nsIRunnable);
+		installScript.run();
 	} catch(e) {
+		var message = "";
+			
+		var consoleService = Components.classes["@mozilla.org/consoleservice;1"]
+			.getService(Components.interfaces.nsIConsoleService);
+		
+		var messages = {};
+		consoleService.getMessageArray(messages, {});
+		messages = messages.value;
+		if(messages && messages.length) {
+			var lastMessage = messages[messages.length-1];
+			try {
+				var error = lastMessage.QueryInterface(Components.interfaces.nsIScriptError);
+			} catch(e2) {
+				if(lastMessage.message && lastMessage.message.substr(0, 12) == "ERROR:xpcom:") {
+					// print just the last line of the message, but re-throw the rest
+					message = lastMessage.message.substr(0, lastMessage.message.length-1);
+					message = "\n"+message.substr(message.lastIndexOf("\n"))
+				}
+			}
+		}
+		
+		if(!message && typeof(e) == "object" && e.message) message = e.message;
+		
 		var prompts = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
 			.getService(Components.interfaces.nsIPromptService)
-			.alert(null, 'Zotero Word Integration Error',
-			'Zotero Word Integration could not complete installation because an error occurred. Please ensure that Word is closed, and then restart Firefox.');
+			.alert(null, "Zotero Word Integration could not complete installation because an error occurred.", message);
 		throw e;
 	}
 }
