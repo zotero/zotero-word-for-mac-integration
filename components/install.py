@@ -34,6 +34,17 @@ class Installer:
 			.getService(components.interfaces.nsIPromptService)					\
 			.alert(None, title, error)
 	
+	def __makeWordTemplate(self, template):
+		try:
+			import MacOS
+			MacOS.SetCreatorAndType(template, 'MSWD', 'W8TN')
+		except ImportError:
+			# for forward compatibility, when Apple fixes the AppleScript bug and Python removes
+			# the MacOS module
+			templateAS = appscript.app(u'Finder').files[mactypes.Alias(template).hfspath]
+			templateAS.creator_type.set('MSWD')
+			templateAS.file_type.set('W8TN')
+	
 	def run(self):
 		osa = osax.OSAX(osaxname="StandardAdditions")
 		applicationsFolder = osa.path_to(appscript.k.applications_folder)
@@ -97,6 +108,10 @@ class Installer:
 						raise Exception(error)
 					
 		## See if we can find Office 2004
+		# Fix template permissions
+		template = os.path.realpath(os.path.dirname(__file__)+"/../install/Zotero.dot")
+		self.__makeWordTemplate(template)
+	
 		# First look in the obvious place
 		oldWord = False
 		installed2004 = False
@@ -114,7 +129,6 @@ class Installer:
 				installed2004 = True
 			else:
 				oldWord = True
-				
 		
 		if installed2004:
 			## Install the template
@@ -128,8 +142,9 @@ class Installer:
 					os.makedirs(startupDir)
 			
 			# Copy the template there
-			template = os.path.realpath(os.path.dirname(__file__)+"/../install/Zotero.dot")
-			shutil.copy(template, startupDir)
+			newTemplate = startupDir+"/Zotero.dot"
+			shutil.copy(template, newTemplate)
+			self.__makeWordTemplate(newTemplate)
 		
 		if not installed2004 and not installed2008:
 			if oldWord:
