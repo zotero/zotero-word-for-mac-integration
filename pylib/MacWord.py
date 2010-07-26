@@ -126,7 +126,7 @@ class Document:
 			'"}'
 		
 		(stdin, stdout) = os.popen2('/usr/bin/osascript')
-		stdin.write(script.encode("utf-8"))
+		stdin.write(script.encode("utf-8", "replace"))
 		stdin.close()
 		output = stdout.read()
 		stdout.close()
@@ -957,7 +957,7 @@ class TempFile:
 		else:
 			file = open(self.path, "w")
 		
-		file.write(string.encode("macroman"))
+		file.write(string.encode("macroman", "replace"))
 		file.close()
 
 def main(doc):
