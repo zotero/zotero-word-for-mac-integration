@@ -529,7 +529,7 @@ class Document:
 			if existingTabStops != k.missing_value:
 				[existingTabStop.clear() for existingTabStop in existingTabStops];
 		except:
-			bibStyle = self.asDoc.make(new=k.Word_style, with_properties={ \
+			bibStyle = self.asApp.make(at=self.asDoc, new=k.Word_style, with_properties={ \
 				k.name_local:"Bibliography", k.style_type:k.style_type_paragraph, \
 				k.base_style:k.style_normal})
 		
