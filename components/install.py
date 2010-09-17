@@ -1,4 +1,6 @@
 #!/usr/bin/python
+import sys
+sys.exec_prefix = sys.prefix
 from xpcom import components
 import appscript, osax, mactypes, string, aem, os, subprocess, plistlib, shutil, re
 
