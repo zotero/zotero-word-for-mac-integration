@@ -1,4 +1,11 @@
 #!/usr/bin/python
+
+# Hack to fix "no module named appscript" error
+import sys, os.path
+pylib = os.path.realpath(os.path.dirname(__file__)+"/../pylib")
+if not pylib in sys.path:
+	sys.path.append(pylib)
+
 from xpcom import components
 import appscript, osax, mactypes, string, aem, os, subprocess, plistlib, shutil, re
 
@@ -33,6 +40,17 @@ class Installer:
 		components.classes["@mozilla.org/embedcomp/prompt-service;1"]			\
 			.getService(components.interfaces.nsIPromptService)					\
 			.alert(None, title, error)
+	
+	def __makeWordTemplate(self, template):
+		try:
+			import MacOS
+			MacOS.SetCreatorAndType(template, 'MSWD', 'W8TN')
+		except ImportError:
+			# for forward compatibility, when Apple fixes the AppleScript bug and Python removes
+			# the MacOS module
+			templateAS = appscript.app(u'Finder').files[mactypes.Alias(template).hfspath]
+			templateAS.creator_type.set('MSWD')
+			templateAS.file_type.set('W8TN')
 	
 	def run(self):
 		osa = osax.OSAX(osaxname="StandardAdditions")
@@ -97,6 +115,10 @@ class Installer:
 						raise Exception(error)
 					
 		## See if we can find Office 2004
+		# Fix template permissions
+		template = os.path.realpath(os.path.dirname(__file__)+"/../install/Zotero.dot")
+		self.__makeWordTemplate(template)
+		
 		# First look in the obvious place
 		oldWord = False
 		installed2004 = False
@@ -109,12 +131,12 @@ class Installer:
 				pass
 			
 			# Check to make sure this is really Word 2004
-			appVersion = appscript.app(u'Finder').files[mactypes.Alias(wordPath).hfspath].version.get()
-			if appVersion[0:2] == "11":
-				installed2004 = True
-			else:
-				oldWord = True
-				
+			if installed2004:
+				appVersion = appscript.app(u'Finder').files[mactypes.Alias(wordPath).hfspath].version.get()
+				if appVersion[0:2] == "11":
+					installed2004 = True
+				else:
+					oldWord = True
 		
 		if installed2004:
 			## Install the template
@@ -128,8 +150,8 @@ class Installer:
 					os.makedirs(startupDir)
 			
 			# Copy the template there
-			template = os.path.realpath(os.path.dirname(__file__)+"/../install/Zotero.dot")
-			shutil.copy(template, startupDir)
+			newTemplate = startupDir+"/Zotero.dot"
+			shutil.copy(template, newTemplate)
 		
 		if not installed2004 and not installed2008:
 			if oldWord:
