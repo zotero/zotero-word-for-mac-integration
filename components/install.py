@@ -1,6 +1,11 @@
 #!/usr/bin/python
-import sys
-sys.exec_prefix = sys.prefix
+
+# Hack to fix "no module named appscript" error
+import sys, os.path
+pylib = os.path.realpath(os.path.dirname(__file__)+"/../pylib")
+if not pylib in sys.path:
+	sys.path.append(pylib)
+
 from xpcom import components
 import appscript, osax, mactypes, string, aem, os, subprocess, plistlib, shutil, re
 
@@ -113,7 +118,7 @@ class Installer:
 		# Fix template permissions
 		template = os.path.realpath(os.path.dirname(__file__)+"/../install/Zotero.dot")
 		self.__makeWordTemplate(template)
-	
+		
 		# First look in the obvious place
 		oldWord = False
 		installed2004 = False
@@ -126,11 +131,12 @@ class Installer:
 				pass
 			
 			# Check to make sure this is really Word 2004
-			appVersion = appscript.app(u'Finder').files[mactypes.Alias(wordPath).hfspath].version.get()
-			if appVersion[0:2] == "11":
-				installed2004 = True
-			else:
-				oldWord = True
+			if installed2004:
+				appVersion = appscript.app(u'Finder').files[mactypes.Alias(wordPath).hfspath].version.get()
+				if appVersion[0:2] == "11":
+					installed2004 = True
+				else:
+					oldWord = True
 		
 		if installed2004:
 			## Install the template
@@ -146,7 +152,6 @@ class Installer:
 			# Copy the template there
 			newTemplate = startupDir+"/Zotero.dot"
 			shutil.copy(template, newTemplate)
-			self.__makeWordTemplate(newTemplate)
 		
 		if not installed2004 and not installed2008:
 			if oldWord:
