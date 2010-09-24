@@ -164,6 +164,6 @@ class Installer:
 			p = subprocess.Popen(['/bin/ps', '-xo', 'command'], stdout=subprocess.PIPE)
 			output = p.stdout.read()
 			p.stdout.close()
-			m = re.search(r'LaunchCFMApp [^\n]*Microsoft Word|\n[^\n]*\.app/Contents/MacOS/Microsoft Word', output)
+			m = re.search(r'Microsoft Word', output)
 			if m:
 				self.__showError(ERROR_WORD_RUNNING_TITLE, ERROR_WORD_RUNNING_STRING)
