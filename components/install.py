@@ -123,7 +123,7 @@ class Installer:
 		oldWord = False
 		installed2004 = False
 		wordPath = applicationsFolder.path+"/Microsoft Office 2004/Microsoft Word"
-		installed2004 = os.path.exists(wordInAppsDir)
+		installed2004 = os.path.exists(wordPath)
 		if not installed2004:
 			wordPath = False
 			try:
