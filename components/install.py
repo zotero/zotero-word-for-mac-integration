@@ -125,13 +125,14 @@ class Installer:
 		wordPath = applicationsFolder.path+"/Microsoft Office 2004/Microsoft Word"
 		installed2004 = os.path.exists(wordInAppsDir)
 		if not installed2004:
+			wordPath = False
 			try:
 				wordPath = aem.findapp.bycreator('MSWD')
 			except aem.findapp.ApplicationNotFoundError:
 				pass
 			
 			# Check to make sure this is really Word 2004
-			if installed2004:
+			if wordPath:
 				appVersion = appscript.app(u'Finder').files[mactypes.Alias(wordPath).hfspath].version.get()
 				if appVersion[0:2] == "11":
 					installed2004 = True
