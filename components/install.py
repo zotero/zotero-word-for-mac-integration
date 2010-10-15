@@ -31,7 +31,7 @@ W2008_SCRIPT_COMMANDS = ["addBibliography", "addCitation", "editBibliography",
 	"editCitation", "refresh", "removeCodes", "setDocPrefs"]
 
 class Installer:
-	_com_interfaces_ = [components.interfaces.nsIRunnable]
+	_com_interfaces_ = [components.interfaces.zoteroIntegrationInstaller]
 	_reg_clsid_ = "{aa56c6c0-95f0-48c2-b223-b11b96b9c9e5}"
 	_reg_contractid_ = "@zotero.org/Zotero/integration/installer?agent=MacWord;1"
 	_reg_desc_ = "Zotero MacWord Integration Installer"
@@ -52,7 +52,7 @@ class Installer:
 			templateAS.creator_type.set('MSWD')
 			templateAS.file_type.set('W8TN')
 	
-	def run(self):
+	def run(self, failSilently):
 		osa = osax.OSAX(osaxname="StandardAdditions")
 		applicationsFolder = osa.path_to(appscript.k.applications_folder)
 		documentsFolder = osa.path_to(appscript.k.documents_folder)
@@ -155,10 +155,11 @@ class Installer:
 			shutil.copy(template, newTemplate)
 		
 		if not installed2004 and not installed2008:
-			if oldWord:
-				self.__showError(ERROR_WORD_X_TITLE, ERROR_WORD_X_STRING)
-			else:
-				self.__showError(ERROR_NO_WORD_TITLE, ERROR_NO_WORD_STRING)
+			if failSilently:
+				if oldWord:
+					self.__showError(ERROR_WORD_X_TITLE, ERROR_WORD_X_STRING)
+				else:
+					self.__showError(ERROR_NO_WORD_TITLE, ERROR_NO_WORD_STRING)
 		else:
 			## Check whether Word is running
 			p = subprocess.Popen(['/bin/ps', '-xo', 'command'], stdout=subprocess.PIPE)

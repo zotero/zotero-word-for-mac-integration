@@ -22,8 +22,6 @@
     ***** END LICENSE BLOCK *****
 */
 
-const ID = "zoteroMacWordIntegration@zotero.org";
-
 var ZoteroMacWordIntegration = new function() {
 	this.EXTENSION_STRING = "Zotero MacWord Integration";
 	this.EXTENSION_ID = "zoteroMacWordIntegration@zotero.org";
@@ -43,7 +41,7 @@ var ZoteroMacWordIntegration = new function() {
 		minVersion: "2.6"
 	}];
 	
-	var zoteroPluginInstaller, installing;
+	var zoteroPluginInstaller;
 	
 	this.verifyNotCorrupt = function(zpi) {
 		zoteroPluginInstaller = zpi;
@@ -90,7 +88,7 @@ var ZoteroMacWordIntegration = new function() {
 		try {
 			var installScript = Components.classes["@zotero.org/Zotero/integration/installer?agent=MacWord;1"].
 				createInstance(Components.interfaces.nsIRunnable);
-			installScript.run();
+			installScript.run(zpi.failSilently);
 			zoteroPluginInstaller.success();
 		} catch(e) {
 			var message = "";
