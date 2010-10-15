@@ -5,7 +5,7 @@
     <script type="application/x-javascript" src="chrome://zotero-macword-integration/content/macWord.js"/>
     <script type="application/x-javascript">
     	window.addEventListener("load", function() {
-	    	new ZoteroPluginInstaller(ZoteroMacWordIntegration);
+	    	new ZoteroPluginInstaller(ZoteroMacWordIntegration, Zotero.isStandalone);
 	    }, false);
     </script>
 </overlay>
