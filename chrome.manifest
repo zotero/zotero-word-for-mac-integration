@@ -1,3 +1,4 @@
-overlay    chrome://browser/content/browser.xul chrome://zotero-macword-integration/content/browser-overlay.xul
+overlay    chrome://browser/content/browser.xul chrome://zotero-macword-integration/content/overlay.xul
+overlay    chrome://browser/zotero/standalone.xul chrome://zotero-macword-integration/content/overlay.xul
 overlay    chrome://zotero/content/preferences/preferences.xul chrome://zotero-macword-integration/content/preferences.xul
 content    zotero-macword-integration chrome/
