@@ -4,6 +4,8 @@
     <script type="application/x-javascript" src="chrome://zotero-macword-integration/content/common.js"/>
     <script type="application/x-javascript" src="chrome://zotero-macword-integration/content/macWord.js"/>
     <script type="application/x-javascript">
-    	new ZoteroPluginInstaller(ZoteroMacWordIntegration);
+    	window.addEventListener("load", function() {
+	    	new ZoteroPluginInstaller(ZoteroMacWordIntegration);
+	    }, false);
     </script>
 </overlay>
