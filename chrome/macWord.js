@@ -27,7 +27,7 @@ const ID = "zoteroMacWordIntegration@zotero.org";
 var ZoteroMacWordIntegration = new function() {
 	this.EXTENSION_STRING = "Zotero MacWord Integration";
 	this.EXTENSION_ID = "zoteroMacWordIntegration@zotero.org";
-	this.EXTENSION_PREF_BRANCH = "extensions.zoteroMacWordIntegration";
+	this.EXTENSION_PREF_BRANCH = "extensions.zoteroMacWordIntegration.";
 	this.EXTENSION_DIR = "zotero-macword-integration";
 	this.APP = 'Microsoft Word';
 	
