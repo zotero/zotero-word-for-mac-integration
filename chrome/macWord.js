@@ -38,7 +38,7 @@ var ZoteroMacWordIntegration = new function() {
 		name: "PythonExt",
 		url: "zotero.org",
 		id: "pythonext@mozdev.org",
-		minVersion: "2.6"
+		minVersion: "2.5"
 	}];
 	
 	var zoteroPluginInstaller;
