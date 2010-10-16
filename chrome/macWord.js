@@ -87,7 +87,7 @@ var ZoteroMacWordIntegration = new function() {
 		
 		try {
 			var installScript = Components.classes["@zotero.org/Zotero/integration/installer?agent=MacWord;1"].
-				createInstance(Components.interfaces.nsIRunnable);
+				createInstance(Components.interfaces.zoteroIntegrationInstaller);
 			installScript.run(zpi.failSilently);
 			zoteroPluginInstaller.success();
 		} catch(e) {
