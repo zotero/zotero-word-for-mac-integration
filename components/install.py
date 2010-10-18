@@ -109,7 +109,7 @@ class Installer:
 						stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 					p.stdin.write(SCRIPT_TEMPLATE.safe_substitute(command=W2008_SCRIPT_COMMANDS[i]))
 					p.stdin.close()
-					p.stderr.read()
+					print(p.stderr.read())
 					p.stderr.close()
 					
 		## See if we can find Office 2004
