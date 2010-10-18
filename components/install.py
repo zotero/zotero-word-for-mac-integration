@@ -109,10 +109,8 @@ class Installer:
 						stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 					p.stdin.write(SCRIPT_TEMPLATE.safe_substitute(command=W2008_SCRIPT_COMMANDS[i]))
 					p.stdin.close()
-					error = p.stderr.read()
+					p.stderr.read()
 					p.stderr.close()
-					if error:
-						raise Exception(error)
 					
 		## See if we can find Office 2004
 		# Fix template permissions
