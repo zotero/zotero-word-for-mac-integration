@@ -1,32 +1,12 @@
 <?xml version="1.0"?>
-<overlay id="macWordIntegration"
-         xmlns:html="http://www.w3.org/1999/xhtml"
-         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-	<tabpanel id="wordProcessors">
-		<groupbox id="wordProcessors-macWordIntegration" position="1">
-			<caption label="Microsoft Word for Mac 2004 and later"/>
-			<description id="wordProcessors-macWordIntegration-description" width="45em" />
-			<hbox pack="center">
-				<button id="wordProcessors-macWordIntegration-install" oncommand="updateMacWordIntegration(new ZoteroPluginInstaller(ZoteroMacWordIntegration, false, true));"/>
-			</hbox>
-			<script src="chrome://zotero-macword-integration/content/common.js"/>
-			<script src="chrome://zotero-macword-integration/content/macWord.js"/>
-			<script>
-			<![CDATA[
-			window.addEventListener("load", function() {
-				var zpi = new ZoteroPluginInstaller(ZoteroMacWordIntegration, true);
-				updateMacWordIntegration(zpi);
-			}, false);
-			
-			function updateMacWordIntegration(zpi) {
-				var isInstalled = zpi.isInstalled();
-				document.getElementById("wordProcessors-macWordIntegration-description").textContent =
-					"The Zotero Word for Mac add-on is "+(isInstalled ? "" : "not ")+"currently installed.";
-				document.getElementById("wordProcessors-macWordIntegration-install").label =
-					(isInstalled ? "Reinstall" : "Install")+" Word Add-in";
-			}
-			]]>
-			</script>
-		</groupbox>
-	</tabpanel>
-</overlay>
+<?xml-stylesheet href="chrome://global/skin/global.css"?>
+<?xml-stylesheet href="chrome://browser/skin/preferences/preferences.css"?>
+<prefwindow title="Integration Preferences" onload="moveToAlertPosition();"
+		windowtype="zotero:pref" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+	<prefpane id="zotero-macword-integration-general">
+		<description>Click the button below to reinstall the Zotero add-on for Microsoft Word.</description>
+		<button label="Reinstall Word Components" oncommand="ZoteroMacWordIntegration_firstRun(); alert('Zotero MacWord Integration was successfully installed.')"/>
+	</prefpane>
+    <script type="application/x-javascript" src="chrome://zotero/content/include.js"/>
+	<script type="application/x-javascript" src="chrome://zotero-macword-integration/content/browser-overlay.js"/>
+</prefwindow>

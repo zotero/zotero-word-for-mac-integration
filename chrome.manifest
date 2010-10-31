@@ -1,19 +1,2 @@
-overlay    chrome://browser/content/browser.xul chrome://zotero-macword-integration/content/overlay.xul
-overlay    chrome://zotero/content/standalone.xul chrome://zotero-macword-integration/content/overlay.xul
-overlay    chrome://zotero/content/preferences/preferences.xul chrome://zotero-macword-integration/content/preferences.xul
-
+overlay    chrome://browser/content/browser.xul chrome://zotero-macword-integration/content/browser-overlay.xul
 content    zotero-macword-integration chrome/
-interfaces  components/zoteroIntegration.xpt
-interfaces  components/zoteroIntegrationInstaller.xpt
-component	{aa56c6c0-95f0-48c2-b223-b11b96b9c9e5}							components/install.py
-contract	@zotero.org/Zotero/integration/installer?agent=MacWord;1	 	{aa56c6c0-95f0-48c2-b223-b11b96b9c9e5}
-component	{ea584d70-2797-4cd1-8015-1a5f5fb85af7}							components/zoteroIntegrationApplication.py
-contract	@zotero.org/Zotero/integration/application?agent=MacWord2008;1 	{ea584d70-2797-4cd1-8015-1a5f5fb85af7}
-component	{b063dd87-5615-45c5-ac3d-4b0583034616}							components/zoteroIntegrationApplication.py
-contract	@zotero.org/Zotero/integration/application?agent=MacWord2004;1 	{b063dd87-5615-45c5-ac3d-4b0583034616}
-component	{b8189090-48bd-11de-8a39-0800200c9a66}							components/zoteroIntegrationApplication.py
-contract	@zotero.org/Zotero/integration/document?agent=MacWord;1 		{b8189090-48bd-11de-8a39-0800200c9a66}
-component	{01e0a337-8c76-47c9-8c16-1f8f0a27ca3e}							components/zoteroIntegrationApplication.py
-contract	@zotero.org/Zotero/integration/enumerator?agent=MacWord;1 		{01e0a337-8c76-47c9-8c16-1f8f0a27ca3e}
-component	{b3581f3c-1b53-4514-926f-14df94df5042}							components/zoteroIntegrationApplication.py
-contract	@zotero.org/Zotero/integration/field?agent=MacWord;1 			{b3581f3c-1b53-4514-926f-14df94df5042}

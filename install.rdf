@@ -4,30 +4,22 @@
 <Description about="urn:mozilla:install-manifest">
 	<em:id>zoteroMacWordIntegration@zotero.org</em:id>
 	<em:name>Zotero MacWord Integration</em:name>
-	<em:version>3.1a1.SVN</em:version>
+	<em:version>3.0b4.SVN</em:version>
 	<em:creator>Center for History and New Media<br/>George Mason University</em:creator>
 	<em:developer>Simon Kornblith</em:developer>
 	<em:homepageURL>http://www.zotero.org</em:homepageURL>
 	<em:updateURL>https://www.zotero.org/download/update-svn.rdf</em:updateURL>
 	<em:iconURL>chrome://zotero/skin/zotero_z_32px.png</em:iconURL>
-    <em:optionsURL>zotero://preferences/zotero-prefpane-cite</em:optionsURL>
-    <em:description>Integrates Zotero with Microsoft Word 2004 and 2008 for Macintosh</em:description>
+	<em:optionsURL>chrome://zotero-macword-integration/content/preferences.xul</em:optionsURL>
+	<em:description>Integrates Zotero with Microsoft Word 2004 and 2008 for Macintosh</em:description>
 	<em:type>2</em:type> <!-- type=extension --> 
-	<em:unpack>true</em:unpack>
 	
 	<em:targetPlatform>Darwin</em:targetPlatform>
 	<em:targetApplication>
 		<Description>
 			<em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
-			<em:minVersion>3.6</em:minVersion>
-			<em:maxVersion>4.0.*</em:maxVersion>
-		</Description>
-	</em:targetApplication>
-	<em:targetApplication>
-		<Description>
-			<em:id>zotero@chnm.gmu.edu</em:id>
-			<em:minVersion>2.1.SVN.r7003</em:minVersion>
-			<em:maxVersion>2.1.*</em:maxVersion>
+			<em:minVersion>3.0</em:minVersion>
+			<em:maxVersion>3.6.*</em:maxVersion>
 		</Description>
 	</em:targetApplication>
 </Description>

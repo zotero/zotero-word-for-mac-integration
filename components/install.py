@@ -19,7 +19,7 @@ ERROR_WORD_RUNNING_TITLE = "Zotero MacWord Integration has been successfully ins
 ERROR_WORD_RUNNING_STRING = "Please restart Word before continuing."
 
 SCRIPT_TEMPLATE = string.Template(r"""try
-	do shell script "PIPE=\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\";  if [ ! -p \"$PIPE\" ]; then PIPE='~/.zoteroIntegrationPipe'; fi; if [ -p \"$PIPE\" ]; then echo 'MacWord2008 ${command} '" & quoted form of POSIX path of (path to current application) & " > \"$PIPE\"; else exit 1; fi;"
+	do shell script "PIPE=\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\";  if [ ! -p \"$PIPE\" ]; then PIPE='~/.zoteroIntegrationPipe'; fi; if [ -p \"$PIPE\" ]; then echo 'MacWord2008 ${command}' > \"$PIPE\"; else exit 1; fi;"
 on error
 	display alert "Word could not communicate with Zotero. Please ensure that Firefox is open and try again." as critical
 end try""")
@@ -31,7 +31,7 @@ W2008_SCRIPT_COMMANDS = ["addBibliography", "addCitation", "editBibliography",
 	"editCitation", "refresh", "removeCodes", "setDocPrefs"]
 
 class Installer:
-	_com_interfaces_ = [components.interfaces.zoteroIntegrationInstaller]
+	_com_interfaces_ = [components.interfaces.nsIRunnable]
 	_reg_clsid_ = "{aa56c6c0-95f0-48c2-b223-b11b96b9c9e5}"
 	_reg_contractid_ = "@zotero.org/Zotero/integration/installer?agent=MacWord;1"
 	_reg_desc_ = "Zotero MacWord Integration Installer"
@@ -52,7 +52,7 @@ class Installer:
 			templateAS.creator_type.set('MSWD')
 			templateAS.file_type.set('W8TN')
 	
-	def run(self, failSilently):
+	def run(self):
 		osa = osax.OSAX(osaxname="StandardAdditions")
 		applicationsFolder = osa.path_to(appscript.k.applications_folder)
 		documentsFolder = osa.path_to(appscript.k.documents_folder)
@@ -109,7 +109,6 @@ class Installer:
 						stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 					p.stdin.write(SCRIPT_TEMPLATE.safe_substitute(command=W2008_SCRIPT_COMMANDS[i]))
 					p.stdin.close()
-					print(p.stderr.read())
 					p.stderr.close()
 					
 		## See if we can find Office 2004
@@ -153,11 +152,10 @@ class Installer:
 			shutil.copy(template, newTemplate)
 		
 		if not installed2004 and not installed2008:
-			if failSilently:
-				if oldWord:
-					self.__showError(ERROR_WORD_X_TITLE, ERROR_WORD_X_STRING)
-				else:
-					self.__showError(ERROR_NO_WORD_TITLE, ERROR_NO_WORD_STRING)
+			if oldWord:
+				self.__showError(ERROR_WORD_X_TITLE, ERROR_WORD_X_STRING)
+			else:
+				self.__showError(ERROR_NO_WORD_TITLE, ERROR_NO_WORD_STRING)
 		else:
 			## Check whether Word is running
 			p = subprocess.Popen(['/bin/ps', '-xo', 'command'], stdout=subprocess.PIPE)
