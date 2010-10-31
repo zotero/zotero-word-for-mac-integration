@@ -153,7 +153,7 @@ class Installer:
 			shutil.copy(template, newTemplate)
 		
 		if not installed2004 and not installed2008:
-			if failSilently:
+			if not failSilently:
 				if oldWord:
 					self.__showError(ERROR_WORD_X_TITLE, ERROR_WORD_X_STRING)
 				else:
