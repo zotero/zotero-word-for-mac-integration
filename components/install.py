@@ -151,6 +151,7 @@ class Installer:
 			# Copy the template there
 			newTemplate = startupDir+"/Zotero.dot"
 			shutil.copy(template, newTemplate)
+			self.__makeWordTemplate(newTemplate)
 		
 		if not installed2004 and not installed2008:
 			if not failSilently:
