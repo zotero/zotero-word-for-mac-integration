@@ -167,4 +167,6 @@ function ZoteroMacWordIntegration_checkInstall() {
 	}
 }
 
-ZoteroMacWordIntegration_checkInstall();
+window.addEventListener("load", function() {
+	window.setTimeout(ZoteroMacWordIntegration_checkInstall, 1000);
+}, false);
