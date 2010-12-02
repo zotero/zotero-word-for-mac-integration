@@ -106,11 +106,9 @@ class Installer:
 				# Generate scripts
 				for i in range(len(W2008_SCRIPT_NAMES)):
 					p = subprocess.Popen(['/usr/bin/osacompile', '-o', scriptPath+W2008_SCRIPT_NAMES[i]],
-						stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+						stdin=subprocess.PIPE)
 					p.stdin.write(SCRIPT_TEMPLATE.safe_substitute(command=W2008_SCRIPT_COMMANDS[i]))
 					p.stdin.close()
-					print(p.stderr.read())
-					p.stderr.close()
 					
 		## See if we can find Office 2004
 		# Fix template permissions
