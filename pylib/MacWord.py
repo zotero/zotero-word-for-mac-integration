@@ -90,6 +90,9 @@ class XPCOMEnumerator:
 		except StopIteration:
 			return False
 
+class ExceptionAlreadyDisplayed(Exception):
+	pass
+
 class Document:
 	_com_interfaces_ = [components.interfaces.zoteroIntegrationDocument]
 	_reg_clsid_ = "{b8189090-48bd-11de-8a39-0800200c9a66}"
@@ -104,6 +107,21 @@ class Document:
 		self.asDoc = self.asApp.active_document
 		self.properties = Properties(self)
 		self.tempFile = TempFile()
+		
+		if self.asDoc.get() == k.missing_value:
+			if self.asApp.active_window.get() == k.missing_value:
+				self.displayAlert("Zotero could not find an open document. Please open a "+ \
+					"document and try again.",
+					DIALOG_ICON_STOP, DIALOG_BUTTONS_OK)
+				raise ExceptionAlreadyDisplayed()
+			else:
+				self.displayAlert('Zotero could not perform this action. Please ensure that a '+ \
+					'document is open. If you have performed a custom installation of Office, '+ \
+					'you may need to run the installer again, ensuring that '+ \
+					'"Visual Basic for Applications" is selected.',
+					DIALOG_ICON_STOP, DIALOG_BUTTONS_OK)
+				raise ExceptionAlreadyDisplayed()
+				
 	
 	def displayAlert(self, text, icon=1, buttons=0):
 		"""Displays a dialog"""
@@ -143,6 +161,12 @@ class Document:
 	
 	def canInsertField(self, fieldType):
 		"""Determines whether a field can be inserted at the current position."""
+		if self.asDoc.active_window.view.view_type.get() == k.WordNote_view:
+			self.displayAlert("Zotero cannot insert a citation here because Word does not "+ \
+				"support inserting fields in Notebook Layout.", 
+				DIALOG_ICON_STOP, DIALOG_BUTTONS_OK)
+			raise ExceptionAlreadyDisplayed()
+		
 		position = self.asApp.selection.story_type.get()
 		return (fieldType != "Bookmark" and (position == k.footnotes_story or position == k.endnotes_story)) \
 			or position == k.main_text_story
