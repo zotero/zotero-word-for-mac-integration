@@ -108,6 +108,7 @@ class Document:
 		self.properties = Properties(self)
 		self.tempFile = TempFile()
 		
+		# Show appropriate error if there is no document to create, or if VBA is not installed
 		if self.asDoc.get() == k.missing_value:
 			if self.asApp.active_window.get() == k.missing_value:
 				self.displayAlert("Zotero could not find an open document. Please open a "+ \
@@ -121,7 +122,17 @@ class Document:
 					'"Visual Basic for Applications" is selected.',
 					DIALOG_ICON_STOP, DIALOG_BUTTONS_OK)
 				raise ExceptionAlreadyDisplayed()
-				
+		
+		# Capture full screen mode setting and exit
+		try:
+			self.restoreFullScreenMode = self.asApp.active_window.view.full_screen.get()
+		except:
+			self.restoreFullScreenMode = False
+		if self.restoreFullScreenMode == True:
+			self.asApp.active_window.view.full_screen.set(False)
+			# Only re-enter full screen mode once the activate method has been called
+			self.haveReactivated = False
+			
 	
 	def displayAlert(self, text, icon=1, buttons=0):
 		"""Displays a dialog"""
@@ -158,6 +169,7 @@ class Document:
 	def activate(self):
 		"""Brings this document to the foreground (if necessary.)"""
 		self.asApp.activate()
+		self.haveReactivated = True
 	
 	def canInsertField(self, fieldType):
 		"""Determines whether a field can be inserted at the current position."""
@@ -569,6 +581,10 @@ class Document:
 	
 	def cleanup(self):
 		"""Run on exit to clean up anything we played with..."""
+		# Restore full screen mode if necessary
+		if self.restoreFullScreenMode == True and self.asApp.frontmost.get() and self.haveReactivated:
+			self.asDoc.active_window.view.full_screen.set(True)
+		# Delete temporary file
 		if self.tempFile.path:
 			os.unlink(self.tempFile.path)
 	
