@@ -25,12 +25,11 @@
 """
 
 from xpcom import components, ServerException, nsError
-import os, sys, subprocess
+import sys, os, subprocess
 
 # Make sure exec_prefix is corect
 sys.exec_prefix = sys.prefix
 # Hack to fix pylib loading errors
-import sys, os.path
 pylib = os.path.realpath(os.path.dirname(__file__)+"/../pylib")
 if not pylib in sys.path:
 	# If no pylib not in path, add it
