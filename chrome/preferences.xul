@@ -14,8 +14,15 @@
 			<script>
 			<![CDATA[
 			window.addEventListener("load", function() {
-				var zpi = new ZoteroPluginInstaller(ZoteroMacWordIntegration, true);
-				updateMacWordIntegration(zpi);
+				if(Zotero.isFx4 && window.navigator.oscpu === "Intel Mac OS X 10.5") {
+					document.getElementById("wordProcessors-macWordIntegration-description").textContent =
+						"The Zotero Word for Mac add-on is not compatible with Mac OS X 10.5 when run under "+
+						(Zotero.isStandalone ? "Zotero Standalone" : "Firefox 4")+".";
+					document.getElementById("wordProcessors-macWordIntegration-install").hidden = true;
+				} else {
+					var zpi = new ZoteroPluginInstaller(ZoteroMacWordIntegration, true);
+					updateMacWordIntegration(zpi);
+				}
 			}, false);
 			
 			function updateMacWordIntegration(zpi) {

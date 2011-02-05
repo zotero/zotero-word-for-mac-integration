@@ -44,6 +44,7 @@ var ZoteroMacWordIntegration = new function() {
 	var zoteroPluginInstaller;
 	
 	this.verifyNotCorrupt = function(zpi) {
+		dump("verifyNotCorrupt");
 		zoteroPluginInstaller = zpi;
 		
 		var pythonExtComponents = zoteroPluginInstaller.getAddonPath("pythonext@mozdev.org");
@@ -67,22 +68,39 @@ var ZoteroMacWordIntegration = new function() {
 		}
 		
 		// see if component is registered
-		if(!Components.classes["@zotero.org/Zotero/integration/application?agent=MacWord2008;1"]) {		
-			var prompt = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
-				.getService(Components.interfaces.nsIPromptService)
-				.confirm(null, 'Zotero MacWord Integration Error',
-				'The Zotero MacWord Integration installation succeeded, but a necessary '+
-				'component does not appear to be loaded properly. \n\nZotero can attempt to correct '+
-				'this for you. A Firefox restart will be required. Continue?');
-			if(prompt) {
-				clearComponentCache();
-				restartFirefox();
+		if(!Components.classes["@zotero.org/Zotero/integration/application?agent=MacWord2008;1"]) {
+			if(!zpi.failSilently) {
+				if(Zotero.isFx4) {
+					zpi.error("Zotero MacWord Integration is not properly loaded or registered. "+
+						"Please ensure that you have the appropriate version of PythonExt installed "+
+						"for your Firefox version.");
+				} else {
+					var prompt = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
+						.getService(Components.interfaces.nsIPromptService)
+						.confirm(null, 'Zotero MacWord Integration Error',
+						'Zotero MacWord Integration installation succeeded, but a necessary '+
+						'component does not appear to be loaded properly. \n\nZotero can attempt to correct '+
+						'this for you. A Firefox restart will be required. Continue?');
+					if(prompt) {
+						clearComponentCache();
+						restartFirefox();
+					}
+				}
 			}
 			throw "The Zotero MacWord Integration Python component is not registered."
+		}
+		
+		if(Zotero.isFx4 && Zotero.oscpu === "Intel Mac OS X 10.5") {
+			var err = "Zotero MacWord Integration is not compatible with Mac OS X 10.5 when run under "+
+				(Zotero.isStandalone ? "Zotero Standalone" : "Firefox 4")+". Please upgrade to "+
+				"Mac OS X 10.6.x, or downgrade to Firefox 3.6.x.";
+			zpi.error(err);
+			throw err;
 		}
 	}
 	
 	this.install = function(zpi) {
+		Zotero.debug("installing");
 		zoteroPluginInstaller = zpi;
 		
 		try {
