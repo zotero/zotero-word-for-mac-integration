@@ -44,7 +44,6 @@ var ZoteroMacWordIntegration = new function() {
 	var zoteroPluginInstaller;
 	
 	this.verifyNotCorrupt = function(zpi) {
-		dump("verifyNotCorrupt");
 		zoteroPluginInstaller = zpi;
 		
 		var pythonExtComponents = zoteroPluginInstaller.getAddonPath("pythonext@mozdev.org");
@@ -100,7 +99,6 @@ var ZoteroMacWordIntegration = new function() {
 	}
 	
 	this.install = function(zpi) {
-		Zotero.debug("installing");
 		zoteroPluginInstaller = zpi;
 		
 		try {
