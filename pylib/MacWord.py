@@ -39,7 +39,7 @@ FIELD_PLACEHOLDER = '{Citation}'
 FIELD_PREFIXES = [u' ADDIN ZOTERO_', u' ADDIN CITE_']
 BOOKMARK_PREFIXES = [u'ZOTERO_', u'CITE_']
 RTF_TEMP_BOOKMARK = u'ZOTERO_TEMP_BOOKMARK'
-SAVE_PROPERTIES = [u'font_size', u'name', u'other_name', u'color']
+SAVE_PROPERTIES = [u'font_size', u'name', u'other_name', u'color_index']
 
 MAX_PROPERTY_LENGTH = 255
 MAX_BOOKMARK_LENGTH = 50
