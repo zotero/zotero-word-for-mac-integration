@@ -88,7 +88,7 @@ class Installer:
 		if installed2008:
 			potentialMicrosoftUserDataNames = ["Microsoft User Data", "Microsoft-Benutzerdaten",
 				u"Données Utilisateurs Microsoft", "Datos del Usuario de Microsoft",
-				"Dati utente Microsoft"]
+				"Datos de Usuario de Microsoft", "Dati utente Microsoft"]
 			foundMicrosoftUserData = False
 			
 			# Look for script menu items folder in various places
