@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# coding=utf-8
 
 # Hack to fix pylib loading errors
 import sys, os.path
@@ -21,6 +22,8 @@ ERROR_NO_WORD_TITLE = "Neither Word 2004 nor Word 2008 appear to be installed on
 ERROR_NO_WORD_STRING = "Please install Microsoft Word, then try again."
 ERROR_WORD_RUNNING_TITLE = "Zotero MacWord Integration has been successfully installed, but Word must be restarted before it can be used."
 ERROR_WORD_RUNNING_STRING = "Please restart Word before continuing."
+NO_PERMISSIONS_TITLE = "Authentication Required"
+NO_PERMISSIONS_STRING = "Zotero MacWord Integration requires administrator permissions to continue installation. Please enter your password at the next prompt."
 
 SCRIPT_TEMPLATE = string.Template(r"""try
 	do shell script "PIPE=\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\";  if [ ! -p \"$PIPE\" ]; then PIPE='~/.zoteroIntegrationPipe'; fi; if [ -p \"$PIPE\" ]; then echo 'MacWord2008 ${command} '" & quoted form of POSIX path of (path to current application) & " > \"$PIPE\"; else exit 1; fi;"
@@ -83,18 +86,31 @@ class Installer:
 					installed2008 = int(infoPlistData["CFBundleVersion"][0:2]) >= 12
 		
 		if installed2008:
-			## Look for script menu items folder in various places
-			scriptMenuItemsFolder = documentsFolder.path+"/Microsoft User Data/Word Script Menu Items"
-			if not os.path.isdir(scriptMenuItemsFolder):
-				scriptMenuItemsFolder = preferencesFolder.path+"/Microsoft User Data/Word Script Menu Items"
-				if not os.path.isdir(scriptMenuItemsFolder):
-					# Ask the user to find it
-					try:
-						scriptMenuItemsFolder = osa.choose_folder(
-							with_prompt=CHOOSE_SCRIPT_MENU_ITEMS_STRING,
-							default_location=documentsFolder).path
-					except appscript.reference.CommandError:
-						scriptMenuItemsFolder = None
+			potentialMicrosoftUserDataNames = ["Microsoft User Data", "Microsoft-Benutzerdaten",
+				u"Données Utilisateurs Microsoft", "Datos del Usuario de Microsoft",
+				"Dati utente Microsoft"]
+			foundMicrosoftUserData = False
+			
+			# Look for script menu items folder in various places
+			for microsoftUserDataName in potentialMicrosoftUserDataNames:
+				scriptMenuItemsFolder = documentsFolder.path+"/"+microsoftUserDataName+"/Word Script Menu Items"
+				if os.path.isdir(scriptMenuItemsFolder):
+					foundMicrosoftUserData = True
+					break
+				else:
+					scriptMenuItemsFolder = preferencesFolder.path+"/"+microsoftUserDataName+"/Word Script Menu Items"
+					if os.path.isdir(scriptMenuItemsFolder):
+						foundMicrosoftUserData = True
+						break
+			
+			# If we couldn't find a script menu items folder, ask the user to locate it
+			if not foundMicrosoftUserData:
+				try:
+					scriptMenuItemsFolder = osa.choose_folder(
+						with_prompt=CHOOSE_SCRIPT_MENU_ITEMS_STRING,
+						default_location=documentsFolder).path
+				except appscript.reference.CommandError:
+					scriptMenuItemsFolder = None
 		
 			if scriptMenuItemsFolder:
 				## Install the scripts
@@ -152,8 +168,15 @@ class Installer:
 			
 			# Copy the template there
 			newTemplate = startupDir+"/Zotero.dot"
-			shutil.copy(template, newTemplate)
-			self.__makeWordTemplate(newTemplate)
+			try:
+				shutil.copy(template, newTemplate)				
+				self.__makeWordTemplate(newTemplate)
+			except IOError:
+				components.classes["@mozilla.org/embedcomp/prompt-service;1"]			\
+					.getService(components.interfaces.nsIPromptService)					\
+					.alert(None, NO_PERMISSIONS_TITLE, NO_PERMISSIONS_STRING)
+				osa.do_shell_script("ditto '"+template.replace("'", "'\\''")+"' '"+newTemplate.replace("'", "'\\''")+"'",
+					administrator_privileges=True)
 		
 		if not installed2004 and not installed2008:
 			if not failSilently:
