@@ -66,6 +66,14 @@ var ZoteroMacWordIntegration = new function() {
 			throw "PythonExt is missing the extension helper; Zotero MacWord Integration will not function."
 		}
 		
+		if(Zotero.isFx4 && Zotero.oscpu === "Intel Mac OS X 10.5") {
+			var err = "Zotero MacWord Integration is not compatible with Mac OS X 10.5 when run under "+
+				(Zotero.isStandalone ? "Zotero Standalone" : "Firefox 4")+". Please upgrade to "+
+				"Mac OS X 10.6.x, or downgrade to Firefox 3.6.x.";
+			zpi.error(err);
+			throw err;
+		}
+		
 		// see if component is registered
 		if(!Components.classes["@zotero.org/Zotero/integration/application?agent=MacWord2008;1"]) {
 			if(!zpi.failSilently) {
@@ -77,9 +85,9 @@ var ZoteroMacWordIntegration = new function() {
 					var prompt = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
 						.getService(Components.interfaces.nsIPromptService)
 						.confirm(null, 'Zotero MacWord Integration Error',
-						'Zotero MacWord Integration installation succeeded, but a necessary '+
-						'component does not appear to be loaded properly. \n\nZotero can attempt to correct '+
-						'this for you. A Firefox restart will be required. Continue?');
+						'A necessary component for Zotero MacWord Integration does not appear to '+
+						'be loaded properly. \n\nZotero can attempt to correct this for you. A '+
+						'Firefox restart will be required. Continue?');
 					if(prompt) {
 						clearComponentCache();
 						restartFirefox();
@@ -87,14 +95,6 @@ var ZoteroMacWordIntegration = new function() {
 				}
 			}
 			throw "The Zotero MacWord Integration Python component is not registered."
-		}
-		
-		if(Zotero.isFx4 && Zotero.oscpu === "Intel Mac OS X 10.5") {
-			var err = "Zotero MacWord Integration is not compatible with Mac OS X 10.5 when run under "+
-				(Zotero.isStandalone ? "Zotero Standalone" : "Firefox 4")+". Please upgrade to "+
-				"Mac OS X 10.6.x, or downgrade to Firefox 3.6.x.";
-			zpi.error(err);
-			throw err;
 		}
 	}
 	
