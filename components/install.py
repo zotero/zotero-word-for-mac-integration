@@ -4,12 +4,7 @@
 # Hack to fix pylib loading errors
 import sys, os.path
 pylib = os.path.realpath(os.path.dirname(__file__)+"/../pylib")
-if not pylib in sys.path:
-	# If no pylib not in path, add it
-	sys.path.insert(0, pylib)
-elif sys.path[-1].endswith('zoteroMacWordIntegration@zotero.org/pylib'):
-	# Move appscript to start of path
-	sys.path.insert(0, sys.path.pop())
+sys.path.insert(0, pylib)
 
 from xpcom import components
 import appscript, osax, mactypes, string, aem, os, subprocess, plistlib, shutil, re
