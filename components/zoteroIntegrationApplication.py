@@ -24,13 +24,11 @@
     ***** END LICENSE BLOCK *****
 """
 
-from xpcom import components, ServerException, nsError
-import sys, os, subprocess
-
+from xpcom import components
+import sys, os.path
 # Make sure exec_prefix is corect
 sys.exec_prefix = sys.prefix
-# Hack to fix pylib loading errors
-import sys, os.path
+# Hack to fix pylib loading 
 pylib = os.path.realpath(os.path.dirname(__file__)+"/../pylib")
 sys.path.insert(0, pylib)
 
