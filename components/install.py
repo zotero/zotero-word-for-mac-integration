@@ -113,10 +113,9 @@ class Installer:
 				
 				if os.path.exists(scriptPath):
 					# Remove old scripts
-					[os.unlink(scriptPath+file) for file in os.listdir(scriptPath)]
-				else:
-					# Create directory
-					os.mkdir(scriptPath)
+					shutil.rmtree(scriptPath)
+				# Create directory
+				os.mkdir(scriptPath)
 				
 				# Generate scripts
 				for i in range(len(W2008_SCRIPT_NAMES)):
