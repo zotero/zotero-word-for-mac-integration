@@ -740,8 +740,12 @@ class Field:
 					pass
 			
 			# Set properties back to saved
-			[getattr(self.displayFieldRange.font_object, SAVE_PROPERTIES[i]).set(savedProperties[i]) \
-				for i in range(len(SAVE_PROPERTIES)) if savedProperties[i] != k.missing_value]
+			for i in range(len(SAVE_PROPERTIES)):
+				if savedProperties[i] != k.missing_value:
+					try:
+						getattr(self.displayFieldRange.font_object, SAVE_PROPERTIES[i]).set(savedProperties[i])
+					except:
+						pass
 		else:
 			# Just set content of text object
 			self.displayFieldRange.content.set(string)
@@ -908,8 +912,12 @@ class Bookmark(Field):
 					pass
 			
 			# Set properties back to saved
-			[getattr(self.displayFieldRange.font_object, SAVE_PROPERTIES[i]).set(savedProperties[i]) \
-				for i in range(len(SAVE_PROPERTIES)) if savedProperties[i] != k.missing_value]
+			for i in range(len(SAVE_PROPERTIES)):
+				if savedProperties[i] != k.missing_value:
+					try:
+						getattr(self.displayFieldRange.font_object, SAVE_PROPERTIES[i]).set(savedProperties[i])
+					except:
+						pass
 			
 			# If selection was at end of mark, put it there again
 			if selectionAtEnd:
