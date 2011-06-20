@@ -46,6 +46,18 @@ var ZoteroMacWordIntegration = new function() {
 	this.verifyNotCorrupt = function(zpi) {
 		zoteroPluginInstaller = zpi;
 		
+		if(Zotero.isFx4) {
+			var xulAppInfo = Components.classes["@mozilla.org/xre/app-info;1"]
+				.getService(Components.interfaces.nsIXULAppInfo);
+			if(!zpi._addons[2].isCompatibleWith(xulAppInfo.version, xulAppInfo.platformVersion)) {
+				var err = "Zotero MacWord Integration requires PythonExt to run, but the installed "+
+					"version of PythonExt is not compatible with Firefox "+xulAppInfo.version+". "+
+					"Please install the latest available versionfrom zotero.org."
+				zpi.error(err);
+				throw err;
+			}
+		}
+		
 		var pythonExtComponents = zoteroPluginInstaller.getAddonPath("pythonext@mozdev.org");
 		pythonExtComponents.append("components");
 		if(!pythonExtComponents.directoryEntries.hasMoreElements()) {
