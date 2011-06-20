@@ -52,7 +52,7 @@ var ZoteroMacWordIntegration = new function() {
 			if(!zpi._addons[2].isCompatibleWith(xulAppInfo.version, xulAppInfo.platformVersion)) {
 				var err = "Zotero MacWord Integration requires PythonExt to run, but the installed "+
 					"version of PythonExt is not compatible with Firefox "+xulAppInfo.version+". "+
-					"Please install the latest available versionfrom zotero.org."
+					"Please install the latest available version from zotero.org."
 				zpi.error(err);
 				throw err;
 			}
