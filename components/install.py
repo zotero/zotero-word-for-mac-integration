@@ -119,7 +119,7 @@ class Installer:
 				
 				# Generate scripts
 				for i in range(len(W2008_SCRIPT_NAMES)):
-					p = subprocess.Popen(['/usr/bin/osacompile', '-o', scriptPath+W2008_SCRIPT_NAMES[i]],
+					p = subprocess.Popen(['/usr/bin/osacompile', '-t', 'osas', '-c', 'ToyS', '-o', scriptPath+W2008_SCRIPT_NAMES[i]],
 						stdin=subprocess.PIPE)
 					p.stdin.write(SCRIPT_TEMPLATE.safe_substitute(command=W2008_SCRIPT_COMMANDS[i]))
 					p.stdin.close()
