@@ -118,9 +118,19 @@ class Installer:
 				os.mkdir(scriptPath)
 				
 				# Generate scripts
+				info = os.uname();
+				darwinVersion = int((info[2].split('.'))[0]);
+				
 				for i in range(len(W2008_SCRIPT_NAMES)):
-					p = subprocess.Popen(['/usr/bin/osacompile', '-t', 'osas', '-c', 'ToyS', '-o', scriptPath+W2008_SCRIPT_NAMES[i]],
-						stdin=subprocess.PIPE)
+					if darwinVersion >= 11:
+						# Lion doesn't add a type or creator by default.
+						proc = ['/usr/bin/osacompile', '-t', 'osas', '-c', 'ToyS', '-o', scriptPath+W2008_SCRIPT_NAMES[i]]
+					else:
+						# Ugh. Older versions of Mac OS X support the arguments above, but they are
+						# reversed.
+						proc = ['/usr/bin/osacompile', scriptPath+W2008_SCRIPT_NAMES[i]]
+					
+					p = subprocess.Popen(proc, stdin=subprocess.PIPE)
 					p.stdin.write(SCRIPT_TEMPLATE.safe_substitute(command=W2008_SCRIPT_COMMANDS[i]))
 					p.stdin.close()
 					
