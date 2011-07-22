@@ -128,7 +128,7 @@ class Installer:
 					else:
 						# Ugh. Older versions of Mac OS X support the arguments above, but they are
 						# reversed.
-						proc = ['/usr/bin/osacompile', scriptPath+W2008_SCRIPT_NAMES[i]]
+						proc = ['/usr/bin/osacompile', '-o', scriptPath+W2008_SCRIPT_NAMES[i]]
 					
 					p = subprocess.Popen(proc, stdin=subprocess.PIPE)
 					p.stdin.write(SCRIPT_TEMPLATE.safe_substitute(command=W2008_SCRIPT_COMMANDS[i]))
