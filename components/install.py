@@ -21,7 +21,7 @@ NO_PERMISSIONS_TITLE = "Authentication Required"
 NO_PERMISSIONS_STRING = "Zotero MacWord Integration requires administrator permissions to continue installation. Please enter your password at the next prompt."
 
 SCRIPT_TEMPLATE = string.Template(r"""try
-	do shell script "PIPE=\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\";  if [ ! -e \"$PIPE\" ]; then PIPE='~/.zoteroIntegrationPipe'; fi; if [ -e \"$PIPE\" ]; then echo 'MacWord2008 ${command} '" & quoted form of POSIX path of (path to current application) & " > \"$PIPE\"; else exit 1; fi;"
+	do shell script "PIPE=\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\";  if [ ! -e \"$PIPE\" ]; then PIPE=~/.zoteroIntegrationPipe; fi; if [ -e \"$PIPE\" ]; then echo 'MacWord2008 ${command} '" & quoted form of POSIX path of (path to current application) & " > \"$PIPE\"; else exit 1; fi;"
 on error
 	display alert "Word could not communicate with Zotero. Please ensure that Firefox is open and try again." as critical
 end try""")
