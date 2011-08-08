@@ -365,6 +365,7 @@ class Document:
 						for prefix in FIELD_PREFIXES:
 							if rawCode.find(prefix) != -1:
 								fields.append(Field(self, field, noteType, codeRange, rawCode))
+								break
 		elif fieldType == "Bookmark":	# Bookmarks
 			getBookmarks = self.asDoc.bookmarks.get()
 			if getBookmarks:
@@ -374,6 +375,7 @@ class Document:
 						for prefix in BOOKMARK_PREFIXES:
 							if bookmarkName.startswith(prefix):
 								fields.append(Bookmark(self, bookmark, None, bookmarkName))
+								break
 		
 		fields.sort()
 		return XPCOMEnumerator(fields.__iter__())
@@ -502,6 +504,7 @@ class Document:
 							code = rawCode[prefixIndex+len(prefix):-1]
 						else:
 							code = rawCode[prefixIndex+len(prefix):]
+						break
 				
 				if not cnv.fromNoteType:	# Convert from in-text citation
 					# Delete field, but preserve range
