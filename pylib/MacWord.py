@@ -33,11 +33,11 @@ DEBUG = True
 # the public methods defined here.
 
 PREFS_PROPERTIES = [u'ZOTERO_PREF', u'CITE_PREF']
-BOOKMARK_REFERENCE_PROPERTIES = [u'ZOTERO_BREF', u'CITE_BREF']
+BOOKMARK_REFERENCE_PROPERTIES = [u'ZOTERO_BREF', u'CSL_BREF']
 
 FIELD_PLACEHOLDER = '{Citation}'
-FIELD_PREFIXES = [u' ADDIN ZOTERO_', u' ADDIN CITE_']
-BOOKMARK_PREFIXES = [u'ZOTERO_', u'CITE_']
+FIELD_PREFIXES = [u' ADDIN ZOTERO_', u' CSL_']
+BOOKMARK_PREFIXES = [u'ZOTERO_', u'CSL_']
 RTF_TEMP_BOOKMARK = u'ZOTERO_TEMP_BOOKMARK'
 SAVE_PROPERTIES = [u'font_size', u'name', u'other_name', u'color_index']
 
@@ -223,7 +223,7 @@ class Document:
 				codeRange = field.field_code
 				rawCode = codeRange.content.get()
 				for prefix in FIELD_PREFIXES:
-					if rawCode.startswith(prefix):
+					if rawCode.find(prefix) != -1:
 						return Field(self, field, None, codeRange, rawCode)
 		elif fieldType == "Bookmark":
 			bookmarks = selection.bookmarks.get()
@@ -363,7 +363,7 @@ class Document:
 					rawCode = codeRange.content.get()
 					if rawCode != k.missing_value:
 						for prefix in FIELD_PREFIXES:
-							if rawCode.startswith(prefix):
+							if rawCode.find(prefix) != -1:
 								fields.append(Field(self, field, noteType, codeRange, rawCode))
 		elif fieldType == "Bookmark":	# Bookmarks
 			getBookmarks = self.asDoc.bookmarks.get()
@@ -496,8 +496,12 @@ class Document:
 			if cnv.fromFieldType == "Field":
 				rawCode = asField.field_code.content.get()
 				for prefix in FIELD_PREFIXES:
-					if(rawCode.startswith(prefix)):
-						code = rawCode[len(prefix):-1]
+					prefixIndex = rawCode.find(prefix)
+					if prefixIndex != -1:
+						if code[-1] == " ":
+							code = rawCode[prefixIndex+len(prefix):-1]
+						else:
+							code = rawCode[prefixIndex+len(prefix):]
 				
 				if not cnv.fromNoteType:	# Convert from in-text citation
 					# Delete field, but preserve range
@@ -760,11 +764,12 @@ class Field:
 		if not self.rawCode:
 			self.rawCode = self.field.field_code.content.get()
 		for prefix in FIELD_PREFIXES:
-			if(self.rawCode.startswith(prefix)):
+			prefixIndex = self.rawCode.find(prefix)
+			if prefixIndex != -1:
 				if self.rawCode[-1] == " ":
-					return self.rawCode[len(prefix):-1]
+					return self.rawCode[prefixIndex+len(prefix):-1]
 				else:
-					return self.rawCode[len(prefix):]
+					return self.rawCode[prefixIndex+len(prefix):]
 	
 	def equals(self, field):
 		"""Returns true if field and this field refer to the same field"""
