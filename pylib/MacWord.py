@@ -500,7 +500,7 @@ class Document:
 				for prefix in FIELD_PREFIXES:
 					prefixIndex = rawCode.find(prefix)
 					if prefixIndex != -1:
-						if code[-1] == " ":
+						if rawCode[-1] == " ":
 							code = rawCode[prefixIndex+len(prefix):-1]
 						else:
 							code = rawCode[prefixIndex+len(prefix):]
