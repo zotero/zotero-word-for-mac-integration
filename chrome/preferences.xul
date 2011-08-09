@@ -7,12 +7,11 @@
 			<caption label="Microsoft Word for Mac 2004 and later"/>
 			<description id="wordProcessors-macWordIntegration-description" width="45em" />
 			<hbox pack="center">
-				<button id="wordProcessors-macWordIntegration-install" oncommand="updateMacWordIntegration(new ZoteroPluginInstaller(ZoteroMacWordIntegration, false, true));"/>
+				<button id="wordProcessors-macWordIntegration-install" oncommand="updateMacWordIntegration(new ZoteroMacWordInstaller(false, true));"/>
 			</hbox>
-			<script src="chrome://zotero-macword-integration/content/common.js"/>
-			<script src="chrome://zotero-macword-integration/content/macWord.js"/>
 			<script>
 			<![CDATA[
+			var ZoteroMacWordInstaller = Components.utils.import("resource://zotero-macword-integration/installer.jsm").Installer;
 			window.addEventListener("load", function() {
 				if(Zotero.isFx4 && window.navigator.oscpu === "Intel Mac OS X 10.5") {
 					document.getElementById("wordProcessors-macWordIntegration-description").textContent =
@@ -20,7 +19,7 @@
 						(Zotero.isStandalone ? "Zotero Standalone" : "Firefox 4")+".";
 					document.getElementById("wordProcessors-macWordIntegration-install").hidden = true;
 				} else {
-					var zpi = new ZoteroPluginInstaller(ZoteroMacWordIntegration, true);
+					var zpi = new ZoteroMacWordInstaller(true);
 					updateMacWordIntegration(zpi);
 				}
 			}, false);

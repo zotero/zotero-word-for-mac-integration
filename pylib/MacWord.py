@@ -757,6 +757,10 @@ class Field:
 			# Just set content of text object
 			self.displayFieldRange.content.set(string)
 	
+	def getText(self):
+		"""Gets text inside this field"""
+		return self.displayFieldRange.content.get()
+	
 	def setCode(self, code):
 		"""Sets some (non-user-readable) code to accompany this field"""
 		self.rawCode = FIELD_PREFIXES[0]+code+" "

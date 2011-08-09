@@ -22,7 +22,16 @@
     ***** END LICENSE BLOCK *****
 */
 
-var ZoteroMacWordIntegration = new function() {
+var EXPORTED_SYMBOLS = ["Installer"];
+var Zotero = Components.classes["@zotero.org/Zotero;1"].getService(Components.interfaces.nsISupports).wrappedJSObject;
+var ZoteroPluginInstaller = Components.utils.import("resource://zotero-macword-integration/installer_common.jsm").ZoteroPluginInstaller;
+var Installer = function(failSilently, force) {
+	return new ZoteroPluginInstaller(Plugin,
+		failSilently !== undefined ? failSilently : Zotero.isStandalone,
+		force);
+}
+
+var Plugin = new function() {
 	this.EXTENSION_STRING = "Zotero MacWord Integration";
 	this.EXTENSION_ID = "zoteroMacWordIntegration@zotero.org";
 	this.EXTENSION_PREF_BRANCH = "extensions.zoteroMacWordIntegration.";
@@ -36,9 +45,15 @@ var ZoteroMacWordIntegration = new function() {
 		minVersion: "2.1a1.SVN"
 	}, {
 		name: "PythonExt",
-		url: "zotero.org",
+		url: "zotero.org/support/word_processor_plugin_installation",
 		id: "pythonext@mozdev.org",
 		minVersion: "2.5"
+	}, {
+		name: "Zotero OpenOffice Integration",
+		url: "zotero.org/support/word_processor_plugin_installation",
+		id: "zoteroOpenOfficeIntegration@zotero.org",
+		minVersion: "3.5a3.SVN",
+		required: false
 	}];
 	
 	var zoteroPluginInstaller;
