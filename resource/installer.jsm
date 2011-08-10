@@ -73,24 +73,26 @@ var Plugin = new function() {
 			}
 		}
 		
-		var pythonExtComponents = zoteroPluginInstaller.getAddonPath("pythonext@mozdev.org");
-		pythonExtComponents.append("components");
-		if(!pythonExtComponents.directoryEntries.hasMoreElements()) {
-			var prompt = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
-				.getService(Components.interfaces.nsIPromptService)
-				.confirm(null, 'Zotero MacWord Integration Error',
-				'Zotero MacWord Integration requires PythonExt to run. While PythonExt is currently '+
-				'installed, it appears to be corrupted or incompletely deleted. As such, the Firefox '+
-				'Add-on manager may not be able to remove or reinstall it. Would you like Zotero '+
-				'Integration to remove it for you and restart Firefox?\n\n'+
-				'Upon restart, you may receive an error '+
-				'stating that PythonExt is not installed, and you will need to reinstall PythonExt '+
-				'before Zotero MacWord Integration will function properly.');
-			if(prompt) {
-				pythonExt.remove(true);
-				restartFirefox();
+		if(!Zotero.isStandalone) {
+			var pythonExtComponents = zoteroPluginInstaller.getAddonPath("pythonext@mozdev.org");
+			pythonExtComponents.append("components");
+			if(!pythonExtComponents.directoryEntries.hasMoreElements()) {
+				var prompt = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
+					.getService(Components.interfaces.nsIPromptService)
+					.confirm(null, 'Zotero MacWord Integration Error',
+					'Zotero MacWord Integration requires PythonExt to run. While PythonExt is currently '+
+					'installed, it appears to be corrupted or incompletely deleted. As such, the Firefox '+
+					'Add-on manager may not be able to remove or reinstall it. Would you like Zotero '+
+					'Integration to remove it for you and restart Firefox?\n\n'+
+					'Upon restart, you may receive an error '+
+					'stating that PythonExt is not installed, and you will need to reinstall PythonExt '+
+					'before Zotero MacWord Integration will function properly.');
+				if(prompt) {
+					pythonExt.remove(true);
+					restartFirefox();
+				}
+				throw "PythonExt is missing the extension helper; Zotero MacWord Integration will not function."
 			}
-			throw "PythonExt is missing the extension helper; Zotero MacWord Integration will not function."
 		}
 		
 		if(Zotero.isFx4 && Zotero.oscpu === "Intel Mac OS X 10.5") {
