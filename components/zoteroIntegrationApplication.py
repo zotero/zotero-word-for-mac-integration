@@ -58,7 +58,7 @@ class Application_2004:
 	secondaryFieldType = "Bookmark"
 	
 	def getDocument(self, wordPath):
-		return Document(appscript.app(wordPath))
+		return Document_2004(appscript.app(wordPath))
 	
 	def getActiveDocument(self):
 		return Document_2004(appscript.app('Microsoft Word'))

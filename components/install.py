@@ -55,32 +55,92 @@ class Installer:
 			templateAS.file_type.set('W8TN')
 	
 	def run(self, failSilently):
+		# Fix template permissions
+		template = os.path.realpath(os.path.dirname(__file__)+"/../install/Zotero.dot")
+		self.__makeWordTemplate(template)
+		
+		# Get some common paths
 		osa = osax.OSAX(osaxname="StandardAdditions")
 		applicationsFolder = osa.path_to(appscript.k.applications_folder)
 		documentsFolder = osa.path_to(appscript.k.documents_folder)
 		preferencesFolder = osa.path_to(appscript.k.preferences_folder)
 		
-		## See if we can find Office 2008
-		# First look in the obvious place
-		installed2008 = False
-		wordInAppsDir = applicationsFolder.path+"/Microsoft Office 2008/Microsoft Word.app"
-		installed2008 = os.path.isdir(wordInAppsDir)
-		# Next query LS
-		if not installed2008:
-			wordPath = None
-			try:
-				wordPath = aem.findapp.byid('com.Microsoft.Word')
-			except aem.findapp.ApplicationNotFoundError:
-				pass
+		defaultPaths = [applicationsFolder.path+"/Microsoft Office 2004/Microsoft Word",
+			applicationsFolder.path+"/Microsoft Office 2008/Microsoft Word.app",
+			applicationsFolder.path+"/Microsoft Office 2011/Microsoft Word.app"]
+		wordPaths = set([path for path in defaultPaths if os.path.exists(path)])
+		
+		# Look for bundle
+		testPath = None
+		try:
+			testPath = aem.findapp.byid('com.Microsoft.Word')
+		except aem.findapp.ApplicationNotFoundError:
+			pass
+		if testPath:
+			wordPaths.add(testPath)
+		
+		# Look for MSWDbundle
+		testPath = None
+		try:
+			testPath = aem.findapp.bycreator('MSWD')
+		except aem.findapp.ApplicationNotFoundError:
+			pass
+		if testPath:
+			wordPaths.add(testPath)
+		
+		installScripts = False
+		installed = False
+		for wordPath in wordPaths:
+			installTemplate = False
 			
-			# Check to make sure this is really Word >= 2008
-			if wordPath:
+			# Figure out versions
+			if os.path.isdir(wordPath):
+				# App bundle; read plist to check version
 				infoPlist = wordPath+"/Contents/Info.plist"
 				if os.path.exists(infoPlist):
 					infoPlistData = plistlib.readPlist(infoPlist)
-					installed2008 = int(infoPlistData["CFBundleVersion"][0:2]) >= 12
+					majorVersion = int(infoPlistData["CFBundleVersion"][0:2])
+					
+					installScripts = majorVersion >= 12
+					installTemplate = majorVersion >= 14
+			else:
+				# CFM app; check if Word 2004
+				try:
+					appVersion = appscript.app(u'Finder').files[mactypes.Alias(wordPath).hfspath].version.get()
+				except:
+					continue
+				if appVersion[0:2] == "11":
+					installTemplate = True
+			
+			# Install template if supported by this version of Word
+			if installTemplate:
+				installed = True
+					
+				# Get path to startup folder
+				officeDir = os.path.dirname(wordPath)
+				startupDir = officeDir+"/Office/Startup/Word"
+				if not os.path.exists(startupDir):
+					if os.path.exists(officeDir+"/Office/Start/Word"):
+						startupDir = officeDir+"/Office/Start/Word"
+					else:
+						os.makedirs(startupDir)
+				
+				# Copy the template there
+				newTemplate = startupDir+"/Zotero.dot"
+				try:
+					shutil.copy(template, newTemplate)				
+					self.__makeWordTemplate(newTemplate)
+				except IOError:
+					components.classes["@mozilla.org/embedcomp/prompt-service;1"]			\
+						.getService(components.interfaces.nsIPromptService)					\
+						.alert(None, NO_PERMISSIONS_TITLE, NO_PERMISSIONS_STRING)
+					osa.do_shell_script("ditto '"+template.replace("'", "'\\''")+"' '"+newTemplate.replace("'", "'\\''")+"'",
+						administrator_privileges=True)
 		
-		if installed2008:
+		
+		if installScripts:
+			installed = True
+			
 			potentialMicrosoftUserDataNames = ["Microsoft User Data", "Microsoft-Benutzerdaten",
 				u"Données Utilisateurs Microsoft", "Datos del Usuario de Microsoft",
 				"Datos de Usuario de Microsoft", "Dati utente Microsoft"]
@@ -133,58 +193,10 @@ class Installer:
 					p = subprocess.Popen(proc, stdin=subprocess.PIPE)
 					p.stdin.write(SCRIPT_TEMPLATE.safe_substitute(command=W2008_SCRIPT_COMMANDS[i]))
 					p.stdin.close()
-					
-		## See if we can find Office 2004
-		# Fix template permissions
-		template = os.path.realpath(os.path.dirname(__file__)+"/../install/Zotero.dot")
-		self.__makeWordTemplate(template)
 		
-		# First look in the obvious place
-		oldWord = False
-		installed2004 = False
-		wordPath = applicationsFolder.path+"/Microsoft Office 2004/Microsoft Word"
-		installed2004 = os.path.exists(wordPath)
-		if not installed2004:
-			wordPath = False
-			try:
-				wordPath = aem.findapp.bycreator('MSWD')
-			except aem.findapp.ApplicationNotFoundError:
-				pass
-			
-			# Check to make sure this is really Word 2004
-			if wordPath:
-				appVersion = appscript.app(u'Finder').files[mactypes.Alias(wordPath).hfspath].version.get()
-				if appVersion[0:2] == "11":
-					installed2004 = True
-				else:
-					oldWord = True
-		
-		if installed2004:
-			## Install the template
-			# Get path to startup folder
-			officeDir = os.path.dirname(wordPath)
-			startupDir = officeDir+"/Office/Startup/Word"
-			if not os.path.exists(startupDir):
-				if os.path.exists(officeDir+"/Office/Start/Word"):
-					startupDir = officeDir+"/Office/Start/Word"
-				else:
-					os.makedirs(startupDir)
-			
-			# Copy the template there
-			newTemplate = startupDir+"/Zotero.dot"
-			try:
-				shutil.copy(template, newTemplate)				
-				self.__makeWordTemplate(newTemplate)
-			except IOError:
-				components.classes["@mozilla.org/embedcomp/prompt-service;1"]			\
-					.getService(components.interfaces.nsIPromptService)					\
-					.alert(None, NO_PERMISSIONS_TITLE, NO_PERMISSIONS_STRING)
-				osa.do_shell_script("ditto '"+template.replace("'", "'\\''")+"' '"+newTemplate.replace("'", "'\\''")+"'",
-					administrator_privileges=True)
-		
-		if not installed2004 and not installed2008:
+		if not installed:
 			if not failSilently:
-				if oldWord:
+				if wordPaths:
 					self.__showError(ERROR_WORD_X_TITLE, ERROR_WORD_X_STRING)
 				else:
 					self.__showError(ERROR_NO_WORD_TITLE, ERROR_NO_WORD_STRING)
