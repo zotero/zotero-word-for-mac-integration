@@ -42,12 +42,14 @@ var Plugin = new function() {
 		name: "Zotero",
 		url: "zotero.org",
 		id: "zotero@chnm.gmu.edu",
-		minVersion: "2.1a1.SVN"
+		minVersion: "2.1a1.SVN",
+		required: true
 	}, {
 		name: "PythonExt",
 		url: "zotero.org/support/word_processor_plugin_installation",
 		id: "pythonext@mozdev.org",
-		minVersion: "2.5"
+		minVersion: "2.5",
+		required: true
 	}, {
 		name: "Zotero OpenOffice Integration",
 		url: "zotero.org/support/word_processor_plugin_installation",
