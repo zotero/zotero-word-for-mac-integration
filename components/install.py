@@ -119,14 +119,25 @@ class Installer:
 				# Get path to startup folder
 				officeDir = os.path.dirname(wordPath)
 				startupDir = officeDir+"/Office/Startup/Word"
+				# Copy the template there
+				newTemplate = startupDir+"/Zotero.dot"
+				
 				if not os.path.exists(startupDir):
 					if os.path.exists(officeDir+"/Office/Start/Word"):
 						startupDir = officeDir+"/Office/Start/Word"
 					else:
-						os.makedirs(startupDir)
+						try:
+							os.makedirs(startupDir)
+						except OSError: 
+							components.classes["@mozilla.org/embedcomp/prompt-service;1"]			\
+								.getService(components.interfaces.nsIPromptService)					\
+								.alert(None, NO_PERMISSIONS_TITLE, NO_PERMISSIONS_STRING)
+							osa.do_shell_script("mkdir -p '"+startupDir.replace("'", "'\\''")+
+								"'; ditto '"+template.replace("'", "'\\''")+
+								"' '"+newTemplate.replace("'", "'\\''")+"'",
+								administrator_privileges=True)
+							continue
 				
-				# Copy the template there
-				newTemplate = startupDir+"/Zotero.dot"
 				try:
 					shutil.copy(template, newTemplate)				
 					self.__makeWordTemplate(newTemplate)
