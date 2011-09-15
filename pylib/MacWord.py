@@ -44,10 +44,11 @@ SAVE_PROPERTIES = [u'font_size', u'name', u'other_name', u'color_index']
 MAX_PROPERTY_LENGTH = 255
 MAX_BOOKMARK_LENGTH = 50
 
-import random, string, copy, os, tempfile, sys, traceback, xpcom.server, subprocess
+import random, string, copy, os, tempfile, sys, traceback, xpcom.server, subprocess, thread
 
 from appscript import *
 from xpcom import components, ServerException, nsError
+from xpcom._xpcom import getProxyForObject, NS_PROXY_SYNC, NS_PROXY_ALWAYS, NS_PROXY_ASYNC
 
 DIALOG_ICON_STOP = components.interfaces.zoteroIntegrationDocument.DIALOG_ICON_STOP;
 DIALOG_ICON_NOTICE = components.interfaces.zoteroIntegrationDocument.DIALOG_ICON_NOTICE;
@@ -59,7 +60,7 @@ DIALOG_BUTTONS_YES_NO_CANCEL = components.interfaces.zoteroIntegrationDocument.D
 NOTE_FOOTNOTE = components.interfaces.zoteroIntegrationDocument.NOTE_FOOTNOTE;
 NOTE_ENDNOTE = components.interfaces.zoteroIntegrationDocument.NOTE_ENDNOTE;
 
-class XPCOMEnumerator:
+class FieldEnumerator:
 	_com_interfaces_ = [components.interfaces.nsISimpleEnumerator]
 	_reg_clsid_ = "{01e0a337-8c76-47c9-8c16-1f8f0a27ca3e}"
 	_reg_contractid_ = "@zotero.org/Zotero/integration/enumerator?agent=MacWord;1"
@@ -339,46 +340,81 @@ class Document:
 			field.setCode("")
 		return field
 	
-	def getFields(self, fieldType):
+	def getFields(self, fieldType, observer=None):
 		"""Gets a sorted list of all fields from this document."""
-		fields = []
-		if fieldType == "Field":		# Fields
-			# Get fields from document
-			collections = self._getCollections()
-			
-			# Append field objects
-			for noteType, collectionFields in collections.items():
-				# 4X speed improvement from iterating by index instead of
-				# using collection.get()
-				try:
-					maxField = collectionFields[-1].entry_index.get()
-				except:
-					continue
-				if maxField == k.missing_value:
-					continue
+		try:
+			fields = []
+			if fieldType == "Field":		# Fields
+				# Get fields from document
+				collections = self._getCollections()
+				nFields = self.asDoc.count(each=k.field)
+				collectionsWithFields = 0
 				
-				for i in range(1, maxField+1):
-					field = collectionFields[i]
-					codeRange = field.field_code
-					rawCode = codeRange.content.get()
-					if rawCode != k.missing_value:
-						for prefix in FIELD_PREFIXES:
-							if rawCode.find(prefix) != -1:
-								fields.append(Field(self, field, noteType, codeRange, rawCode))
-								break
-		elif fieldType == "Bookmark":	# Bookmarks
-			getBookmarks = self.asDoc.bookmarks.get()
-			if getBookmarks:
-				for bookmark in getBookmarks:
-					bookmarkName = bookmark.name.get()
-					if bookmarkName != k.missing_value:
-						for prefix in BOOKMARK_PREFIXES:
-							if bookmarkName.startswith(prefix):
-								fields.append(Bookmark(self, bookmark, None, bookmarkName))
-								break
-		
-		fields.sort()
-		return XPCOMEnumerator(fields.__iter__())
+				# Append field objects
+				for noteType, collectionFields in collections.items():
+					# 4X speed improvement from iterating by index instead of using
+					# collectionFields.get()
+					try:
+						maxField = collectionFields[-1].entry_index.get()
+					except:
+						continue
+					if maxField == k.missing_value:
+						continue
+					
+					maxField += 1
+					collectionsWithFields += 1
+					
+					for i in range(1, maxField):
+						if observer and (i-1) % 3 == 0:
+							observer.observe(self, "fields-progress", str(int(float(i-1)/nFields*100)))
+						
+						field = collectionFields[i]
+						codeRange = field.field_code
+						rawCode = codeRange.content.get()
+						if rawCode != k.missing_value:
+							for prefix in FIELD_PREFIXES:
+								if rawCode.find(prefix) != -1:
+									fields.append(Field(self, field, noteType, codeRange, rawCode))
+									break
+					
+				needSort = collectionsWithFields > 1
+			elif fieldType == "Bookmark":	# Bookmarks
+				needSort = True
+				
+				getBookmarks = self.asDoc.bookmarks.get()
+				if getBookmarks:
+					i = 0
+					nFields = len(getBookmarks)
+					
+					for bookmark in getBookmarks:
+						if observer and i % 5 == 0:
+							observer.observe(self, "fields-progress", str(int(float(i-1)/nFields*100)))
+						
+						bookmarkName = bookmark.name.get()
+						if bookmarkName != k.missing_value:
+							for prefix in BOOKMARK_PREFIXES:
+								if bookmarkName.startswith(prefix):
+									fields.append(Bookmark(self, bookmark, None, bookmarkName))
+									break
+						
+						i += 1
+			
+			if needSort:
+				fields.sort()
+			
+			fieldEnumerator = FieldEnumerator(fields.__iter__())
+			
+			if observer:
+				observer.observe(fieldEnumerator, "fields-available", None)
+		except Exception, err:
+			if observer:
+				observer.observe(self, "fields-error", str(err))
+			raise
+	
+	def getFieldsAsync(self, fieldType, observer):
+		"""Gets a sorted list of all fields from this document, asynchronously"""
+		observerProxy = getProxyForObject(1, components.interfaces.nsIObserver, observer, NS_PROXY_SYNC | NS_PROXY_ALWAYS)
+		thread.start_new_thread(self.getFields, (fieldType, observerProxy))
 	
 	def convert(self, fieldEnumerator, toFieldType, noteTypes):
 		"""Convert "fields" to a different fieldType, or a different noteType.
@@ -594,6 +630,7 @@ class Document:
 		# Delete temporary file
 		if self.tempFile.path:
 			os.unlink(self.tempFile.path)
+			self.tempFile.path = None
 	
 	def _getCollections(self):
 		"""Gets the contents of the main body, footnote, and endnote collections. Specific to this
@@ -676,24 +713,23 @@ class Field:
 		self.wpDoc = wpDoc
 		self.field = field
 		self.rawCode = rawCode
+		
 		if codeRange:
 			self.fieldRange = codeRange
 		else:
 			self.fieldRange = field.field_code;
-		self.noteType = noteType
-		self._getTextLocation()
+		
+		if self.noteType:
+			self.noteType = noteType
 	
 	def __cmp__(x, y):
+		# Compare text positions
 		c = cmp(x.textLocation, y.textLocation)
 		if c != 0:
 			return c
 		
 		# If in a note, compare field positions inside the note
 		if x.note and y.note:
-			if not x.noteLocation:
-				x.noteLocation = x.fieldRange.start_of_content.get()
-			if not y.noteLocation:
-				y.noteLocation = y.fieldRange.start_of_content.get()
 			return cmp(x.noteLocation, y.noteLocation)
 		
 		return 0
@@ -780,7 +816,7 @@ class Field:
 	
 	def equals(self, field):
 		"""Returns true if field and this field refer to the same field"""
-		return xpcom.server.UnwrapObject(field) == self
+		return str(self.field) == str(xpcom.server.UnwrapObject(field).field)
 	
 	def getNoteIndex(self):
 		"""Returns the index of the note in which this field resides"""
@@ -788,32 +824,82 @@ class Field:
 			return self.note.entry_index.get()
 		return 0
 	
-	def _getTextLocation(self):
-		"""Adds note and textLocation properties to this instance. This is
-		protected and not private, so that the Bookmark class can get at it, but
-		is never used by Zotero.py"""
-		# Try to avoid the AppleEvent call here if possible
-		if self.noteType == None:
-			storyType = self.fieldRange.story_type.get()
-			if storyType == k.footnotes_story:
-				self.noteType = NOTE_FOOTNOTE
-			elif storyType == k.endnotes_story:
-				self.noteType = NOTE_ENDNOTE
-			else:
-				self.noteType = 0
+	def getNextField(self):
+		"""Gets the field after this one in the document, at least most of the time"""
+		entryIndex = self.field.entry_index.get()
+		while True:
+			entryIndex += 1
+			
+			try:
+				field = self.wpDoc.asDoc.fields[entryIndex].get()
+				rawCode = field.field_code.content.get()
+				for prefix in FIELD_PREFIXES:
+					if rawCode.find(prefix) != -1:
+						return Field(self, field, None, None, rawCode)
+			except appscript.reference.CommandError:
+				return None
+			
+			if field == k.missingValue:
+				return None
 		
-		# Save note and textLocation
+	def getPreviousField(self):
+		"""Gets the field before this one, at least most of the time"""
+		entryIndex = self.field.entry_index.get()
+		while entryIndex != 0:
+			entryIndex -= 1;
+			
+			try:
+				field = self.wpDoc.asDoc.fields[entryIndex].get()
+				rawCode = field.field_code.content.get()
+				for prefix in FIELD_PREFIXES:
+					if rawCode.find(prefix) != -1:
+						return Field(self, field, None, None, rawCode)
+			except appscript.reference.CommandError:
+				return None
+			
+			if field == k.missingValue:
+				return None
+	
+	@property
+	def noteType(self):
+		storyType = self.fieldRange.story_type.get()
+		if storyType == k.footnotes_story:
+			self.noteType = NOTE_FOOTNOTE
+		elif storyType == k.endnotes_story:
+			self.noteType = NOTE_ENDNOTE
+		else:
+			self.noteType = None
+		
+		return self.noteType
+	
+	@property
+	def note(self):
 		if self.noteType == NOTE_FOOTNOTE:
 			self.note = self.fieldRange.footnotes[1]
-			self.textLocation = self.note.note_reference.start_of_content.get()
-			self.noteLocation = None
 		elif self.noteType == NOTE_ENDNOTE:
 			self.note = self.fieldRange.endnotes[1]
-			self.textLocation = self.note.note_reference.start_of_content.get()
-			self.noteLocation = None
 		else:
 			self.note = None
+		
+		return self.note
+	
+	@property
+	def textLocation(self):
+		if self.note:
+			self.textLocation = self.note.note_reference.start_of_content.get()
+		else:
 			self.textLocation = self.fieldRange.start_of_content.get()
+		
+		return self.textLocation
+	
+	@property
+	def noteLocation(self):
+		if self.note:
+			self.noteLocation = self.fieldRange.start_of_content.get()
+		else:
+			self.noteLocation = None
+			
+		return self.noteLocation
 	
 	@property
 	def displayFieldRange(self):
@@ -847,7 +933,6 @@ class Bookmark(Field):
 		
 		self.fieldRange = self.displayFieldRange = self.field.text_object
 		self.noteType = noteType
-		self._getTextLocation()
 	
 	def delete(self):
 		"""Deletes this bookmark, and any properties"""
