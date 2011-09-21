@@ -347,7 +347,8 @@ class Document:
 			if fieldType == "Field":		# Fields
 				# Get fields from document
 				collections = self._getCollections()
-				nFields = self.asDoc.count(each=k.field)
+				nFields = 0
+				nFieldsForCollection = {0:0, 1:1, 2:2}
 				collectionsWithFields = 0
 				
 				# Append field objects
@@ -361,10 +362,12 @@ class Document:
 					if maxField == k.missing_value:
 						continue
 					
-					maxField += 1
+					nFieldsForCollection[noteType] = maxField+1
+					nFields += maxField+1
 					collectionsWithFields += 1
-					
-					for i in range(1, maxField):
+				
+				for noteType, collectionFields in collections.items():
+					for i in range(1, nFieldsForCollection[noteType]):
 						if observer and (i-1) % 3 == 0:
 							observer.observe(self, "fields-progress", str(int(float(i-1)/nFields*100)))
 						
@@ -719,7 +722,7 @@ class Field:
 		else:
 			self.fieldRange = field.field_code;
 		
-		if self.noteType:
+		if noteType:
 			self.noteType = noteType
 	
 	def __cmp__(x, y):
@@ -816,7 +819,8 @@ class Field:
 	
 	def equals(self, field):
 		"""Returns true if field and this field refer to the same field"""
-		return str(self.field) == str(xpcom.server.UnwrapObject(field).field)
+		unwrappedField = xpcom.server.UnwrapObject(field)
+		return self.noteType == unwrappedField.noteType and self.entryIndex == unwrappedField.entryIndex
 	
 	def getNoteIndex(self):
 		"""Returns the index of the note in which this field resides"""
@@ -826,7 +830,7 @@ class Field:
 	
 	def getNextField(self):
 		"""Gets the field after this one in the document, at least most of the time"""
-		entryIndex = self.field.entry_index.get()
+		entryIndex = self.entryIndex
 		while True:
 			entryIndex += 1
 			
@@ -844,7 +848,7 @@ class Field:
 		
 	def getPreviousField(self):
 		"""Gets the field before this one, at least most of the time"""
-		entryIndex = self.field.entry_index.get()
+		entryIndex = self.entryIndex
 		while entryIndex != 0:
 			entryIndex -= 1;
 			
@@ -859,6 +863,11 @@ class Field:
 			
 			if field == k.missingValue:
 				return None
+	
+	@property
+	def entryIndex(self):
+		self.entryIndex = self.field.entry_index.get()
+		return self.entryIndex
 	
 	@property
 	def noteType(self):
