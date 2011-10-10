@@ -134,11 +134,10 @@ class Document:
 			# Only re-enter full screen mode once the activate method has been called
 			self.haveReactivated = False
 		
-		# Hide changes
+		# Get status of Show Insertions and Deletions setting
 		self.asView = self.asApp.active_window.view
-		self.restoreInsertionsAndDeletions = self.asView.show_insertions_and_deletions.get()
-		if self.restoreInsertionsAndDeletions:
-			self.asView.show_insertions_and_deletions.set(False)
+		self.__restoreInsertionsAndDeletions = self.asView.show_insertions_and_deletions.get()
+		self.__showInsertionsAndDeletionsStatus = self.__restoreInsertionsAndDeletions
 	
 	def displayAlert(self, text, icon=1, buttons=0):
 		"""Displays a dialog"""
@@ -197,6 +196,8 @@ class Document:
 		selection = self.asApp.selection
 		
 		if fieldType == "Field":
+			self.prepareReadFieldCode()
+			
 			fields = selection.fields.get()
 			if fields:
 				field = fields[0]
@@ -350,6 +351,8 @@ class Document:
 		try:
 			fields = []
 			if fieldType == "Field":		# Fields
+				self.prepareReadFieldCode()
+				
 				# Get fields from document
 				collections = self._getCollections()
 				nFields = 0
@@ -540,6 +543,8 @@ class Document:
 				continue
 			
 			if cnv.fromFieldType == "Field":
+				self.prepareReadFieldCode()
+				
 				rawCode = asField.field_code.content.get()
 				for prefix in FIELD_PREFIXES:
 					prefixIndex = rawCode.find(prefix)
@@ -633,8 +638,9 @@ class Document:
 	def cleanup(self):
 		"""Run on exit to clean up anything we played with..."""
 		# Restore insertions and deletions
-		if self.restoreInsertionsAndDeletions:
+		if self.__restoreInsertionsAndDeletions and not self.__showInsertionsAndDeletionsStatus:
 			self.asView.show_insertions_and_deletions.set(True)
+			self.__showInsertionsAndDeletionsStatus = True
 		# Restore full screen mode if necessary
 		if self.restoreFullScreenMode == True and self.asApp.frontmost.get() and self.haveReactivated:
 			self.asDoc.active_window.view.full_screen.set(True)
@@ -642,6 +648,13 @@ class Document:
 		if self.tempFile.path:
 			os.unlink(self.tempFile.path)
 			self.tempFile.path = None
+	
+	def prepareReadFieldCode(self):
+		"""Disables the Show Insertions and Deletions setting, if necessary. Specific to this
+		   implementation"""
+		if self.__showInsertionsAndDeletionsStatus:
+			self.asView.show_insertions_and_deletions.set(False)
+			__showInsertionsAndDeletionsStatus = False
 	
 	def _getCollections(self):
 		"""Gets the contents of the main body, footnote, and endnote collections. Specific to this
@@ -815,6 +828,8 @@ class Field:
 	
 	def getCode(self):
 		"""Returns the current code"""
+		self.wpDoc.prepareReadFieldCode()
+		
 		if not self.rawCode:
 			self.rawCode = self.field.field_code.content.get()
 		for prefix in FIELD_PREFIXES:
@@ -838,6 +853,8 @@ class Field:
 	
 	def getNextField(self):
 		"""Gets the field after this one in the document, at least most of the time"""
+		self.prepareReadFieldCode()
+		
 		entryIndex = self.entryIndex
 		while True:
 			entryIndex += 1
@@ -856,6 +873,8 @@ class Field:
 		
 	def getPreviousField(self):
 		"""Gets the field before this one, at least most of the time"""
+		self.prepareReadFieldCode()
+		
 		entryIndex = self.entryIndex
 		while entryIndex != 0:
 			entryIndex -= 1;
