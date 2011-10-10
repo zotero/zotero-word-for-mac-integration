@@ -133,7 +133,12 @@ class Document:
 			self.asApp.active_window.view.full_screen.set(False)
 			# Only re-enter full screen mode once the activate method has been called
 			self.haveReactivated = False
-			
+		
+		# Hide changes
+		self.asView = self.asApp.active_window.view
+		self.restoreInsertionsAndDeletions = self.asView.show_insertions_and_deletions.get()
+		if self.restoreInsertionsAndDeletions:
+			self.asView.show_insertions_and_deletions.set(False)
 	
 	def displayAlert(self, text, icon=1, buttons=0):
 		"""Displays a dialog"""
@@ -627,6 +632,9 @@ class Document:
 	
 	def cleanup(self):
 		"""Run on exit to clean up anything we played with..."""
+		# Restore insertions and deletions
+		if self.restoreInsertionsAndDeletions:
+			self.asView.show_insertions_and_deletions.set(True)
 		# Restore full screen mode if necessary
 		if self.restoreFullScreenMode == True and self.asApp.frontmost.get() and self.haveReactivated:
 			self.asDoc.active_window.view.full_screen.set(True)
