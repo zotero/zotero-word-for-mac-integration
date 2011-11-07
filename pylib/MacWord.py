@@ -417,6 +417,8 @@ class Document:
 			
 			if observer:
 				observer.observe(fieldEnumerator, "fields-available", None)
+			else:
+				return fieldEnumerator
 		except Exception, err:
 			if observer:
 				observer.observe(self, "fields-error", str(err))
