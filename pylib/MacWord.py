@@ -139,7 +139,7 @@ class Document:
 		try:
 			self.__restoreInsertionsAndDeletions = self.asView.show_insertions_and_deletions.get()
 		except:
-			self.__restoreInsertionsAndDeletions = false
+			self.__restoreInsertionsAndDeletions = False
 		self.__showInsertionsAndDeletionsStatus = self.__restoreInsertionsAndDeletions
 	
 	def displayAlert(self, text, icon=1, buttons=0):
