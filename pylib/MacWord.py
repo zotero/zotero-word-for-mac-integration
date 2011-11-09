@@ -136,7 +136,10 @@ class Document:
 		
 		# Get status of Show Insertions and Deletions setting
 		self.asView = self.asApp.active_window.view
-		self.__restoreInsertionsAndDeletions = self.asView.show_insertions_and_deletions.get()
+		try:
+			self.__restoreInsertionsAndDeletions = self.asView.show_insertions_and_deletions.get()
+		except:
+			self.__restoreInsertionsAndDeletions = false
 		self.__showInsertionsAndDeletionsStatus = self.__restoreInsertionsAndDeletions
 	
 	def displayAlert(self, text, icon=1, buttons=0):
