@@ -748,7 +748,7 @@ class Field:
 		else:
 			self.fieldRange = field.field_code;
 		
-		if noteType:
+		if noteType is None:
 			self.noteType = noteType
 	
 	def __cmp__(x, y):
@@ -909,7 +909,7 @@ class Field:
 		elif storyType == k.endnotes_story:
 			self.noteType = NOTE_ENDNOTE
 		else:
-			self.noteType = None
+			self.noteType = 0
 		
 		return self.noteType
 	
@@ -973,7 +973,9 @@ class Bookmark(Field):
 		self.field = wpDoc.asDoc.bookmarks[self.bookmarkName]
 		
 		self.fieldRange = self.displayFieldRange = self.field.text_object
-		self.noteType = noteType
+		
+		if noteType is None:
+			self.noteType = noteType
 	
 	def delete(self):
 		"""Deletes this bookmark, and any properties"""
