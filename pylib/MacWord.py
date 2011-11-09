@@ -359,7 +359,7 @@ class Document:
 				# Get fields from document
 				collections = self._getCollections()
 				nFields = 0
-				nFieldsForCollection = {0:0, 1:1, 2:2}
+				nFieldsForCollection = {0:0, 1:0, 2:0}
 				collectionsWithFields = 0
 				
 				# Append field objects
