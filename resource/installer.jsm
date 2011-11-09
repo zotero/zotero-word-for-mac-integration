@@ -32,7 +32,7 @@ var Installer = function(failSilently, force) {
 }
 
 var Plugin = new function() {
-	this.EXTENSION_STRING = "Zotero MacWord Integration";
+	this.EXTENSION_STRING = "Zotero Word for Mac Integration";
 	this.EXTENSION_ID = "zoteroMacWordIntegration@zotero.org";
 	this.EXTENSION_PREF_BRANCH = "extensions.zoteroMacWordIntegration.";
 	this.EXTENSION_DIR = "zotero-macword-integration";
@@ -99,7 +99,7 @@ var Plugin = new function() {
 		
 		if(Zotero.isFx4 && Zotero.oscpu === "Intel Mac OS X 10.5") {
 			var err = "Zotero MacWord Integration is not compatible with Mac OS X 10.5 when run under "+
-				(Zotero.isStandalone ? "Zotero Standalone" : "Firefox 4")+". Please upgrade to "+
+				(Zotero.isStandalone ? "Zotero Standalone" : "Firefox 4 or later")+". Please upgrade to "+
 				"Mac OS X 10.6.x, or downgrade to Firefox 3.6.x.";
 			zpi.error(err);
 			throw err;
