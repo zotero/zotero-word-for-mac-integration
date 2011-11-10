@@ -748,7 +748,7 @@ class Field:
 		else:
 			self.fieldRange = field.field_code;
 		
-		if noteType is None:
+		if noteType is not None:
 			self.noteType = noteType
 	
 	def __cmp__(x, y):
@@ -974,7 +974,7 @@ class Bookmark(Field):
 		
 		self.fieldRange = self.displayFieldRange = self.field.text_object
 		
-		if noteType is None:
+		if noteType is not None:
 			self.noteType = noteType
 	
 	def delete(self):
