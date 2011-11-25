@@ -659,7 +659,7 @@ class Document:
 		   implementation"""
 		if self.__showInsertionsAndDeletionsStatus:
 			self.asView.show_insertions_and_deletions.set(False)
-			__showInsertionsAndDeletionsStatus = False
+			self.__showInsertionsAndDeletionsStatus = False
 	
 	def _getCollections(self):
 		"""Gets the contents of the main body, footnote, and endnote collections. Specific to this
