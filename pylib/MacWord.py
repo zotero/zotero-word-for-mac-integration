@@ -138,9 +138,12 @@ class Document:
 		self.asView = self.asApp.active_window.view
 		try:
 			self.__restoreInsertionsAndDeletions = self.asView.show_insertions_and_deletions.get()
+			self.__restoreFormatChanges = self.asView.show_format_changes.get()
 		except:
 			self.__restoreInsertionsAndDeletions = False
+			self.__restoreFormatChanges = False
 		self.__showInsertionsAndDeletionsStatus = self.__restoreInsertionsAndDeletions
+		self.__showFormatChangesStatus = self.__restoreFormatChanges
 	
 	def displayAlert(self, text, icon=1, buttons=0):
 		"""Displays a dialog"""
@@ -646,6 +649,10 @@ class Document:
 		if self.__restoreInsertionsAndDeletions and not self.__showInsertionsAndDeletionsStatus:
 			self.asView.show_insertions_and_deletions.set(True)
 			self.__showInsertionsAndDeletionsStatus = True
+		# Restore format changes
+		if self.__restoreFormatChanges and not self.__showFormatChangesStatus:
+			self.asView.show_format_changes.set(True)
+			self.__showFormatChangesStatus = True
 		# Restore full screen mode if necessary
 		if self.restoreFullScreenMode == True and self.asApp.frontmost.get() and self.haveReactivated:
 			self.asDoc.active_window.view.full_screen.set(True)
@@ -660,6 +667,9 @@ class Document:
 		if self.__showInsertionsAndDeletionsStatus:
 			self.asView.show_insertions_and_deletions.set(False)
 			self.__showInsertionsAndDeletionsStatus = False
+		if self.__showFormatChangesStatus:
+			self.asView.show_format_changes.set(False)
+			self.__showFormatChangesStatus = False
 	
 	def _getCollections(self):
 		"""Gets the contents of the main body, footnote, and endnote collections. Specific to this
