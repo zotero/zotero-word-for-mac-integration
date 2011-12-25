@@ -183,10 +183,20 @@ class Installer:
 				scriptPath = scriptMenuItemsFolder+"/Zotero/"
 				
 				if os.path.exists(scriptPath):
-					# Remove old scripts
-					shutil.rmtree(scriptPath)
-				# Create directory
-				os.mkdir(scriptPath)
+					try:
+						# Remove old scripts
+						shutil.rmtree(scriptPath)
+						# Create directory
+						os.mkdir(scriptPath)
+					except OSError:
+						components.classes["@mozilla.org/embedcomp/prompt-service;1"]			\
+							.getService(components.interfaces.nsIPromptService)					\
+							.alert(None, NO_PERMISSIONS_TITLE, NO_PERMISSIONS_STRING)
+						quotedScriptPath = "'"+scriptPath.replace("'", "'\\''")+"'"
+						osa.do_shell_script("rm -rf "+quotedScriptPath+";"
+							+"mkdir "+quotedScriptPath+";"
+							+"chown \"$USER\" "+quotedScriptPath,
+							administrator_privileges=True)
 				
 				# Generate scripts
 				info = os.uname();
