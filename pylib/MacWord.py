@@ -391,7 +391,7 @@ class Document:
 						if rawCode != k.missing_value:
 							for prefix in FIELD_PREFIXES:
 								if rawCode.find(prefix) != -1:
-									fields.append(Field(self, field, noteType, codeRange, rawCode))
+									fields.append(Field(self, field, noteType, codeRange, rawCode, i))
 									break
 					
 				needSort = collectionsWithFields > 1
@@ -748,18 +748,21 @@ class Field:
 	_reg_contractid_ = "@zotero.org/Zotero/integration/field?agent=MacWord&type=Field;1"
 	_reg_desc_ = "MacWord Field"
 	
-	def __init__(self, wpDoc, field, noteType=None, codeRange=None, rawCode=None):
+	def __init__(self, wpDoc, field, noteType=None, codeRange=None, rawCode=None, entryIndex=None):
 		self.wpDoc = wpDoc
 		self.field = field
 		self.rawCode = rawCode
+		
+		if noteType is not None:
+			self.noteType = noteType
 		
 		if codeRange:
 			self.fieldRange = codeRange
 		else:
 			self.fieldRange = field.field_code;
 		
-		if noteType is not None:
-			self.noteType = noteType
+		if entryIndex:
+			self.entryIndex = entryIndex
 	
 	def __cmp__(x, y):
 		# Compare text positions
