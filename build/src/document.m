@@ -384,7 +384,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 }
 
 // Gets fields
-statusCode getFields(document_t *doc, const char fieldType,
+statusCode getFields(document_t *doc, const char fieldType[],
 					 fieldListNode_t** returnNode) {
 	// Get fields in main body, footnotes, and endnotes
 	SBElementArray* fieldCollections[] = {[doc->sbDoc fields],
@@ -448,7 +448,7 @@ statusCode getFields(document_t *doc, const char fieldType,
 												 &returnValue);
 				if(status) return status;
 				
-				if(returnValue) {
+				if(returnValue > 0) {
 					isNextField = NO;
 					break;
 				}

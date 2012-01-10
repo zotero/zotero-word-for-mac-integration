@@ -110,8 +110,8 @@ function init() {
 		"insertField":lib.declare("insertField", ctypes.default_abi, statusCode, document_t.ptr,
 			ctypes.char.ptr, ctypes.unsigned_short, field_t.ptr.ptr),
 		
-		// statusCode getFields(Document *doc, const char fieldType, Field* returnFields[],
-		// 					    unsigned long* returnFieldsLength)
+		// statusCode getFields(document_t *doc, const char fieldType[],
+		//					    fieldListNode_t** returnNode);
 		"getFields":lib.declare("getFields", ctypes.default_abi, statusCode, document_t.ptr,
 			ctypes.char.ptr, fieldListNode_t.ptr.ptr),
 		

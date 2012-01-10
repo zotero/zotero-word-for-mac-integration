@@ -162,7 +162,7 @@ statusCode getDocumentData(document_t *doc, char **returnValue);
 statusCode setDocumentData(document_t *doc, const char documentData[]);
 statusCode insertField(document_t *doc, const char fieldType[],
 					   unsigned short noteType, field_t **returnValue);
-statusCode getFields(document_t *doc, const char fieldType,
+statusCode getFields(document_t *doc, const char fieldType[],
 					 fieldListNode_t** returnNode);
 void freeFieldList(fieldListNode_t *fieldList);
 statusCode setBibliographyStyle(document_t *doc, long firstLineIndent, 
