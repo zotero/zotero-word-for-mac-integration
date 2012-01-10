@@ -445,7 +445,7 @@ statusCode getFields(document_t *doc, const char fieldType,
 			// We have a field. For now, assume this will be the next field.
 			isNextField = YES;
 			
-			for(unsigned short noteTypeB; noteTypeB<3; noteTypeB++) {
+			for(unsigned short noteTypeB = 0; noteTypeB<3; noteTypeB++) {
 				if(noteTypeB == noteTypeA || !currentFields[noteTypeB]) {
 					continue;
 				}
