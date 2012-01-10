@@ -279,7 +279,8 @@ statusCode installScripts(void) {
 	if(status) return status;
 	
 	// Generate the scripts
-	const char* W2008_SCRIPT_NAMES[] = {"Edit Bibliography\\cod.scpt",
+	const char* W2008_SCRIPT_NAMES[] = {"Add Bibliography\\cob.scpt",
+		"Add Citation\\coa.scpt", "Edit Bibliography\\cod.scpt",
 		"Edit Citation\\coe.scpt", "Refresh\\cor.scpt",
 		"Remove Field Codes.scpt", "Set Document Preferences\\cop.scpt",
 		NULL};
