@@ -197,6 +197,18 @@ class Installer:
 							+"mkdir "+quotedScriptPath+";"
 							+"chown \"$USER\" "+quotedScriptPath,
 							administrator_privileges=True)
+				else:
+					try:
+						# Create directory
+						os.mkdir(scriptPath)
+					except OSError:
+						components.classes["@mozilla.org/embedcomp/prompt-service;1"]			\
+							.getService(components.interfaces.nsIPromptService)					\
+							.alert(None, NO_PERMISSIONS_TITLE, NO_PERMISSIONS_STRING)
+						quotedScriptPath = "'"+scriptPath.replace("'", "'\\''")+"'"
+						osa.do_shell_script("mkdir "+quotedScriptPath+";"
+							+"chown \"$USER\" "+quotedScriptPath,
+							administrator_privileges=True)
 				
 				# Generate scripts
 				info = os.uname();
