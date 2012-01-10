@@ -315,6 +315,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 	
 	// This is ridiculous. Scripting Bridge can't create the AppleEvents
 	// we need, so we have to use AppleScript.
+	WordFootnote* sbNote = nil;
 	if(storyType == WordE160MainTextStory && noteType) {
 		NSString* noteTypeCode;
 		if(noteType == NOTE_FOOTNOTE) {
@@ -326,9 +327,9 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		}
 		
 		// make new footnote/endnote at active document
-		WordFootnote* sbNote = [doc->sbApp sendEvent:'core' id:'crel'
-										  parameters:'kocl', noteTypeCode,
-								'insh', doc->sbDoc, nil];
+		sbNote = [doc->sbApp sendEvent:'core' id:'crel'
+							parameters:'kocl', noteTypeCode, 'insh',
+				  doc->sbDoc, nil];
 		/*script = [NSString stringWithFormat:
 				  @"tell application \"%u\" to make new %@ at active document "
 				  "with properties {text object:text object of selection}",
@@ -338,43 +339,33 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		[scriptObject release];*/
 		
 		// Clear range content
-		WordTextRange *sbNoteTextObject = [sbNote textObject];
+		sbWhere = [sbNote textObject];
 		CHECK_STATUS
-		[sbNoteTextObject setContent:@""];
+		[sbWhere setContent:@""];
 		CHECK_STATUS
 		
 		// Move selection end past new footnote
 		//WordTextRange *sbNoteReference = [sbNote noteReference];
-		CHECK_STATUS
+		//CHECK_STATUS
 		//[sbWhere setSelectionStart:[sbNoteReference endOfContent]];
-		CHECK_STATUS
+		//CHECK_STATUS
 		//[sbWhere setSelectionEnd:[sbNoteReference endOfContent]];
-		CHECK_STATUS
+		//CHECK_STATUS
 		
-		// Insert field
-		
-		// make new field at %@ with properties {field type:field print date}
-		sbField = [doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
-				  w170, 'insh', sbNoteTextObject, 'prdt', wFtP, nil];
-		CHECK_STATUS
-		/*script = [NSString stringWithFormat:
-				  @"tell application \"%u\" to make new field at %@ %d of "
-				  "active document with properties "
-				  "{field type:field print date}",
-				  escapedWordPath, noteTypeString, noteIndex];
-		scriptObject = [[NSAppleScript alloc] initWithSource:script];
-		result = [scriptObject executeAndReturnError:nil];
-		[scriptObject release];*/
-	} else {
-		// make new field at selection with properties
-		// {field type:field print date}
-		sbField = [doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
-				  w170, 'insh', sbWhere, 'prdt', wFtP, nil];
-		CHECK_STATUS
+		sbWhere = [sbNote textObject];
 	}
 	
+	// make new field %@ with properties {field type:field print date}
+	sbField = [doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
+			   w170, 'insh', sbWhere, 'prdt', wFtP, nil];
+	CHECK_STATUS
+	
 	NSInteger entryIndex;
-	if(storyType == WordE160MainTextStory) {
+	if(sbNote) {
+		sbField = [[sbWhere fields] objectAtIndex:0];
+		CHECK_STATUS
+		entryIndex = [sbField entry_index];
+	} else {
 		WordTextRange* tmpRange = [doc->sbDoc
 								   createRangeStart:([sbWhere startOfContent]-1)
 								   end:([sbWhere endOfContent]+1)];
@@ -383,14 +374,13 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		CHECK_STATUS
 		sbField = [[doc->sbDoc fields] objectAtIndex:(entryIndex-1)];
 		CHECK_STATUS
-	} else {
-		sbField = [[sbWhere fields] objectAtIndex:1];
-		CHECK_STATUS
-		entryIndex = [sbField entry_index];
 	}
 	
 	// TODO bookmarks
-	return initField(doc, sbField, noteType, entryIndex, YES, returnValue);
+	statusCode status = initField(doc, sbField, noteType, entryIndex, YES,
+								  returnValue);
+	if(status) return status;
+	return setText(*returnValue, "{Citation}", false);
 }
 
 // Gets fields
