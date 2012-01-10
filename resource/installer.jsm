@@ -45,12 +45,6 @@ var Plugin = new function() {
 		minVersion: "2.1a1.SVN",
 		required: true
 	}, {
-		name: "PythonExt",
-		url: "zotero.org/support/word_processor_plugin_installation",
-		id: "pythonext@mozdev.org",
-		minVersion: "2.5",
-		required: true
-	}, {
 		name: "Zotero OpenOffice Integration",
 		url: "zotero.org/support/word_processor_plugin_installation",
 		id: "zoteroOpenOfficeIntegration@zotero.org",
@@ -60,138 +54,20 @@ var Plugin = new function() {
 	
 	var zoteroPluginInstaller;
 	
-	this.verifyNotCorrupt = function(zpi) {
-		zoteroPluginInstaller = zpi;
-		
-		if(Zotero.isFx4) {
-			var xulAppInfo = Components.classes["@mozilla.org/xre/app-info;1"]
-				.getService(Components.interfaces.nsIXULAppInfo);
-			if(!zpi._addons[2].isCompatibleWith(xulAppInfo.version, xulAppInfo.platformVersion)) {
-				var err = "Zotero MacWord Integration requires PythonExt to run, but the installed "+
-					"version of PythonExt is not compatible with Firefox "+xulAppInfo.version+". "+
-					"Please install the latest available version from zotero.org."
-				zpi.error(err);
-				throw err;
-			}
-		}
-		
-		if(!Zotero.isStandalone) {
-			var pythonExtComponents = zoteroPluginInstaller.getAddonPath("pythonext@mozdev.org");
-			pythonExtComponents.append("components");
-			if(!pythonExtComponents.directoryEntries.hasMoreElements()) {
-				var prompt = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
-					.getService(Components.interfaces.nsIPromptService)
-					.confirm(null, 'Zotero MacWord Integration Error',
-					'Zotero MacWord Integration requires PythonExt to run. While PythonExt is currently '+
-					'installed, it appears to be corrupted or incompletely deleted. As such, the Firefox '+
-					'Add-on manager may not be able to remove or reinstall it. Would you like Zotero '+
-					'Integration to remove it for you and restart Firefox?\n\n'+
-					'Upon restart, you may receive an error '+
-					'stating that PythonExt is not installed, and you will need to reinstall PythonExt '+
-					'before Zotero MacWord Integration will function properly.');
-				if(prompt) {
-					pythonExt.remove(true);
-					restartFirefox();
-				}
-				throw "PythonExt is missing the extension helper; Zotero MacWord Integration will not function."
-			}
-		}
-		
-		if(Zotero.isFx4 && Zotero.oscpu === "Intel Mac OS X 10.5") {
-			var err = "Zotero MacWord Integration is not compatible with Mac OS X 10.5 when run under "+
-				(Zotero.isStandalone ? "Zotero Standalone" : "Firefox 4 or later")+". Please upgrade to "+
-				"Mac OS X 10.6.x, or downgrade to Firefox 3.6.x.";
-			zpi.error(err);
-			throw err;
-		}
-		
-		// see if component is registered
-		if(!Components.classes["@zotero.org/Zotero/integration/application?agent=MacWord2008;1"]) {
-			if(!zpi.failSilently) {
-				if(Zotero.isFx4) {
-					zpi.error("Zotero MacWord Integration is not properly loaded or registered. "+
-						"Please ensure that you have the appropriate version of PythonExt installed "+
-						"for your Firefox version.");
-				} else {
-					var prompt = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
-						.getService(Components.interfaces.nsIPromptService)
-						.confirm(null, 'Zotero MacWord Integration Error',
-						'A necessary component for Zotero MacWord Integration does not appear to '+
-						'be loaded properly. \n\nZotero can attempt to correct this for you. A '+
-						'Firefox restart will be required. Continue?');
-					if(prompt) {
-						clearComponentCache();
-						restartFirefox();
-					}
-				}
-			}
-			throw "The Zotero MacWord Integration Python component is not registered."
-		}
-	}
+	this.verifyNotCorrupt = function(zpi) {}
 	
 	this.install = function(zpi) {
 		zoteroPluginInstaller = zpi;
 		
 		try {
-			var installScript = Components.classes["@zotero.org/Zotero/integration/installer?agent=MacWord;1"].
-				createInstance(Components.interfaces.zoteroIntegrationInstaller);
-			installScript.run(zpi.failSilently);
+			var installer = Components.classes["@zotero.org/Zotero/integration/installer?agent=MacWord;1"].
+				createInstance(Components.interfaces.nsIRunnable);
+			installer.run();
 			zoteroPluginInstaller.success();
 		} catch(e) {
-			var message = "";
-				
-			var consoleService = Components.classes["@mozilla.org/consoleservice;1"]
-				.getService(Components.interfaces.nsIConsoleService);
-			
-			var messages = {};
-			consoleService.getMessageArray(messages, {});
-			messages = messages.value;
-			if(messages && messages.length) {
-				var lastMessage = messages[messages.length-1];
-				try {
-					var error = lastMessage.QueryInterface(Components.interfaces.nsIScriptError);
-				} catch(e2) {
-					if(lastMessage.message && lastMessage.message.substr(0, 12) == "ERROR:xpcom:") {
-						// print just the last line of the message, but re-throw the rest
-						message = lastMessage.message.substr(0, lastMessage.message.length-1);
-						message = "\n"+message.substr(message.lastIndexOf("\n"))
-					}
-				}
-			}
-			
-			if(!message && typeof(e) == "object" && e.message) message = e.message;
-			
-			zoteroPluginInstaller.error();
-			throw message;
-		}
-	}
-
-	function restartFirefox() {	
-		// The following code was borrowed from extensions.js
-		// Notify all windows that an application quit has been requested.
-		var os = Components.classes["@mozilla.org/observer-service;1"]
-						   .getService(Components.interfaces.nsIObserverService);
-		var cancelQuit = Components.classes["@mozilla.org/supports-PRBool;1"]
-								   .createInstance(Components.interfaces.nsISupportsPRBool);
-		os.notifyObservers(cancelQuit, "quit-application-requested", "restart");
-		
-		// Something aborted the quit process.
-		if (cancelQuit.data)
-		return;
-		
-		Components.classes["@mozilla.org/toolkit/app-startup;1"].getService(Components.interfaces.nsIAppStartup)
-				  .quit(Components.interfaces.nsIAppStartup.eRestart | Components.interfaces.nsIAppStartup.eAttemptQuit);
-	}
-
-	function clearComponentCache() {
-		// Delete relevant files
-		var profileDirectory = Components.classes["@mozilla.org/file/directory_service;1"]
-										 .getService(Components.interfaces.nsIProperties)
-										 .get("ProfD", Components.interfaces.nsIFile);
-		for each(var filename in ["compreg.dat", "extensions.cache", "xpti.dat", "extensions.rdf"]) {
-			var file = profileDirectory.clone();
-			file.append(filename);
-			if(file.exists()) file.remove(false);
+			if(e == "ExceptionAlreadyDisplayed") return;
+			zoteroPluginInstaller.error("Installation could not be completed because an error occurred.\n\n"+e);
+			throw e;
 		}
 	}
 }
