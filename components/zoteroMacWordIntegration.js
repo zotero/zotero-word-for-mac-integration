@@ -170,7 +170,12 @@ function checkStatus(status) {
 	if(!status) return;
 	
 	if(status === 1) {
-		var err = f.getError().readString().replace("\u2019", "'", "g");
+		var errPtr = f.getError();
+		if(errPtr.isNull()) {
+			var err = "An unexpected error occurred.";
+		} else {
+			var err = errPtr.readString().replace("\u2019", "'", "g");
+		}
 		f.clearError();
 		throw(err);
 	} else {
@@ -307,8 +312,9 @@ Document.prototype = {
 	},
 	
 	"complete":function() {
-		Zotero.debug("freeing memory");
-		f.freeFields(field_t.ptr.array()(this._fieldPointers), this._fieldPointers.length);
+		if(this._fieldPointers.length) {
+			f.freeFields(field_t.ptr.array()(this._fieldPointers), this._fieldPointers.length);
+		}
 		for(var i=0; i<this._fieldListPointers; i++) f.freeFieldList(this._fieldListPointers[i]);
 		f.freeDocument(this._cDoc);
 	}
