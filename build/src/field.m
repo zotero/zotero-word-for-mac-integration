@@ -146,9 +146,9 @@ statusCode deleteField(field_t* field) {
 		WordFootnote* note = [[field->sbContentRange footnotes]
 							  objectAtIndex:0];
 		if(([[note textObject] startOfContent]
-			== [field->sbCodeRange startOfContent])
+			== [field->sbCodeRange startOfContent]-1)
 			&& ([[note textObject] endOfContent]
-				== [field->sbContentRange endOfContent])) {
+				== [field->sbContentRange endOfContent]+1)) {
 				[note delete];
 				CHECK_STATUS
 				return STATUS_OK;
@@ -158,9 +158,9 @@ statusCode deleteField(field_t* field) {
 		WordEndnote* note = [[field->sbContentRange endnotes]
 							 objectAtIndex:0];
 		if(([[note textObject] startOfContent]
-			== [field->sbCodeRange startOfContent])
+			== [field->sbCodeRange startOfContent]-1)
 		   && ([[note textObject] endOfContent]
-			   == [field->sbContentRange endOfContent])) {
+			   == [field->sbContentRange endOfContent]+1)) {
 			   [note delete];
 			   CHECK_STATUS
 			   return STATUS_OK;
