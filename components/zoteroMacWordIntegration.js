@@ -47,15 +47,13 @@ function init() {
 	field_t = new ctypes.StructType("field_t", [
 		{ "code":ctypes.char.ptr },
 		{ "text":ctypes.char.ptr },
-		{ "sbApp":ctypes.voidptr_t },
-		{ "sbField":ctypes.voidptr_t },
-		{ "sbDoc":ctypes.voidptr_t },
-		{ "sbCodeRange":ctypes.voidptr_t },
-		{ "sbContentRange":ctypes.voidptr_t },
 		{ "noteType":ctypes.unsigned_short },
 		{ "entryIndex":ctypes.long },
-		{ "textLocation":ctypes.long },
-		{ "noteLocation":ctypes.long }
+		{ "bookmarkName":ctypes.char.ptr },
+		{ "sbField":ctypes.voidptr_t },
+		{ "sbBookmark":ctypes.voidptr_t }
+		// There's more here, but we will never access it, and we do not create field_t objects
+		// from JavaScript
 	]);
 	
 	fieldListNode_t = new ctypes.StructType("fieldListNode_t");
@@ -127,6 +125,11 @@ function init() {
 			statusCode, document_t.ptr, ctypes.long, ctypes.long, ctypes.unsigned_long,
 			ctypes.unsigned_long, ctypes.long.array(), ctypes.unsigned_long),
 		
+		// statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
+		//				      const char toFieldType[], unsigned short noteType[]);
+		"convert":lib.declare("convert", ctypes.default_abi, statusCode, document_t.ptr,
+			field_t.ptr.ptr, ctypes.unsigned_long, ctypes.char.ptr, ctypes.unsigned_short.ptr),
+		
 		// statusCode cleanup(Document *doc);
 		"cleanup":lib.declare("cleanup", ctypes.default_abi, statusCode, document_t.ptr),
 		
@@ -160,7 +163,7 @@ function init() {
 			field_t.ptr, ctypes.unsigned_long.ptr),
 		
 		// statusCode install(const char templatePath[]);
-		"install":lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr)
+		"install":lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr),
 	};
 	
 	fieldPtr = new ctypes.PointerType(field_t);
@@ -226,7 +229,7 @@ Application.prototype = {
  * See zoteroIntegration.idl
  */
 var Document = function(cDoc) {
-	this._cDoc = cDoc;
+	this._document_t = cDoc;
 	this._fieldPointers = [];
 	this._fieldListPointers = [];
 	this.wrappedJSObject = this;
@@ -242,18 +245,18 @@ Document.prototype = {
 	},
 	
 	"activate":function() {
-		checkStatus(f.activate(this._cDoc));
+		checkStatus(f.activate(this._document_t));
 	},
 	
 	"canInsertField":function(fieldType) {
 		var returnValue = new ctypes.bool();
-		checkStatus(f.canInsertField(this._cDoc, fieldType, returnValue.address()));
+		checkStatus(f.canInsertField(this._document_t, fieldType, returnValue.address()));
 		return returnValue.value;
 	},
 	
 	"cursorInField":function(fieldType) {
 		var returnValue = new field_t.ptr();
-		checkStatus(f.cursorInField(this._cDoc, fieldType, returnValue.address()));
+		checkStatus(f.cursorInField(this._document_t, fieldType, returnValue.address()));
 		
 		if(returnValue.isNull()) {
 			return null;
@@ -265,24 +268,24 @@ Document.prototype = {
 	
 	"getDocumentData":function() {
 		var returnValue = new ctypes.char.ptr();
-		checkStatus(f.getDocumentData(this._cDoc, returnValue.address()));
+		checkStatus(f.getDocumentData(this._document_t, returnValue.address()));
 		return returnValue.readString();
 	},
 	
 	"setDocumentData":function(documentData) {
-		checkStatus(f.setDocumentData(this._cDoc, documentData));
+		checkStatus(f.setDocumentData(this._document_t, documentData));
 	},
 	
 	"insertField":function(fieldType, noteType) {
 		var returnValue = new field_t.ptr();
-		checkStatus(f.insertField(this._cDoc, fieldType, noteType, returnValue.address()));
+		checkStatus(f.insertField(this._document_t, fieldType, noteType, returnValue.address()));
 		this._fieldPointers.push(returnValue);
 		return new Field(returnValue);
 	},
 	
 	"getFields":function(fieldType) {
 		var fieldListNode = new fieldListNode_t.ptr();
-		checkStatus(f.getFields(this._cDoc, fieldType, fieldListNode.address()));
+		checkStatus(f.getFields(this._document_t, fieldType, fieldListNode.address()));
 		
 		var fieldPointers = []
 		var currentNode = fieldListNode;
@@ -303,12 +306,22 @@ Document.prototype = {
 	
 	"setBibliographyStyle":function(firstLineIndent, bodyIndent, lineSpacing, entrySpacing,
 			tabStops) {
-		checkStatus(f.setBibliographyStyle(this._cDoc, firstLineIndent, bodyIndent, lineSpacing,
+		checkStatus(f.setBibliographyStyle(this._document_t, firstLineIndent, bodyIndent, lineSpacing,
 			entrySpacing, ctypes.long.array(tabStops.length)(tabStops), tabStops.length));
 	},
 	
+	"convert":function(fieldEnumerator, toFieldType, toNoteTypes, nFields) {
+		var fieldPointers = [];
+		while(fieldEnumerator.hasMoreElements()) {
+			fieldPointers.push(fieldEnumerator.getNext().wrappedJSObject._field_t);
+		}
+		checkStatus(f.convert(this._document_t, field_t.ptr.array()(fieldPointers),
+			fieldPointers.length, ctypes.char.array()(toFieldType),
+			ctypes.unsigned_short.array()(toNoteTypes)));
+	},
+	
 	"cleanup":function() {
-		checkStatus(f.cleanup(this._cDoc));
+		checkStatus(f.cleanup(this._document_t));
 	},
 	
 	"complete":function() {
@@ -316,7 +329,7 @@ Document.prototype = {
 			f.freeFields(field_t.ptr.array()(this._fieldPointers), this._fieldPointers.length);
 		}
 		for(var i=0; i<this._fieldListPointers; i++) f.freeFieldList(this._fieldListPointers[i]);
-		f.freeDocument(this._cDoc);
+		f.freeDocument(this._document_t);
 	}
 };
 
@@ -344,6 +357,7 @@ FieldEnumerator.prototype = {
  */
 var Field = function(field_t) {
 	this._field_t = field_t;
+	this._isBookmark = field_t.contents.addressOfField("sbField").contents.isNull();
 	this.wrappedJSObject = this;
 };
 Field.prototype = {
@@ -381,13 +395,25 @@ Field.prototype = {
 	},
 	
 	"equals":function(field) {
-		var a = this._field_t.contents,
-			b = field.wrappedJSObject._field_t.contents;
-		// This is stupid.
-		return a.addressOfField("noteType").contents.toString()
-			== b.addressOfField("noteType").contents.toString()
-			&& a.addressOfField("entryIndex").contents.toString()
-			== b.addressOfField("entryIndex").contents.toString();
+		// Obviously, a field cannot be equal to a bookmark
+		if(this._isBookmark !== field.wrappedJSObject._isBookmark) return false;
+		
+		if(this._isBookmark) {
+			Zotero.debug("IS BOOKMARK");
+			Zotero.debug(this._field_t.contents.addressOfField("bookmarkName").contents.readString())
+			Zotero.debug(field.wrappedJSObject._field_t.contents.addressOfField("bookmarkName").contents.readString())
+			return this._field_t.contents.addressOfField("bookmarkName").contents.readString() ===
+				field.wrappedJSObject._field_t.contents.addressOfField("bookmarkName").contents.readString();
+		} else {
+			Zotero.debug("IS FIELD");
+			var a = this._field_t.contents,
+				b = field.wrappedJSObject._field_t.contents;
+			// This is stupid.
+			return a.addressOfField("noteType").contents.toString()
+				=== b.addressOfField("noteType").contents.toString()
+				&& a.addressOfField("entryIndex").contents.toString()
+				=== b.addressOfField("entryIndex").contents.toString();
+		}
 	},
 	
 	"getNoteIndex":function(field) {

@@ -161,12 +161,14 @@ NSMutableString* escapeString(const char string[]) {
 
 // Generates a random string.
 NSString* generateRandomString(NSUInteger length) {
-	NSString *alphabet = @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXZY"
-	"0123456789";
-	NSUInteger n = [alphabet length];
-	NSMutableString *randomString = [NSMutableString stringWithCapacity:length];
+	char *alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXZY01234"
+		"56789";
+	size_t n = strlen(alphabet);
+	char *randomString = (char*) malloc(sizeof(char) * (length+1));
 	for(NSUInteger i=0; i<length; i++) {
-		[randomString appendFormat:@"%U", [alphabet characterAtIndex:rand()%n]]; 
+		randomString[i] = alphabet[arc4random() % n]; 
 	}
-	return randomString;
+	randomString[length] = 0;
+	
+	return [NSString stringWithUTF8String:randomString];
 }

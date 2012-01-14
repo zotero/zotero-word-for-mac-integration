@@ -26,25 +26,36 @@
 #define zoteroMacWordIntegration_h
 
 #include "Word.h"
-#define STATUS_OK 0
-#define STATUS_EXCEPTION 1
-#define STATUS_EXCEPTION_ALREADY_DISPLAYED 2
+enum STATUS {
+	STATUS_OK = 0,
+	STATUS_EXCEPTION = 1,
+	STATUS_EXCEPTION_ALREADY_DISPLAYED = 2
+};
 
-#define DIALOG_ICON_STOP 0
-#define DIALOG_ICON_NOTICE 1
-#define DIALOG_ICON_CAUTION 2
-#define DIALOG_BUTTONS_OK 0
-#define DIALOG_BUTTONS_OK_CANCEL 1
-#define DIALOG_BUTTONS_YES_NO 2
-#define DIALOG_BUTTONS_YES_NO_CANCEL 3
-#define NOTE_FOOTNOTE 1
-#define NOTE_ENDNOTE 2
+enum DIALOG_ICON {
+	DIALOG_ICON_STOP = 0,
+	DIALOG_ICON_NOTICE = 1,
+	DIALOG_ICON_CAUTION = 2
+};
+
+enum DIALOG_BUTTONS {
+	DIALOG_BUTTONS_OK = 0,
+	DIALOG_BUTTONS_OK_CANCEL = 1,
+	DIALOG_BUTTONS_YES_NO = 2,
+	DIALOG_BUTTONS_YES_NO_CANCEL = 3
+};
+
+enum NOTE_TYPE {
+	NOTE_FOOTNOTE = 1,
+	NOTE_ENDNOTE = 2
+};
 
 #define MAX_PROPERTY_LENGTH 255
-#define FIELD_PLACEHOLDER @"{Citation}"
+#define FIELD_PLACEHOLDER "{Citation}"
 #define BOOKMARK_REFERENCE_PROPERTY @"ZOTERO_BREF"
 #define RTF_TEMP_BOOKMARK "ZOTERO_TEMP_BOOKMARK"
-#define PREFS_PROPERTY "ZOTERO_PREF"
+#define PREFS_PROPERTY @"ZOTERO_PREF"
+#define BOOKMARK_PREFIX = "ZOTERO_"
 
 #define CHECK_STATUS \
 if(errorHasOccurred()) {\
@@ -82,18 +93,7 @@ typedef struct Field {
 	char* code;
 	
 	// The field text
-	char *text;
-	
-	// Self-evident
-	WordApplication* sbApp;
-	WordField* sbField;
-	WordDocument* sbDoc;
-	
-	// The range corresponding to the field code, for a field
-	WordTextRange* sbCodeRange;
-	
-	// The range corresponding to the content of a field
-	WordTextRange *sbContentRange;
+	char* text;
 	
 	// The note type (0, NOTE_FOOTNOTE, or NOTE_ENDNOTE)
 	unsigned short noteType;
@@ -102,20 +102,48 @@ typedef struct Field {
 	// or endnotes)
 	long entryIndex;
 	
+	// The bookmark name
+	char* bookmarkName;
+	
+	// Only one of these will be set
+	WordField* sbField;
+	WordBookmark* sbBookmark;
+	
+	// The bookmark name, as an NSString
+	NSString* bookmarkNameNS;
+	
+	// The corresponding document
+	document_t* doc;
+	
+	// The range corresponding to the field code, for a field
+	WordTextRange* sbCodeRange;
+	
+	// The range corresponding to the content of a field
+	WordTextRange *sbContentRange;
+	
 	// The location of this field relative to the start of the main body text.
 	// For a footnote, this would be the position of the superscripted note
 	// reference.
-	long textLocation;
+	NSInteger textLocation;
 	
 	// The location of this field relative to the start of the footnote/endnote
 	// story.
-	long noteLocation;
+	NSInteger noteLocation;
 } field_t;
 
 typedef struct FieldListNode {
 	field_t* field;
 	struct FieldListNode* next;
 } fieldListNode_t;
+
+typedef struct FieldConversion {
+	// Only one of these will be defined
+	NSInteger fieldEntryIndex;
+	field_t* bookmark;
+	
+	short fromNoteType;
+	short toNoteType;
+} fieldConversion_t;
 
 typedef unsigned short statusCode;
 
@@ -153,6 +181,7 @@ statusCode displayAlert(char const dialogText[], unsigned short icon,
 @end
 
 void freeDocument(document_t *doc);
+void freeFieldList(fieldListNode_t *fieldList);
 statusCode activate(document_t *doc);
 statusCode canInsertField(document_t *doc, const char fieldType[],
 						  bool* returnValue);
@@ -164,7 +193,8 @@ statusCode insertField(document_t *doc, const char fieldType[],
 					   unsigned short noteType, field_t **returnValue);
 statusCode getFields(document_t *doc, const char fieldType[],
 					 fieldListNode_t** returnNode);
-void freeFieldList(fieldListNode_t *fieldList);
+statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
+				   const char toFieldType[], unsigned short noteType[]);
 statusCode setBibliographyStyle(document_t *doc, long firstLineIndent, 
 								long bodyIndent, unsigned long lineSpacing,
 								unsigned long entrySpacing, long tabStops[],
@@ -172,12 +202,12 @@ statusCode setBibliographyStyle(document_t *doc, long firstLineIndent,
 statusCode cleanup(document_t *doc);
 
 statusCode insertFieldRaw(document_t *doc, const char fieldType[],
-						  unsigned short noteType, NSString* bookmarkName,
-						  field_t **returnValue);
-statusCode getProperty(document_t *doc, const char propertyName[],
-					   char** returnValue);
-statusCode setProperty(document_t *doc, const char propertyName[],
-					   const char propertyValue[]);
+						  unsigned short noteType, WordTextRange *sbWhere,
+						  NSString* bookmarkName, field_t** returnValue);
+statusCode getProperty(document_t *doc, NSString* propertyName,
+					   NSString** returnValue);
+statusCode setProperty(document_t *doc, NSString* propertyName,
+					   NSString* propertyValue);
 statusCode prepareReadFieldCode(document_t *doc);
 
 // field.m
@@ -193,9 +223,11 @@ statusCode getNoteIndex(field_t* field, unsigned long *returnValue);
 statusCode initField(document_t *doc, WordField* sbField, short noteType,
 					 NSInteger entryIndex, BOOL ignoreCode,
 					 field_t **returnValue);
-statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark, BOOL ignoreCode,
+statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark, short noteType,
+						NSString* bookmarkName, BOOL ignoreCode,
 						field_t **returnValue);
 statusCode compareFields(field_t* a, field_t* b, short *returnValue);
+int compareFieldsQsort(void* statusCode, const void* a, const void* b);
 statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 					  BOOL deleteBM);
 statusCode ensureTextLocationSet(field_t* field);
