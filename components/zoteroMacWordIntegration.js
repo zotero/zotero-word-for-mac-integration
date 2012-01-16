@@ -275,13 +275,7 @@ Document.prototype = {
 	"cursorInField":function(fieldType) {
 		var returnValue = new field_t.ptr();
 		checkStatus(f.cursorInField(this._document_t, fieldType, returnValue.address()));
-		
-		if(returnValue.isNull()) {
-			return null;
-		} else {
-			this._fieldPointers.push(returnValue);
-			return new Field(returnValue);
-		}
+		return (returnValue.isNull() ? null : new Field(returnValue));
 	},
 	
 	"getDocumentData":function() {
@@ -297,7 +291,6 @@ Document.prototype = {
 	"insertField":function(fieldType, noteType) {
 		var returnValue = new field_t.ptr();
 		checkStatus(f.insertField(this._document_t, fieldType, noteType, returnValue.address()));
-		this._fieldPointers.push(returnValue);
 		return new Field(returnValue);
 	},
 	

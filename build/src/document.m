@@ -169,7 +169,7 @@ statusCode canInsertField(document_t *doc, const char fieldType[],
 				   && (position == WordE160FootnotesStory
 					   || position == WordE160EndnotesStory))
 					   || position == WordE160MainTextStory;
-	RETURN_STATUS_LOCKED(doc, STATUS_EXCEPTION_ALREADY_DISPLAYED)
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
 }
 
 // Determines whether the cursor is in a field. Returns the a field struct if
