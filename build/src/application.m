@@ -31,6 +31,10 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 					   const char* documentName, document_t **returnValue) {
 	clearError();
 	document_t *doc = (document_t*) malloc(sizeof(document_t));
+	doc->allocatedFieldsStart = NULL;
+	doc->allocatedFieldsEnd = NULL;
+	doc->allocatedFieldListsStart = NULL;
+	doc->allocatedFieldListsEnd = NULL;
 	
 	// Get application by path
 	NSString* wordPathNS = [NSString stringWithUTF8String:wordPath];
@@ -112,6 +116,9 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	size_t pathSize = strlen(wordPath) + 1;
 	doc->wordPath = (char*) malloc(sizeof(char)*pathSize);
 	memcpy(doc->wordPath, wordPath, pathSize);
+	
+	// Initialize lock
+	doc->lock = [[NSRecursiveLock alloc] init];
 	
 	*returnValue = doc;
 	return STATUS_OK;

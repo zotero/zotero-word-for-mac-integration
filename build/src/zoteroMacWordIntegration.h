@@ -63,6 +63,26 @@ if(errorHasOccurred()) {\
 	return STATUS_EXCEPTION;\
 }
 
+#define CHECK_STATUS_LOCKED(x) \
+if(errorHasOccurred()) {\
+	[x->lock unlock];\
+	flagError(__FUNCTION__, __FILE__, __LINE__-1);\
+	return STATUS_EXCEPTION;\
+}
+
+#define ENSURE_OK(x) \
+if(x) return x;
+
+#define ENSURE_OK_LOCKED(x, y) \
+if(y) {\
+	[(x)->lock unlock];\
+	return y;\
+}
+
+#define RETURN_STATUS_LOCKED(x, y) \
+{ [(x)->lock unlock];\
+return y; }
+
 #define DIE(x) \
 { throwError(x, __FUNCTION__, __FILE__, __LINE__-1);\
 return STATUS_EXCEPTION; }
@@ -70,13 +90,16 @@ return STATUS_EXCEPTION; }
 #define IGNORING_SB_ERRORS_BEGIN setErrorMonitor(false);
 #define IGNORING_SB_ERRORS_END setErrorMonitor(true);
 
+typedef struct ListNode listNode_t;
+typedef struct FieldListListNode fieldListListNode_t;
+
 typedef struct Document {
 	char* wordPath;
 	bool isWord2004;
-	WordApplication *sbApp;
-	WordDocument *sbDoc;
-	WordView *sbView;
-	SBElementArray *sbProperties;
+	WordApplication* sbApp;
+	WordDocument* sbDoc;
+	WordView* sbView;
+	SBElementArray* sbProperties;
 	
 	BOOL restoreFullScreenMode;
 	BOOL statusFullScreenMode;
@@ -86,6 +109,13 @@ typedef struct Document {
 	
 	BOOL restoreFormatChanges;
 	BOOL statusFormatChanges;
+	
+	listNode_t* allocatedFieldsStart;
+	listNode_t* allocatedFieldsEnd;
+	listNode_t* allocatedFieldListsStart;
+	listNode_t* allocatedFieldListsEnd;
+	
+	NSRecursiveLock* lock;
 } document_t;
 
 typedef struct Field {
@@ -131,19 +161,10 @@ typedef struct Field {
 	NSInteger noteLocation;
 } field_t;
 
-typedef struct FieldListNode {
-	field_t* field;
-	struct FieldListNode* next;
-} fieldListNode_t;
-
-typedef struct FieldConversion {
-	// Only one of these will be defined
-	NSInteger fieldEntryIndex;
-	field_t* bookmark;
-	
-	short fromNoteType;
-	short toNoteType;
-} fieldConversion_t;
+struct ListNode {
+	void* value;
+	struct ListNode* next;
+};
 
 typedef unsigned short statusCode;
 
@@ -175,13 +196,7 @@ statusCode displayAlert(char const dialogText[], unsigned short icon,
 						unsigned short buttons, unsigned short* returnValue);
 
 // document.m
-@interface FieldGetter : NSObject
-- (void)initWithDocument:(document_t)doc;
-- (void)getFields:(id)param;
-@end
-
 void freeDocument(document_t *doc);
-void freeFieldList(fieldListNode_t *fieldList);
 statusCode activate(document_t *doc);
 statusCode canInsertField(document_t *doc, const char fieldType[],
 						  bool* returnValue);
@@ -192,7 +207,10 @@ statusCode setDocumentData(document_t *doc, const char documentData[]);
 statusCode insertField(document_t *doc, const char fieldType[],
 					   unsigned short noteType, field_t **returnValue);
 statusCode getFields(document_t *doc, const char fieldType[],
-					 fieldListNode_t** returnNode);
+					 listNode_t** returnNode);
+statusCode getFieldsAsync(document_t *doc, const char fieldType[],
+						  listNode_t** returnNode,
+						  void (*onProgress)(int progress));
 statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				   const char toFieldType[], unsigned short noteType[]);
 statusCode setBibliographyStyle(document_t *doc, long firstLineIndent, 
@@ -201,17 +219,18 @@ statusCode setBibliographyStyle(document_t *doc, long firstLineIndent,
 								unsigned long tabStopCount);
 statusCode cleanup(document_t *doc);
 
-statusCode insertFieldRaw(document_t *doc, const char fieldType[],
-						  unsigned short noteType, WordTextRange *sbWhere,
-						  NSString* bookmarkName, field_t** returnValue);
 statusCode getProperty(document_t *doc, NSString* propertyName,
 					   NSString** returnValue);
 statusCode setProperty(document_t *doc, NSString* propertyName,
 					   NSString* propertyValue);
 statusCode prepareReadFieldCode(document_t *doc);
+statusCode insertFieldRaw(document_t *doc, const char fieldType[],
+						  unsigned short noteType, WordTextRange *sbWhere,
+						  NSString* bookmarkName, field_t** returnValue);
+void addValueToList(void* value, listNode_t** listStart, listNode_t** listEnd);
 
 // field.m
-void freeFields(field_t* fields[], unsigned long nFields);
+void freeField(field_t* field);
 statusCode deleteField(field_t* field);
 statusCode removeCode(field_t* field);
 statusCode selectField(field_t* field);

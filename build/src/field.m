@@ -109,6 +109,10 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 		[field->sbCodeRange retain];
 		[field->sbContentRange retain];
 		
+		// Add field to field list for document
+		addValueToList(field, &(doc->allocatedFieldsStart),
+					   &(doc->allocatedFieldsEnd));
+		
 		*returnValue = field;
 		return STATUS_OK;
 	}
@@ -206,6 +210,10 @@ statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark,
 		[field->sbCodeRange retain];
 		[field->sbContentRange retain];
 		
+		// Add field to field list for document
+		addValueToList(field, &(doc->allocatedFieldsStart),
+					   &(doc->allocatedFieldsEnd));
+		
 		*returnValue = field;
 		return STATUS_OK;
 	}
@@ -214,21 +222,17 @@ statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark,
 	return STATUS_OK;
 }
 
-// Frees a field struct. Does not alter the underlying field.
-void freeFields(field_t* fields[], unsigned long nFields) {
-	for(unsigned long i=0; i<nFields; i++) {
-		field_t* field = fields[i];
-		
-		if(field->text) free(field->text);
-		if(field->code) free(field->code);
-		if(field->bookmarkName) free(field->bookmarkName);
-		[field->bookmarkNameNS release];
-		[field->sbBookmark release];
-		[field->sbField release];
-		[field->sbCodeRange release];
-		[field->sbContentRange release];
-		free(field);
-	}
+// Frees a field struct. This does not free the corresponding field list node.
+void freeField(field_t* field) {
+	if(field->text) free(field->text);
+	if(field->code) free(field->code);
+	if(field->bookmarkName) free(field->bookmarkName);
+	[field->bookmarkNameNS release];
+	[field->sbBookmark release];
+	[field->sbField release];
+	[field->sbCodeRange release];
+	[field->sbContentRange release];
+	free(field);
 }
 
 // Deletes this field
@@ -276,7 +280,10 @@ statusCode removeCode(field_t* field) {
 	if(field->sbBookmark) {
 		[field->sbBookmark delete];
 	} else {
+		[(field->doc)->lock lock];
 		[(field->doc)->sbApp unlink:field->sbField];
+		CHECK_STATUS_LOCKED(field->doc)
+		[(field->doc)->lock unlock];
 	}
 	CHECK_STATUS
 	return STATUS_OK;
@@ -299,6 +306,8 @@ statusCode setText(field_t* field, const char string[], bool isRich) {
 statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 					  BOOL deleteBM) {
 	if(isRich) {
+		[(field->doc)->lock lock];
+		
 		IGNORING_SB_ERRORS_BEGIN
 		// Make sure temp bookmark is gone
 		[[[(field->doc)->sbDoc bookmarks] objectWithName:@ RTF_TEMP_BOOKMARK]
@@ -322,15 +331,15 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 											   @ RTF_TEMP_BOOKMARK, NULL);
 			if(status) return status;
 			[field->sbBookmark delete];
-			CHECK_STATUS
+			CHECK_STATUS_LOCKED(field->doc)
 			tempBookmark = [[(field->doc)->sbDoc bookmarks]
 							objectWithName:@ RTF_TEMP_BOOKMARK];
-			CHECK_STATUS
+			CHECK_STATUS_LOCKED(field->doc)
 			
 			// Check if cursor is at end of citation
 			selectionAtEnd = [[(field->doc)->sbApp selection] selectionEnd]
 			== [field->sbCodeRange endOfContent];
-			CHECK_STATUS;
+			CHECK_STATUS_LOCKED(field->doc)
 			
 			// We are going to insert bookmark with the proper name
 			bookmarkName = field->bookmarkName;
@@ -340,7 +349,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 			
 			// Clear content range
 			[field->sbContentRange setContent:@""];
-			CHECK_STATUS
+			CHECK_STATUS_LOCKED(field->doc)
 		}
 		
 		// Write RTF to a file
@@ -355,14 +364,13 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		
 		// Insert file
 		NSString* temporaryFilePath = getTemporaryFilePath();
-		NSLog(@"%@", temporaryFilePath);
 		[(field->doc)->sbApp insertFileAt:field->sbContentRange
 								 fileName:posixPathToHFSPath(temporaryFilePath)
 								fileRange:[NSString
 										   stringWithUTF8String:bookmarkName]
 					   confirmConversions:NO
 									 link:NO];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(field->doc)
 		
 		if(field->sbBookmark) {
 			// Delete temporary bookmark text
@@ -395,33 +403,44 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		if(selectionAtEnd) {
 			[[(field->doc)->sbApp selection] setSelectionStart:
 			 [field->sbCodeRange endOfContent]];
+			CHECK_STATUS_LOCKED(field->doc)
 			[[[(field->doc)->sbApp selection] fontObject] reset];
+			CHECK_STATUS_LOCKED(field->doc)
 		}
+		
+		[(field->doc)->lock unlock];
 	} else {
 		if(field->sbBookmark) {
+			[(field->doc)->lock lock];
 			// Find a reference point in the appropriate story
 			WordTextRange* referenceRange;
 			if(field->noteType == NOTE_FOOTNOTE) {
 				referenceRange = [[[(field->doc)->sbDoc footnotes] objectAtIndex:
 								   [[[field->sbContentRange footnotes]
 									 objectAtIndex:0] entry_index]-1] textObject];
+				CHECK_STATUS_LOCKED(field->doc)
 			} else if(field->noteType == NOTE_ENDNOTE) {
 				referenceRange = [[[(field->doc)->sbDoc endnotes] objectAtIndex:
 								   [[[field->sbContentRange endnotes]
 									 objectAtIndex:0] entry_index]-1] textObject];
+				CHECK_STATUS_LOCKED(field->doc)
 			} else {
 				referenceRange = [(field->doc)->sbDoc textObject];
+				CHECK_STATUS_LOCKED(field->doc)
 			}
 			
 			// Get some data about this bookmark
 			NSInteger oldStart = [field->sbBookmark startOfBookmark];
+			CHECK_STATUS_LOCKED(field->doc)
 			NSInteger oldEnd = [field->sbBookmark endOfBookmark];
+			CHECK_STATUS_LOCKED(field->doc)
 			NSInteger oldStoryEnd = [referenceRange endOfContent];
+			CHECK_STATUS_LOCKED(field->doc)
 			
 			// Set text (deletes bookmark)
 			[field->sbContentRange
 			 setContent:[NSString stringWithUTF8String:string]];
-			CHECK_STATUS
+			CHECK_STATUS_LOCKED(field->doc)
 			
 			// Regenerate bookmark (an empty bookmark wouldn't have gotten
 			// erased)
@@ -432,8 +451,12 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 			
 			// Move around text
 			[field->sbBookmark setStartOfBookmark:oldStart];
+			CHECK_STATUS_LOCKED(field->doc)
 			[field->sbBookmark setEndOfBookmark:
 			 (oldEnd+[referenceRange endOfContent]-oldStoryEnd)];
+			CHECK_STATUS_LOCKED(field->doc)
+			
+			[(field->doc)->lock unlock];
 		} else {
 			[field->sbContentRange
 			 setContent:[NSString stringWithUTF8String:string]];
@@ -458,10 +481,14 @@ statusCode getText(field_t* field, char** returnValue) {
 // Sets the field code
 statusCode setCode(field_t *field, const char code[]) {
 	if(field->sbBookmark) {
+		[(field->doc)->lock lock];
 		NSString* rawCode = [NSString stringWithFormat:@"%@%@ ",
 							 BOOKMARK_PREFIXES[0],
 							 [NSString stringWithUTF8String:code]];
-		setProperty(field->doc, field->bookmarkNameNS, rawCode);
+		statusCode status = setProperty(field->doc, field->bookmarkNameNS,
+										rawCode);
+		ENSURE_OK_LOCKED(field->doc, status)
+		[(field->doc)->lock unlock];
 	} else {
 		NSString* rawCode = [NSString stringWithFormat:@"%@%@ ",
 							 FIELD_PREFIXES[0],

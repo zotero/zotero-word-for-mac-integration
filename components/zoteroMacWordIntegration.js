@@ -28,7 +28,12 @@ Components.utils.import("resource://gre/modules/ctypes.jsm");
 var Zotero = Components.classes["@zotero.org/Zotero;1"]
 			.getService(Components.interfaces.nsISupports)
 			.wrappedJSObject;
-var field_t, document_t, fieldListNode_t, lib, libPath, f, fieldPtr;
+var field_t, document_t, fieldListNode_t, progressFunction_t, lib, libPath, f, fieldPtr;
+var dataInUse = [];
+
+/**
+ * Loads libZoteroMacWordIntegration.dylib and initializes js-ctypes functions
+ */
 function init() {
 	if(lib) return;
 	var ios = Components.classes["@mozilla.org/network/io-service;1"]  
@@ -61,6 +66,9 @@ function init() {
 		{ "field":field_t.ptr },
 		{ "next":fieldListNode_t.ptr }
 	]);
+	
+	progressFunction_t = new ctypes.FunctionType(ctypes.default_abi, ctypes.void_t,
+		[ctypes.int]).ptr;
 	
 	var statusCode = ctypes.unsigned_short;
 	f = {
@@ -113,9 +121,11 @@ function init() {
 		"getFields":lib.declare("getFields", ctypes.default_abi, statusCode, document_t.ptr,
 			ctypes.char.ptr, fieldListNode_t.ptr.ptr),
 		
-		// void freeFieldList(fieldListNode_t *fieldList);
-		"freeFieldList":lib.declare("freeFieldList", ctypes.default_abi, statusCode,
-			fieldListNode_t.ptr),
+		// statusCode getFieldsAsync(document_t *doc, const char fieldType[],
+		// 						     void (*onProgress)(int progress),
+		// 						     fieldListNode_t** returnNode);
+		"getFieldsAsync":lib.declare("getFieldsAsync", ctypes.default_abi, statusCode,
+			document_t.ptr, ctypes.char.ptr, fieldListNode_t.ptr.ptr, progressFunction_t),
 		
 		// statusCode setBibliographyStyle(Document *doc, long firstLineIndent, 
 		//								   long bodyIndent, unsigned long lineSpacing,
@@ -132,10 +142,6 @@ function init() {
 		
 		// statusCode cleanup(Document *doc);
 		"cleanup":lib.declare("cleanup", ctypes.default_abi, statusCode, document_t.ptr),
-		
-		// void freeFields(field_t* fields[], unsigned long nFields);
-		"freeFields":lib.declare("freeFields", ctypes.default_abi, statusCode, field_t.ptr.ptr,
-			ctypes.unsigned_long),
 		
 		// statusCode deleteField(Field* field);
 		"deleteField":lib.declare("deleteField", ctypes.default_abi, statusCode, field_t.ptr),
@@ -169,23 +175,37 @@ function init() {
 	fieldPtr = new ctypes.PointerType(field_t);
 }
 
+/**
+ * Gets the last error that took place in C code.
+ */
+function getLastError() {
+	var errPtr = f.getError();
+	if(errPtr.isNull()) {
+		var err = "An unexpected error occurred.";
+	} else {
+		var err = errPtr.readString().replace("\u2019", "'", "g");
+	}
+	f.clearError();
+	return err;
+}
+
+/**
+ * Checks the return status of a function to verify that no error occurred.
+ * @param {Integer} status The return status code of a C function
+ */
 function checkStatus(status) {
 	if(!status) return;
 	
 	if(status === 1) {
-		var errPtr = f.getError();
-		if(errPtr.isNull()) {
-			var err = "An unexpected error occurred.";
-		} else {
-			var err = errPtr.readString().replace("\u2019", "'", "g");
-		}
-		f.clearError();
-		throw(err);
+		throw(getLastError);
 	} else {
 		throw "ExceptionAlreadyDisplayed";
 	}
 }
 
+/**
+ * Handles installation of Zotero Word for Mac Integration scripts and template file.
+ */
 var Installer = function() {
 	init();
 };
@@ -230,8 +250,6 @@ Application.prototype = {
  */
 var Document = function(cDoc) {
 	this._document_t = cDoc;
-	this._fieldPointers = [];
-	this._fieldListPointers = [];
 	this.wrappedJSObject = this;
 };
 Document.prototype = {
@@ -286,22 +304,29 @@ Document.prototype = {
 	"getFields":function(fieldType) {
 		var fieldListNode = new fieldListNode_t.ptr();
 		checkStatus(f.getFields(this._document_t, fieldType, fieldListNode.address()));
-		
-		var fieldPointers = []
-		var currentNode = fieldListNode;
-		while(!currentNode.isNull()) {
-			var contents = currentNode.contents;
-			fieldPointers.push(contents.addressOfField("field").contents);
-			currentNode = contents.addressOfField("next").contents;
-		}
-		this._fieldPointers = this._fieldPointers.concat(fieldPointers);
-		this._fieldListPointers.push(fieldListNode);
-		
-		return new FieldEnumerator(fieldPointers);
+		return new FieldEnumerator(fieldListNode);
 	},
 	
 	"getFieldsAsync":function(fieldType, observer) {
-		observer.observe(this.getFields(fieldType), "fields-available", null);
+		var callback = progressFunction_t(function(progress) {
+			// Remove global reference that prevents GC
+			dataInUse.splice(dataInUse.indexOf(callback), 2);
+			
+			if(progress == -1) {
+				observer.observe(getLastError(), "fields-error", null);
+			} else if(progress == 100) {
+				observer.observe(new FieldEnumerator(fieldListNode), "fields-available", null);
+			} else {
+				observer.observe(progress, "fields-progress", null);
+			}
+		});
+		var fieldListNode = new fieldListNode_t.ptr();
+		
+		// Prevent GC
+		dataInUse = dataInUse.concat([callback, fieldListNode]);
+		
+		checkStatus(f.getFieldsAsync(this._document_t, fieldType, fieldListNode.address(),
+			callback));
 	},
 	
 	"setBibliographyStyle":function(firstLineIndent, bodyIndent, lineSpacing, entrySpacing,
@@ -325,10 +350,6 @@ Document.prototype = {
 	},
 	
 	"complete":function() {
-		if(this._fieldPointers.length) {
-			f.freeFields(field_t.ptr.array()(this._fieldPointers), this._fieldPointers.length);
-		}
-		for(var i=0; i<this._fieldListPointers; i++) f.freeFieldList(this._fieldListPointers[i]);
 		f.freeDocument(this._document_t);
 	}
 };
@@ -336,16 +357,19 @@ Document.prototype = {
 /**
  * An enumerator implementation to handle passing off fields
  */
-var FieldEnumerator = function(fieldPointers) {
-	this._fieldPointers = fieldPointers;
+var FieldEnumerator = function(startNode) {
+	this._currentNode = startNode;
 };
 FieldEnumerator.prototype = {
 	"hasMoreElements":function() {
-		return !!this._fieldPointers.length;
+		return !this._currentNode.isNull();
 	},
 	
 	"getNext":function() {
-		return new Field(this._fieldPointers.shift());
+		var contents = this._currentNode.contents;
+		var fieldPtr = contents.addressOfField("field").contents;
+		this._currentNode = contents.addressOfField("next").contents;
+		return new Field(fieldPtr);
 	},
 	
 	"QueryInterface": XPCOMUtils.generateQI([Components.interfaces.nsISupports,
@@ -399,13 +423,9 @@ Field.prototype = {
 		if(this._isBookmark !== field.wrappedJSObject._isBookmark) return false;
 		
 		if(this._isBookmark) {
-			Zotero.debug("IS BOOKMARK");
-			Zotero.debug(this._field_t.contents.addressOfField("bookmarkName").contents.readString())
-			Zotero.debug(field.wrappedJSObject._field_t.contents.addressOfField("bookmarkName").contents.readString())
 			return this._field_t.contents.addressOfField("bookmarkName").contents.readString() ===
 				field.wrappedJSObject._field_t.contents.addressOfField("bookmarkName").contents.readString();
 		} else {
-			Zotero.debug("IS FIELD");
 			var a = this._field_t.contents,
 				b = field.wrappedJSObject._field_t.contents;
 			// This is stupid.

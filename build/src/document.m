@@ -24,32 +24,98 @@
 
 #include "zoteroMacWordIntegration.h"
 
-// This object is used to asynchronously get fields
-//@implementation FieldGetter
-//- (void)getFields:(id)param{}
-//@end
-
+// Prototypes for file-local objects and functions
+void freeFieldList(listNode_t* fieldList, bool freeFields);
 statusCode getFieldCollections(document_t *doc, NSArray** fieldCollections);
 statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 					unsigned short noteType,
 					WordFootnote **returnValue);
+@interface FieldGetter : NSObject {
+	document_t* document;
+	char* fieldType;
+	void (*onProgress)(int progress);
+	listNode_t** returnNode;
+}
+
+- (FieldGetter*) initWithDocument:(document_t*)aDocument
+						fieldType:(char*)aFieldType
+					   onProgress:(void (*)(int progress))aOnProgress
+					   returnNode:(listNode_t**)aReturnNode;
+- (void) getFields;
+- (void) progress:(NSNumber*)progressValue;
+@end
+
+// This object handles acquiring fields on a separate thread
+@implementation FieldGetter
+
+- (FieldGetter*) initWithDocument:(document_t*)aDocument
+						fieldType:(char*)aFieldType
+					   onProgress:(void (*)(int progress))aOnProgress
+					   returnNode:(listNode_t**)aReturnNode {
+	document = aDocument;
+	fieldType = aFieldType;
+	onProgress = aOnProgress;
+	returnNode = aReturnNode;
+	return self;
+}
+
+// Gets fields. Call this from off the main thread.
+- (void) getFields {
+	NSNumber* progressValue;
+	statusCode status = getFields(document, fieldType, returnNode);
+	if(status) {
+		progressValue = [NSNumber numberWithInt:-1];
+	} else {
+		progressValue = [NSNumber numberWithInt:100];
+	}
+	
+	[self performSelectorOnMainThread:@selector(progress:)
+						   withObject:progressValue waitUntilDone:NO];
+}
+
+// Dispatches the progress handler, which is a function pointer to a JavaScript
+// function.
+- (void) progress:(NSNumber*)progressValue {
+	(*onProgress)([progressValue intValue]);
+}
+@end
 
 // Frees a document struct. This 
 void freeDocument(document_t* doc) {
+	[doc->lock lock];
+	
+	// Free allocated fields
+	freeFieldList(doc->allocatedFieldsStart, true);
+	
+	// Free allocated field lists
+	listNode_t* nextNode = doc->allocatedFieldListsStart;
+	while(nextNode) {
+		listNode_t* currentNode = nextNode;
+		freeFieldList(currentNode->value, false);
+		nextNode = currentNode->next;
+		free(currentNode);
+	}
+	
+	// Free document
 	[doc->sbApp release];
 	[doc->sbDoc release];
 	[doc->sbView release];
 	[doc->sbProperties release];
 	free(doc->wordPath);
 	free(doc);
+	
+	[doc->lock unlock];
 }
 
-// Free a field list. This only free the structure, and not the fields contained
-// within it.
-void freeFieldList(fieldListNode_t* fieldList) {
-	fieldListNode_t* nextNode = fieldList;
+// Free a field list. The second parameter determines whether the fields inside
+// the list are freed, or just the list itself.
+void freeFieldList(listNode_t* fieldList, bool freeFields) {
+	listNode_t* nextNode = fieldList;
 	while(nextNode) {
-		fieldListNode_t* currentNode = nextNode;
+		listNode_t* currentNode = nextNode;
+		if(freeFields) {
+			freeField((field_t*) currentNode->value);
+		}
 		nextNode = currentNode->next;
 		free(currentNode);
 	}
@@ -57,80 +123,89 @@ void freeFieldList(fieldListNode_t* fieldList) {
 
 // Activates Word to deal with a document
 statusCode activate(document_t *doc) {
-	[doc->sbApp activate];
-	CHECK_STATUS
+	[doc->lock lock];
 	
-	return STATUS_OK;
+	[doc->sbApp activate];
+	CHECK_STATUS_LOCKED(doc)
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
 }
 
 // Disables Track Changes settings so that we can read field codes
 statusCode prepareReadFieldCode(document_t *doc) {
+	[doc->lock lock];
+	
 	if(doc->statusInsertionsAndDeletions) {
 		[doc->sbView setShowInsertionsAndDeletions:NO];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(doc)
 		doc->statusInsertionsAndDeletions = NO;
 	}
 	
 	if(doc->statusFormatChanges) {
 		[doc->sbView setShowFormatChanges:NO];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(doc)
 		doc->statusFormatChanges = NO;
 	}
 	
-	return STATUS_OK;
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
 }
 
 // Determines whether it is possible to insert a field at the current cursor
 // position
 statusCode canInsertField(document_t *doc, const char fieldType[],
 						  bool* returnCode) {
+	[doc->lock lock];
+	
 	if([doc->sbView viewType] == WordE202WordNoteView) {
 		displayAlert("Zotero cannot insert a citation here because Word does "
 					 "not support inserting fields in Notebook Layout.",
 					 DIALOG_ICON_STOP, DIALOG_BUTTONS_OK, NULL);
-		return STATUS_EXCEPTION_ALREADY_DISPLAYED;
+		RETURN_STATUS_LOCKED(doc, STATUS_EXCEPTION_ALREADY_DISPLAYED)
 	}
-	CHECK_STATUS
+	CHECK_STATUS_LOCKED(doc)
 	
 	WordE160 position = [[doc->sbApp selection] storyType];
-	CHECK_STATUS
+	CHECK_STATUS_LOCKED(doc)
 	*returnCode = (strcmp(fieldType, "Bookmark") != 0
 				   && (position == WordE160FootnotesStory
 					   || position == WordE160EndnotesStory))
-	               || position == WordE160MainTextStory;
-	return STATUS_OK;
+					   || position == WordE160MainTextStory;
+	RETURN_STATUS_LOCKED(doc, STATUS_EXCEPTION_ALREADY_DISPLAYED)
 }
 
 // Determines whether the cursor is in a field. Returns the a field struct if
 // it is, or NULL if it is not.
 statusCode cursorInField(document_t *doc, const char fieldType[],
 						 field_t **returnValue) {
+	[doc->lock lock];
+	
 	WordSelectionObject* sbSelection = [doc->sbApp selection];
-	CHECK_STATUS
+	CHECK_STATUS_LOCKED(doc)
 	
 	if(strcmp(fieldType, "Field") == 0) {
 		SBElementArray* sbFields = [sbSelection fields];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(doc)
 		if([sbFields count]) {
-			return initField(doc, (WordField*) [sbFields objectAtIndex:0], -1,
-							 -1, NO, returnValue);
+			statusCode status = initField(doc, (WordField*) [sbFields
+															objectAtIndex:0],
+										 -1,  -1, NO, returnValue);
+			RETURN_STATUS_LOCKED(doc, status);
 		}
 	
 		sbFields = [[[[sbSelection paragraphs] objectAtIndex:0] textObject]
 				  fields];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(doc)
 		if([sbFields count]) {
 			// Check if fields are in the selection
 			NSInteger selectionStart = [sbSelection selectionStart];
-			CHECK_STATUS
+			CHECK_STATUS_LOCKED(doc)
 			NSInteger selectionEnd = [sbSelection selectionEnd];
-			CHECK_STATUS
+			CHECK_STATUS_LOCKED(doc)
 			for(WordField* sbTestField in sbFields) {
 				NSInteger fieldStart = [[sbTestField resultRange]
-								   startOfContent];
-				CHECK_STATUS
+										startOfContent];
+				CHECK_STATUS_LOCKED(doc)
 				NSInteger fieldEnd = [[sbTestField resultRange] endOfContent];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 				
 				// Check whether selection intersects with the field.
 				if((selectionStart <= fieldStart
@@ -142,7 +217,8 @@ statusCode cursorInField(document_t *doc, const char fieldType[],
 					   // Field in selection
 					   statusCode status = initField(doc, sbTestField, -1, -1,
 													 NO, returnValue);
-					   if(status || *returnValue) return status;
+					   if(status || *returnValue) RETURN_STATUS_LOCKED(doc,
+																	   status)
 				   } else if(fieldStart > selectionEnd) {
 					   // Cursor already past end of selection
 					   break;
@@ -151,332 +227,74 @@ statusCode cursorInField(document_t *doc, const char fieldType[],
 		}
 	} else if(strcmp(fieldType, "Bookmark") == 0) {
 		SBElementArray *sbBookmarks = [sbSelection bookmarks];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(doc)
 		
 		if(![doc->sbDoc isEqual:[NSNull null]]) {
 			for(WordBookmark* sbBookmark in sbBookmarks) {
 				statusCode status = initBookmark(doc, sbBookmark, -1, nil, NO,
 												 returnValue);
-				if(status || *returnValue) return status;
+				if(status || *returnValue) RETURN_STATUS_LOCKED(doc, status);
 			}
-			CHECK_STATUS
+			CHECK_STATUS_LOCKED(doc)
 		}
 	}
 	
 	*returnValue = NULL;
-	return STATUS_OK;
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
 }
 
 // Gets document data
 statusCode getDocumentData(document_t *doc, char **returnValue) {
+	[doc->lock lock];
+	
 	NSString* returnString;
 	statusCode status = getProperty(doc, PREFS_PROPERTY, &returnString);
-	if(status) return status;
+	ENSURE_OK_LOCKED(doc, status)
 	*returnValue = copyNSString(returnString);
 	
-	return STATUS_OK;
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
 }
 
 // Sets document data
 statusCode setDocumentData(document_t *doc, const char documentData[]) {
+	[doc->lock lock];
+	
 	NSString* propertyValue = [NSString stringWithUTF8String:documentData];
-	return setProperty(doc, PREFS_PROPERTY, propertyValue);
-}
-
-// Gets a property from the document. Remember to free the result!
-statusCode getProperty(document_t *doc, NSString* propertyName,
-					   NSString **returnValue) {
-	NSInteger i = 1;
-	NSMutableString* stringComponents = [NSMutableString
-										 stringWithCapacity:512];
-	NSString* propertyValue = nil;
-	do {
-		NSString* currentPropertyName = [NSString stringWithFormat:@"%@_%d",
-										 propertyName, i];
-		IGNORING_SB_ERRORS_BEGIN
-		WordCustomDocumentProperty* property = [doc->sbProperties
-												objectWithName:
-												currentPropertyName];
-		propertyValue = [property value];
-		IGNORING_SB_ERRORS_END
-		if(propertyValue) {
-			[stringComponents appendString:propertyValue];
-			i++;
-		}
-	} while(propertyValue);
-	*returnValue = stringComponents;
-	
-	return STATUS_OK;
-}
-
-// Stores a property in the document.
-statusCode setProperty(document_t *doc, NSString* propertyName,
-					   NSString* propertyValue) {
-	NSUInteger propertyValueLength = [propertyValue length];
-	NSUInteger numberOfProperties = ceil(((float) propertyValueLength)
-										 /MAX_PROPERTY_LENGTH);
-	
-	// Set fields with value
-	for(NSUInteger i=0; i<numberOfProperties; i++) {
-		NSString *currentPropertyName = [NSString stringWithFormat:@"%@_%d",
-										 propertyName, i+1];
-		
-		NSString *currentPropertyValue;
-		if(i == numberOfProperties-1) {
-			currentPropertyValue = [propertyValue substringFromIndex:
-									i*MAX_PROPERTY_LENGTH];
-		} else {
-			currentPropertyValue = [propertyValue  substringWithRange:
-									NSMakeRange(i*MAX_PROPERTY_LENGTH,
-												MAX_PROPERTY_LENGTH)];
-		}
-		
-		WordCustomDocumentProperty* property = [doc->sbProperties
-												objectWithName:
-												currentPropertyName];
-		[property setValue:currentPropertyValue];
-		
-		if(errorHasOccurred()) {
-			clearError();
-			
-			// make new custom document property at active document with
-			// properties {name:currentPropertyName, value:currentPropertyValue}
-			NSAppleEventDescriptor *rd = [NSAppleEventDescriptor
-										  recordDescriptor];
-			[rd setDescriptor:[NSAppleEventDescriptor
-							   descriptorWithString:currentPropertyName]
-			 forKeyword:'pnam'];
-			[rd setDescriptor:[NSAppleEventDescriptor
-							   descriptorWithString:currentPropertyValue]
-			 forKeyword:'DPVu'];
-			[doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl', @"mCDP",
-			 'insh', doc->sbDoc, 'prdt', rd, nil];
-			CHECK_STATUS
-		}
-	}
-	
-	// Delete extra fields
-	NSUInteger i = numberOfProperties+1;
-	while(true) {
-		NSString *currentPropertyName = [NSString stringWithFormat:@"%s_%d",
-										 propertyName, i];
-		
-		IGNORING_SB_ERRORS_BEGIN
-		WordCustomDocumentProperty* property = [doc->sbProperties
-												objectWithName:
-												currentPropertyName];
-		IGNORING_SB_ERRORS_END
-		
-		if(property && [property exists]) {
-			[property delete];
-			if(errorHasOccurred()) {
-				clearError();
-				break;
-			}
-		} else {
-			break;
-		}
-	}
-	
-	return STATUS_OK;
+	RETURN_STATUS_LOCKED(doc, (setProperty(doc, PREFS_PROPERTY, propertyValue)));
 }
 
 // Makes a field at the selection.
 statusCode insertField(document_t *doc, const char fieldType[],
 					   unsigned short noteType, field_t **returnValue) {
+	[doc->lock lock];
+	
 	WordTextRange* sbWhere = [[doc->sbApp selection] textObject];
-	CHECK_STATUS
+	CHECK_STATUS_LOCKED(doc)
 	
 	if(strcmp(fieldType, "Bookmark") == 0 && !noteType) {
 		[[doc->sbApp selection] setContent:@ FIELD_PLACEHOLDER];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(doc)
 	}
 	
 	statusCode status = insertFieldRaw(doc, fieldType, noteType, sbWhere,
 									   nil, returnValue);
 	if(!status) setText(*returnValue, FIELD_PLACEHOLDER, false);
-	return status;
-}
-
-// Makes a field at the specified range. Uses the specified bookmark name for
-// a bookmark.
-statusCode insertFieldRaw(document_t *doc, const char fieldType[],
-						  unsigned short noteType, WordTextRange *sbWhere,
-						  NSString* bookmarkName, field_t** returnValue) {
-	WordE160 storyType = [sbWhere storyType];
-	CHECK_STATUS
-	
-	WordFootnote* sbNote = nil;
-	NSInteger fieldStart;
-	if(noteType) {
-		if(storyType == WordE160MainTextStory) {
-			// Create new note
-			
-			NSString* noteTypeCode;
-			if(noteType == NOTE_FOOTNOTE) {
-				noteTypeCode = @"w156";
-			} else if(noteType == NOTE_ENDNOTE) {
-				noteTypeCode = @"w157";
-			} else {
-				DIE(@"Invalid field type");
-			}
-			
-			// make new footnote/endnote at active document
-			sbNote = [doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
-					  noteTypeCode, 'insh', doc->sbDoc, nil];
-			
-			// Clear range content
-			sbWhere = [sbNote textObject];
-			CHECK_STATUS
-			[sbWhere setContent:@""];
-			CHECK_STATUS
-			
-			// Move selection end past new footnote if necessary
-			WordSelectionObject *sbSelection = [doc->sbApp selection];
-			CHECK_STATUS
-			WordTextRange *sbNoteReference = [sbNote noteReference];
-			CHECK_STATUS
-			if([sbSelection selectionEnd] == [sbNoteReference startOfContent]) {
-				[sbSelection setSelectionStart:[sbNoteReference endOfContent]];
-				CHECK_STATUS
-				[sbSelection setSelectionEnd:[sbNoteReference endOfContent]];
-				CHECK_STATUS
-			}
-			CHECK_STATUS
-			
-			sbWhere = [sbNote textObject];
-		} else if(storyType == WordE160FootnotesStory) {
-			sbNote = [[sbWhere footnotes] objectAtIndex:0];
-		} else if(storyType == WordE160EndnotesStory) {
-			sbNote = [[sbWhere endnotes] objectAtIndex:0];
-		}
-		fieldStart = [sbWhere startOfContent];
-	}
-	
-	if(strcmp(fieldType, "Field") == 0) {
-		// field
-		NSAppleEventDescriptor* w170 = [NSAppleEventDescriptor
-										descriptorWithTypeCode:'w170'];
-		// field type:field print date
-		NSAppleEventDescriptor* wFtP = [NSAppleEventDescriptor
-										recordDescriptor];
-		[wFtP setDescriptor:[NSAppleEventDescriptor
-							 descriptorWithEnumCode:WordE183FieldPrintDate]
-				 forKeyword:'wFtP'];
-		
-		// Create as a print date field, since otherwise there is no way to
-		// add any content to the result range.
-		// make new field at %@ with properties {field type:field print date}
-		WordField* sbField = [doc->sbApp sendEvent:'core' id:'crel'
-										parameters:'kocl',
-				   w170, 'insh', sbWhere, 'prdt', wFtP, nil];
-		CHECK_STATUS
-		
-		// We have to figure out where the field got put, because Word returns
-		// an invalid reference, and Microsoft has not fixed this for 7 years.
-		// If we had access to the underlying event response, it would contain
-		// the entry index, but we don't, so we have to re-find the field.
-		NSInteger entryIndex;
-		if(sbNote) {
-			// Field is within a note. First, see if we can get a valid 
-			// reference easily.
-			BOOL rangeNoLongerWorks = NO;
-			sbField = [[sbWhere fields] objectAtIndex:0];
-			
-			// Range might no longer work
-			rangeNoLongerWorks = errorHasOccurred()
-				|| [sbField isEqual:[NSNull null]];
-			if(!rangeNoLongerWorks) {
-				// It's possible the reference will fail if we try to use it
-				[sbField entry_index];
-				rangeNoLongerWorks = errorHasOccurred()
-					|| [sbField isEqual:[NSNull null]];
-			}
-			
-			if(rangeNoLongerWorks) {
-				clearError();
-				
-				// Loop through fields in note text object until we find this
-				// one
-				SBElementArray* sbNoteFields = [[sbNote textObject] fields];
-				CHECK_STATUS
-				for(WordField* sbNoteField in sbNoteFields) {
-					if([[sbNoteField fieldCode] startOfContent]
-					   == fieldStart+1) {
-						sbField = sbNoteField;
-					}
-					CHECK_STATUS
-				}
-				CHECK_STATUS
-			}
-			
-			entryIndex = [sbField entry_index];
-			CHECK_STATUS
-		} else {
-			// Need to find the field within the document text. Luckily, we know
-			// where we created it.
-			WordTextRange* tmpRange = [doc->sbDoc createRangeStart:
-									   ([sbWhere startOfContent]-1)
-									   end:([sbWhere endOfContent]+1)];
-			CHECK_STATUS
-			entryIndex = [[[tmpRange fields] objectAtIndex:0] entry_index];
-			CHECK_STATUS
-			sbField = [[doc->sbDoc fields] objectAtIndex:(entryIndex-1)];
-			CHECK_STATUS
-		}
-		
-		if(returnValue) {
-			return initField(doc, sbField, noteType, entryIndex, YES,
-							 returnValue);
-		}
-		
-		return STATUS_OK;
-	} else if(strcmp(fieldType, "Bookmark") == 0 ) {
-		NSString* useBookmarkName;
-		if(bookmarkName) {
-			useBookmarkName = bookmarkName;
-		} else {
-			useBookmarkName = [NSString stringWithFormat:@"%@_%@",
-							BOOKMARK_REFERENCE_PROPERTY,
-							generateRandomString(21)];
-		}
-		
-		// bookmark
-		NSAppleEventDescriptor* w110 = [NSAppleEventDescriptor
-										descriptorWithTypeCode:'w110'];
-		// {name:"%@"}
-		NSAppleEventDescriptor* reco = [NSAppleEventDescriptor
-									  recordDescriptor];
-		[reco setDescriptor:[NSAppleEventDescriptor
-						   descriptorWithString:useBookmarkName]
-			   forKeyword:'pnam'];
-		// make new bookmark at %@ with properties {name:%@}
-		WordBookmark* sbBookmark = [doc->sbApp sendEvent:'core' id:'crel'
-										parameters:'kocl',
-							  w110, 'insh', sbWhere, 'prdt', reco, nil];
-		
-		if(returnValue) {
-			return initBookmark(doc, sbBookmark, noteType, useBookmarkName, YES,
-								returnValue);
-		}
-		
-		return STATUS_OK;
-	}
-	
-	DIE(([NSString stringWithFormat:@"Unimplemented field type %s", fieldType]))
+	RETURN_STATUS_LOCKED(doc, status)
 }
 
 // Gets fields
 statusCode getFields(document_t *doc, const char fieldType[],
-					 fieldListNode_t** returnNode) {
-	fieldListNode_t* fieldListStart = NULL;
-	fieldListNode_t* fieldListEnd = NULL;
+					 listNode_t** returnNode) {
+	[doc->lock lock];
+	
+	listNode_t* fieldListStart = NULL;
+	listNode_t* fieldListEnd = NULL;
 	
 	if(strcmp(fieldType, "Field") == 0) {
 		// Get fields in main body, footnotes, and endnotes
 		NSArray* fieldCollections[3];
 		statusCode status = getFieldCollections(doc, fieldCollections);
-		if(status) return status;
+		ENSURE_OK_LOCKED(doc, status)
 		
 		long currentFieldIndices[] = {0, 0, 0};
 		field_t* currentFields[] = {NULL, NULL, NULL};
@@ -500,7 +318,7 @@ statusCode getFields(document_t *doc, const char fieldType[],
 						objectAtIndex:(currentFieldIndices[noteType])], noteType,
 						currentFieldIndices[noteType]+1, NO,
 												  &currentFields[noteType]);
-					if(status) return status;
+					ENSURE_OK_LOCKED(doc, status)
 					currentFieldIndices[noteType]++;
 				}
 			}
@@ -530,7 +348,7 @@ statusCode getFields(document_t *doc, const char fieldType[],
 					statusCode status = compareFields(currentFields[noteTypeA],
 													  currentFields[noteTypeB],
 													  &returnValue);
-					if(status) return status;
+					ENSURE_OK_LOCKED(doc, status)
 					
 					if(returnValue > 0) {
 						isNextField = NO;
@@ -546,17 +364,8 @@ statusCode getFields(document_t *doc, const char fieldType[],
 			
 			if(isNextField) {
 				// Add node to linked list
-				fieldListNode_t* node = (fieldListNode_t*)
-					malloc(sizeof(fieldListNode_t));
-				node->field = currentFields[noteTypeA];
-				node->next = NULL;
-				
-				if(fieldListEnd) {
-					fieldListEnd->next = node;
-					fieldListEnd = node;
-				} else {
-					fieldListStart = fieldListEnd = node;
-				}
+				addValueToList(currentFields[noteTypeA], &fieldListStart,
+							   &fieldListEnd);
 				
 				// Get next node of type
 				currentFields[noteTypeA] = NULL;
@@ -564,11 +373,12 @@ statusCode getFields(document_t *doc, const char fieldType[],
 					  currentFieldIndices[noteTypeA] <
 					  fieldCollectionSizes[noteTypeA]) {
 					
-					statusCode status = initField(doc, [fieldCollections[noteTypeA]
+					statusCode status = initField(doc,
+												  [fieldCollections[noteTypeA]
 						objectAtIndex:(currentFieldIndices[noteTypeA])], noteTypeA,
 						currentFieldIndices[noteTypeA]+1, NO,
 						&currentFields[noteTypeA]);
-					if(status) return status;
+					ENSURE_OK_LOCKED(doc, status)
 					currentFieldIndices[noteTypeA]++;
 				}
 			}
@@ -576,20 +386,20 @@ statusCode getFields(document_t *doc, const char fieldType[],
 	} else if(strcmp(fieldType, "Bookmark") == 0) {
 		[doc->sbView setShowBookmarks:YES];
 		SBElementArray *sbBookmarks = [doc->sbDoc bookmarks];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(doc)
 		// We are going to allocate enough memory for all of the bookmarks to be
 		// fields. This may not end up being the case, but we need arrays and 
 		// not linked lists to be able to use the 
-		field_t** fields = (field_t**) malloc(sizeof(field_t *) * 
+		field_t** fields = (field_t**) malloc(sizeof(field_t*) * 
 											[sbBookmarks count]);
 		unsigned long nFields = 0;
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(doc)
 		
 		// Generate field structures
 		for(WordBookmark* sbBookmark in sbBookmarks) {
 			statusCode status = initBookmark(doc, sbBookmark, -1, nil, NO,
 											 &fields[nFields]);
-			if(status) return status;
+			ENSURE_OK_LOCKED(doc, status)
 			if(fields[nFields]) nFields++;
 		}
 		
@@ -600,33 +410,50 @@ statusCode getFields(document_t *doc, const char fieldType[],
 		
 		// Generate the linked list
 		for(unsigned long i=0; i<nFields; i++) {
-			fieldListNode_t* node = (fieldListNode_t*)
-				malloc(sizeof(fieldListNode_t));
-			node->field = fields[i];
-			node->next = NULL;
-			
-			if(fieldListEnd) {
-				fieldListEnd->next = node;
-				fieldListEnd = node;
-			} else {
-				fieldListStart = fieldListEnd = node;
-			}
+			addValueToList(fields[i], &fieldListStart, &fieldListEnd);
 		}
 	} else {
 		DIE(([NSString stringWithFormat:@"Unknown field type \"%s\"",
 			fieldType]))
 	}
 	
+	if(fieldListStart) addValueToList(fieldListStart,
+									  &(doc->allocatedFieldListsStart),
+									  &(doc->allocatedFieldListsEnd));
+	
 	*returnNode = fieldListStart;
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+}
+
+statusCode getFieldsAsync(document_t *doc, const char fieldType[],
+						  listNode_t** returnNode,
+						  void (*onProgress)(int progress)) {
+	size_t bufferSize = strlen(fieldType)+1;
+	char* fieldTypeCopy = (char*) malloc(bufferSize);
+	memcpy(fieldTypeCopy, fieldType, bufferSize);
+	FieldGetter* fieldGetter = [[FieldGetter alloc]
+								initWithDocument:doc
+								fieldType:fieldTypeCopy
+								onProgress:onProgress
+								returnNode:returnNode];
+	
+	[fieldGetter performSelectorInBackground:@selector(getFields)
+								  withObject:nil];
+	
 	return STATUS_OK;
 }
 
 statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				   const char toFieldType[], unsigned short toNoteTypes[]) {
+	[doc->lock lock];
+	
+	statusCode status = prepareReadFieldCode(doc);
+	ENSURE_OK_LOCKED(doc, status)
+	
 	// Get field collections, keep track of offsets
 	NSArray* fieldCollections[3];
-	statusCode status = getFieldCollections(doc, fieldCollections);
-	if(status) return status;
+	status = getFieldCollections(doc, fieldCollections);
+	ENSURE_OK_LOCKED(doc, status)
 	NSInteger offsets[] = {0, 0, 0};
 	
 	// Make sure text locations are set
@@ -659,10 +486,10 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 			[field->sbContentRange release];
 			
 			field->sbField = [fieldCollections[field->noteType] objectAtIndex:
-					   (field->entryIndex+offsets[field->noteType]-1)];
-			CHECK_STATUS
+							  (field->entryIndex+offsets[field->noteType]-1)];
+			CHECK_STATUS_LOCKED(doc)
 			field->sbContentRange = [field->sbField resultRange];
-			CHECK_STATUS
+			CHECK_STATUS_LOCKED(doc)
 			
 			[field->sbField retain];
 			[field->sbContentRange retain];
@@ -672,10 +499,10 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 		WordFootnote* sbNote;
 		if(field->noteType == NOTE_FOOTNOTE) {
 			sbNote = [[field->sbContentRange footnotes] objectAtIndex:0];
-			CHECK_STATUS;
+			CHECK_STATUS_LOCKED(doc)
 		} else if(field->noteType == NOTE_ENDNOTE) {
 			sbNote = [[field->sbContentRange endnotes] objectAtIndex:0];
-			CHECK_STATUS;
+			CHECK_STATUS_LOCKED(doc)
 		} else {
 			sbNote = nil;
 		}
@@ -698,24 +525,24 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 			NSInteger oldNoteStart;
 			if(field->sbBookmark) {
 				oldNoteStart = [[sbNote textObject] startOfContent];
-				CHECK_STATUS
-				bookmarkStarts = (NSInteger*) malloc(sizeof(NSInteger*)
+				CHECK_STATUS_LOCKED(doc)
+				bookmarkStarts = (NSInteger*) malloc(sizeof(NSInteger)
 													 * nFieldsInNote);
-				bookmarkEnds = (NSInteger*) malloc(sizeof(NSInteger*)
+				bookmarkEnds = (NSInteger*) malloc(sizeof(NSInteger)
 													 * nFieldsInNote);
 				for(unsigned long j=0; j<nFieldsInNote; j++) {
 					bookmarkStarts[j] = [fields[i+j]->sbBookmark
 										 startOfBookmark];
-					CHECK_STATUS
+					CHECK_STATUS_LOCKED(doc)
 					bookmarkEnds[j] = [fields[i+j]->sbBookmark endOfBookmark];
-					CHECK_STATUS
+					CHECK_STATUS_LOCKED(doc)
 				}
 			}
 			
 			// Convert fields and get the mark
 			WordFootnote *sbNewNote;
 			status = noteSwap(doc, sbNote, field->noteType, &sbNewNote);
-			if(status) return status;
+			ENSURE_OK_LOCKED(doc, status)
 			sbNote = sbNewNote;
 			
 			// Find the fields again
@@ -735,41 +562,41 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 					
 					field->sbField = [[[sbNote textObject] fields]
 									  objectAtIndex:0];
-					CHECK_STATUS
+					CHECK_STATUS_LOCKED(doc)
 					field->sbContentRange = [field->sbField resultRange];
-					CHECK_STATUS
+					CHECK_STATUS_LOCKED(doc)
 					NSInteger entryIndex = [field->sbField entry_index];
-					CHECK_STATUS
+					CHECK_STATUS_LOCKED(doc)
 					
 					[field->sbField retain];
 					[field->sbContentRange retain];
 					
 					for(unsigned long j=0; j<nFieldsInNote; j++) {
 						fields[i+j]->entryIndex = entryIndex
-							- (field->entryIndex) - offsets[toNoteType];
-						CHECK_STATUS
+						- (field->entryIndex) - offsets[toNoteType];
+						CHECK_STATUS_LOCKED(doc)
 						fields[i+j]->noteType = toNoteType;
-						CHECK_STATUS
+						CHECK_STATUS_LOCKED(doc)
 					}
 				}
 			} else if(field->sbBookmark) {
 				WordTextRange* sbNoteTextObject = [sbNote textObject];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 				NSInteger startDifference = [sbNoteTextObject startOfContent]
 				- oldNoteStart;
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 				for(unsigned long j=0; j<nFieldsInNote; j++) {
 					fields[i+j]->noteType = toNoteType;
 					status = insertFieldRaw(doc, "Bookmark", 0,
 											sbNoteTextObject,
 											fields[i+j]->bookmarkNameNS, NULL);
-					if(status) return status;
+					ENSURE_OK_LOCKED(doc, status)
 					[fields[i+j]->sbBookmark
 					 setStartOfBookmark:bookmarkStarts[j]+startDifference];
-					CHECK_STATUS
+					CHECK_STATUS_LOCKED(doc)
 					[fields[i+j]->sbBookmark
 					 setEndOfBookmark:bookmarkEnds[j]+startDifference];
-					CHECK_STATUS
+					CHECK_STATUS_LOCKED(doc)
 				}
 			}
 		}
@@ -779,7 +606,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 		BOOL inlineNoteField = sbNote && [[[sbNote textObject] content]
 										   isNotEqualTo:[field->sbContentRange
 														 content]];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(doc)
 		
 		// Skip further processing if it's unnecessary
 		if(((field->sbField && toField) || (field->sbBookmark && toBookmark))
@@ -790,33 +617,31 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 		// Convert between field types and between inline and footnote/endnote
 		// citations
 		if(field->sbField) {
-			prepareReadFieldCode(doc);
-			
 			field_t* newField;
 			if(!(field->noteType)) {
 				// Convert an in-text citation to note or bookmark
 				NSInteger fieldStart = [[field->sbField fieldCode]
 										startOfContent];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 				[field->sbField delete];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 				WordTextRange* sbWhere = [doc->sbDoc
 										  createRangeStart:fieldStart-1
 										  end:fieldStart-1];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 				status = insertFieldRaw(doc, toFieldType, toNoteType, sbWhere,
 										nil, &newField);
-				if(status) return status;
+				ENSURE_OK_LOCKED(doc, status)
 			} else if(field->noteType == toNoteType || inlineNoteField) {
 				// Convert fields inside a note to bookmarks
 				status = insertFieldRaw(doc, toFieldType, 0,
 										field->sbContentRange, nil, &newField);
-				if(status) return status;
+				ENSURE_OK_LOCKED(doc, status)
 				[newField->sbBookmark
 				 setStartOfBookmark:([newField->sbBookmark endOfBookmark]+1)];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 				[field->sbField delete];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 			} else {
 				// Convert note to inline
 				status = insertFieldRaw(doc, toFieldType, toNoteType,
@@ -824,7 +649,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 										 collapseRangeDirection:
 										 WordE132CollapseStart], nil,
 										&newField);
-				if(status) return status;
+				ENSURE_OK_LOCKED(doc, status)
 				// Delete old note
 				[[sbNote noteReference] setContent:@""];
 			}
@@ -840,23 +665,23 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				// Delete old footnote reference and put range where it was
 				NSInteger referenceStart = [[sbNote noteReference]
 											startOfContent];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 				[[sbNote noteReference] setContent:@""];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 				sbWhere = [doc->sbDoc createRangeStart:referenceStart
 												   end:referenceStart];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 			} else if(!(field->noteType) && toNoteType && !inlineNoteField) {
 				// Convert in-text to note
 				// Delete old in-text citation and put footnote reference
 				// where it was
 				NSInteger bookmarkStart = [field->sbBookmark startOfBookmark];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 				[field->sbContentRange setContent:@""];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 				sbWhere = [doc->sbDoc createRangeStart:bookmarkStart
 												   end:bookmarkStart];
-				CHECK_STATUS
+				CHECK_STATUS_LOCKED(doc)
 			} else {
 				// Convert in-text to in-text
 				sbWhere = field->sbContentRange;
@@ -867,7 +692,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				field_t* newField;
 				status = insertFieldRaw(doc, toFieldType, toNoteType, sbWhere,
 										nil, &newField);
-				if(status) return status;
+				ENSURE_OK_LOCKED(doc, status)
 				setCode(newField, field->code);
 				
 				// Word 2004: If the bookmark still exists, delete it
@@ -886,7 +711,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 		}
 	};
 	
-	return STATUS_OK;
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
 }
 
 // Sets the "Bibliography" style
@@ -894,6 +719,8 @@ statusCode setBibliographyStyle(document_t* doc, long firstLineIndent,
 								long bodyIndent, unsigned long lineSpacing,
 								unsigned long entrySpacing, long tabStops[],
 								unsigned long tabStopCount) {
+	[doc->lock lock];
+	
 	WordWordStyle* sbBibliographyStyle;
 	
 	sbBibliographyStyle = [[doc->sbDoc WordStyles]
@@ -923,21 +750,21 @@ statusCode setBibliographyStyle(document_t* doc, long firstLineIndent,
 		sbBibliographyStyle = [doc->sbApp sendEvent:'core' id:'crel'
 										 parameters:'kocl',
 		 [NSAppleEventDescriptor descriptorWithTypeCode:'w173'], 'insh', doc,
-		 'prdt', reco, nil];
-		CHECK_STATUS
+							   'prdt', reco, nil];
+		CHECK_STATUS_LOCKED(doc)
 	}
 	
 	WordParagraphFormat* sbParagraphFormat = [sbBibliographyStyle
 											  paragraphFormat];
-	CHECK_STATUS
+	CHECK_STATUS_LOCKED(doc)
 	[sbParagraphFormat setFirstLineIndent:((double) firstLineIndent)/20];
-	CHECK_STATUS
+	CHECK_STATUS_LOCKED(doc)
 	[sbParagraphFormat setParagraphFormatLeftIndent:((double) bodyIndent)/20];
-	CHECK_STATUS
+	CHECK_STATUS_LOCKED(doc)
 	[sbParagraphFormat setLineSpacing:((double) lineSpacing)/20];
-	CHECK_STATUS
+	CHECK_STATUS_LOCKED(doc)
 	[sbParagraphFormat setSpaceAfter:((double) entrySpacing)/20];
-	CHECK_STATUS
+	CHECK_STATUS_LOCKED(doc)
 	
 	for(unsigned long i=0; i<tabStopCount; i++) {
 		// tell application "Microsoft Word" to make new tab stop at %@
@@ -959,29 +786,32 @@ statusCode setBibliographyStyle(document_t* doc, long firstLineIndent,
 		 [sbBibliographyStyle paragraphFormat], 'prdt', reco, nil];
 	}
 	
-	return STATUS_OK;
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
 }
 
 // Run on exit to clean up anything we played with
 statusCode cleanup(document_t *doc) {
+	[doc->lock lock];
+	
 	if(doc->restoreInsertionsAndDeletions
 	   && !doc->statusInsertionsAndDeletions) {
 		[doc->sbView setShowInsertionsAndDeletions:YES];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(doc)
 		doc->statusInsertionsAndDeletions = YES;
 	}
 	if(doc->restoreFormatChanges && !doc->statusFormatChanges) {
 		[doc->sbView setShowFormatChanges:YES];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(doc)
 		doc->statusFormatChanges = YES;
 	}
 	if(doc->restoreFullScreenMode && !doc->statusFullScreenMode) {
 		[doc->sbView setFullScreen:YES];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(doc)
 		doc->statusFullScreenMode = YES;
 	}
-	//deleteTemporaryFile();
-	return STATUS_OK;
+	deleteTemporaryFile();
+	
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
 }
 
 // Get NSArrays representing fields in different parts of the document.
@@ -1070,3 +900,283 @@ statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 	return STATUS_OK;
 }
 
+// Gets a property from the document. Remember to free the result!
+statusCode getProperty(document_t *doc, NSString* propertyName,
+					   NSString **returnValue) {
+	NSInteger i = 1;
+	NSMutableString* stringComponents = [NSMutableString
+										 stringWithCapacity:512];
+	NSString* propertyValue = nil;
+	do {
+		NSString* currentPropertyName = [NSString stringWithFormat:@"%@_%d",
+										 propertyName, i];
+		IGNORING_SB_ERRORS_BEGIN
+		WordCustomDocumentProperty* property = [doc->sbProperties
+												objectWithName:
+												currentPropertyName];
+		propertyValue = [property value];
+		IGNORING_SB_ERRORS_END
+		if(propertyValue) {
+			[stringComponents appendString:propertyValue];
+			i++;
+		}
+	} while(propertyValue);
+	*returnValue = stringComponents;
+	
+	return STATUS_OK;
+}
+
+// Stores a property in the document.
+statusCode setProperty(document_t *doc, NSString* propertyName,
+					   NSString* propertyValue) {
+	NSUInteger propertyValueLength = [propertyValue length];
+	NSUInteger numberOfProperties = ceil(((float) propertyValueLength)
+										 /MAX_PROPERTY_LENGTH);
+	
+	// Set fields with value
+	for(NSUInteger i=0; i<numberOfProperties; i++) {
+		NSString *currentPropertyName = [NSString stringWithFormat:@"%@_%d",
+										 propertyName, i+1];
+		
+		NSString *currentPropertyValue;
+		if(i == numberOfProperties-1) {
+			currentPropertyValue = [propertyValue substringFromIndex:
+									i*MAX_PROPERTY_LENGTH];
+		} else {
+			currentPropertyValue = [propertyValue  substringWithRange:
+									NSMakeRange(i*MAX_PROPERTY_LENGTH,
+												MAX_PROPERTY_LENGTH)];
+		}
+		
+		WordCustomDocumentProperty* property = [doc->sbProperties
+												objectWithName:
+												currentPropertyName];
+		[property setValue:currentPropertyValue];
+		
+		if(errorHasOccurred()) {
+			clearError();
+			
+			// make new custom document property at active document with
+			// properties {name:currentPropertyName, value:currentPropertyValue}
+			NSAppleEventDescriptor *rd = [NSAppleEventDescriptor
+										  recordDescriptor];
+			[rd setDescriptor:[NSAppleEventDescriptor
+							   descriptorWithString:currentPropertyName]
+				   forKeyword:'pnam'];
+			[rd setDescriptor:[NSAppleEventDescriptor
+							   descriptorWithString:currentPropertyValue]
+				   forKeyword:'DPVu'];
+			[doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl', @"mCDP",
+			 'insh', doc->sbDoc, 'prdt', rd, nil];
+			CHECK_STATUS
+		}
+	}
+	
+	// Delete extra fields
+	NSUInteger i = numberOfProperties+1;
+	while(true) {
+		NSString *currentPropertyName = [NSString stringWithFormat:@"%s_%d",
+										 propertyName, i];
+		
+		IGNORING_SB_ERRORS_BEGIN
+		WordCustomDocumentProperty* property = [doc->sbProperties
+												objectWithName:
+												currentPropertyName];
+		IGNORING_SB_ERRORS_END
+		
+		if(property && [property exists]) {
+			[property delete];
+			if(errorHasOccurred()) {
+				clearError();
+				break;
+			}
+		} else {
+			break;
+		}
+	}
+	
+	return STATUS_OK;
+}
+
+// Makes a field at the specified range. Uses the specified bookmark name for
+// a bookmark.
+statusCode insertFieldRaw(document_t *doc, const char fieldType[],
+						  unsigned short noteType, WordTextRange *sbWhere,
+						  NSString* bookmarkName, field_t** returnValue) {
+	WordE160 storyType = [sbWhere storyType];
+	CHECK_STATUS
+	
+	WordFootnote* sbNote = nil;
+	NSInteger fieldStart;
+	if(noteType) {
+		if(storyType == WordE160MainTextStory) {
+			// Create new note
+			
+			NSString* noteTypeCode;
+			if(noteType == NOTE_FOOTNOTE) {
+				noteTypeCode = @"w156";
+			} else if(noteType == NOTE_ENDNOTE) {
+				noteTypeCode = @"w157";
+			} else {
+				DIE(@"Invalid field type");
+			}
+			
+			// make new footnote/endnote at active document
+			sbNote = [doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
+					  noteTypeCode, 'insh', doc->sbDoc, nil];
+			
+			// Clear range content
+			sbWhere = [sbNote textObject];
+			CHECK_STATUS
+			[sbWhere setContent:@""];
+			CHECK_STATUS
+			
+			// Move selection end past new footnote if necessary
+			WordSelectionObject *sbSelection = [doc->sbApp selection];
+			CHECK_STATUS
+			WordTextRange *sbNoteReference = [sbNote noteReference];
+			CHECK_STATUS
+			if([sbSelection selectionEnd] == [sbNoteReference startOfContent]) {
+				[sbSelection setSelectionStart:[sbNoteReference endOfContent]];
+				CHECK_STATUS
+				[sbSelection setSelectionEnd:[sbNoteReference endOfContent]];
+				CHECK_STATUS
+			}
+			CHECK_STATUS
+			
+			sbWhere = [sbNote textObject];
+		} else if(storyType == WordE160FootnotesStory) {
+			sbNote = [[sbWhere footnotes] objectAtIndex:0];
+		} else if(storyType == WordE160EndnotesStory) {
+			sbNote = [[sbWhere endnotes] objectAtIndex:0];
+		}
+		fieldStart = [sbWhere startOfContent];
+	}
+	
+	if(strcmp(fieldType, "Field") == 0) {
+		// field
+		NSAppleEventDescriptor* w170 = [NSAppleEventDescriptor
+										descriptorWithTypeCode:'w170'];
+		// field type:field print date
+		NSAppleEventDescriptor* wFtP = [NSAppleEventDescriptor
+										recordDescriptor];
+		[wFtP setDescriptor:[NSAppleEventDescriptor
+							 descriptorWithEnumCode:WordE183FieldPrintDate]
+				 forKeyword:'wFtP'];
+		
+		// Create as a print date field, since otherwise there is no way to
+		// add any content to the result range.
+		// make new field at %@ with properties {field type:field print date}
+		WordField* sbField = [doc->sbApp sendEvent:'core' id:'crel'
+										parameters:'kocl',
+							  w170, 'insh', sbWhere, 'prdt', wFtP, nil];
+		CHECK_STATUS
+		
+		// We have to figure out where the field got put, because Word returns
+		// an invalid reference, and Microsoft has not fixed this for 7 years.
+		// If we had access to the underlying event response, it would contain
+		// the entry index, but we don't, so we have to re-find the field.
+		NSInteger entryIndex;
+		if(sbNote) {
+			// Field is within a note. First, see if we can get a valid 
+			// reference easily.
+			BOOL rangeNoLongerWorks = NO;
+			sbField = [[sbWhere fields] objectAtIndex:0];
+			
+			// Range might no longer work
+			rangeNoLongerWorks = errorHasOccurred()
+			|| [sbField isEqual:[NSNull null]];
+			if(!rangeNoLongerWorks) {
+				// It's possible the reference will fail if we try to use it
+				[sbField entry_index];
+				rangeNoLongerWorks = errorHasOccurred()
+				|| [sbField isEqual:[NSNull null]];
+			}
+			
+			if(rangeNoLongerWorks) {
+				clearError();
+				
+				// Loop through fields in note text object until we find this
+				// one
+				SBElementArray* sbNoteFields = [[sbNote textObject] fields];
+				CHECK_STATUS
+				for(WordField* sbNoteField in sbNoteFields) {
+					if([[sbNoteField fieldCode] startOfContent]
+					   == fieldStart+1) {
+						sbField = sbNoteField;
+					}
+					CHECK_STATUS
+				}
+				CHECK_STATUS
+			}
+			
+			entryIndex = [sbField entry_index];
+			CHECK_STATUS
+		} else {
+			// Need to find the field within the document text. Luckily, we know
+			// where we created it.
+			WordTextRange* tmpRange = [doc->sbDoc createRangeStart:
+									   ([sbWhere startOfContent]-1)
+															   end:([sbWhere endOfContent]+1)];
+			CHECK_STATUS
+			entryIndex = [[[tmpRange fields] objectAtIndex:0] entry_index];
+			CHECK_STATUS
+			sbField = [[doc->sbDoc fields] objectAtIndex:(entryIndex-1)];
+			CHECK_STATUS
+		}
+		
+		if(returnValue) {
+			return initField(doc, sbField, noteType, entryIndex, YES,
+							 returnValue);
+		}
+		
+		return STATUS_OK;
+	} else if(strcmp(fieldType, "Bookmark") == 0 ) {
+		NSString* useBookmarkName;
+		if(bookmarkName) {
+			useBookmarkName = bookmarkName;
+		} else {
+			useBookmarkName = [NSString stringWithFormat:@"%@_%@",
+							   BOOKMARK_REFERENCE_PROPERTY,
+							   generateRandomString(21)];
+		}
+		
+		// bookmark
+		NSAppleEventDescriptor* w110 = [NSAppleEventDescriptor
+										descriptorWithTypeCode:'w110'];
+		// {name:"%@"}
+		NSAppleEventDescriptor* reco = [NSAppleEventDescriptor
+										recordDescriptor];
+		[reco setDescriptor:[NSAppleEventDescriptor
+							 descriptorWithString:useBookmarkName]
+				 forKeyword:'pnam'];
+		// make new bookmark at %@ with properties {name:%@}
+		WordBookmark* sbBookmark = [doc->sbApp sendEvent:'core' id:'crel'
+											  parameters:'kocl',
+									w110, 'insh', sbWhere, 'prdt', reco, nil];
+		
+		if(returnValue) {
+			return initBookmark(doc, sbBookmark, noteType, useBookmarkName, YES,
+								returnValue);
+		}
+		
+		return STATUS_OK;
+	}
+	
+	DIE(([NSString stringWithFormat:@"Unimplemented field type %s", fieldType]))
+}
+
+// Adds a field to a field list
+void addValueToList(void* value, listNode_t** listStart,
+					listNode_t** listEnd) {
+	listNode_t* node = (listNode_t*) malloc(sizeof(listNode_t));
+	node->value = value;
+	node->next = NULL;
+	
+	if(*listEnd) {
+		(*listEnd)->next = node;
+		*listEnd = node;
+	} else {
+		*listStart = *listEnd = node;
+	}
+}
