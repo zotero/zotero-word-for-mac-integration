@@ -14,6 +14,7 @@
 	<em:description>Integrates Zotero with Microsoft Word 2004 and 2008 for Macintosh</em:description>
 	<em:type>2</em:type> <!-- type=extension --> 
 	<em:unpack>true</em:unpack>
+	<em:strictCompatibility>true</em:strictCompatibility>
 	
 	<em:targetPlatform>Darwin</em:targetPlatform>
 	<em:targetApplication>
