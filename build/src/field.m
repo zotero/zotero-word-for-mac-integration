@@ -473,10 +473,16 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 
 // Gets text inside this field
 statusCode getText(field_t* field, char** returnValue) {
+	[(field->doc)->lock lock];
+	
+	statusCode status = prepareReadFieldCode(field->doc);
+	ENSURE_OK_LOCKED(field->doc, status)
 	if(!field->text) {
 		field->text = copyNSString([field->sbContentRange content]);
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(field->doc);
 	}
+	
+	[(field->doc)->lock unlock];
 	*returnValue = field->text;
 	return STATUS_OK;
 }
