@@ -46,26 +46,29 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 		NSString* rawCode = [sbCodeRange content];
 		CHECK_STATUS
 		
-		// Check that this field is a valid Zotero field
-		for(unsigned short i=0; FIELD_PREFIXES[i] != NULL; i++) {
-			NSRange range = [rawCode rangeOfString:FIELD_PREFIXES[i]];
-			if(range.location != NSNotFound) {
-				field = (field_t*) malloc(sizeof(field_t));
-				
-				// Get code
-				NSUInteger rawCodeLength = [rawCode length];
-				NSUInteger codeStart = range.location+range.length;
-				NSUInteger codeLength = rawCodeLength-codeStart;
-				
-				// Sometimes there is a space at the end of the code, which we
-				// ignore here
-				if([rawCode characterAtIndex:(rawCodeLength-1)] == ' ') {
-					codeLength--;
+		if(rawCode && [rawCode isNotEqualTo:[NSNull null]]) {
+			// Check that this field is a valid Zotero field
+			for(unsigned short i=0; FIELD_PREFIXES[i] != NULL; i++) {
+				NSRange range = [rawCode rangeOfString:FIELD_PREFIXES[i]];
+				if(range.location != NSNotFound) {
+					field = (field_t*) malloc(sizeof(field_t));
+					
+					// Get code
+					NSUInteger rawCodeLength = [rawCode length];
+					NSUInteger codeStart = range.location+range.length;
+					NSUInteger codeLength = rawCodeLength-codeStart;
+					
+					// Sometimes there is a space at the end of the code, which
+					// we ignore here
+					if([rawCode characterAtIndex:(rawCodeLength-1)] == ' ') {
+						codeLength--;
+					}
+					field->code = copyNSString([rawCode substringWithRange:
+												NSMakeRange(codeStart,
+															codeLength)]);
+					
+					break;
 				}
-				field->code = copyNSString([rawCode substringWithRange:
-											NSMakeRange(codeStart, codeLength)]);
-				
-				break;
 			}
 		}
 	}

@@ -76,9 +76,9 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	
 	// Show appropriate error if there is no document to initialize, or if VBA
 	// is not installed
-	if([doc->sbDoc isEqual:[NSNull null]]) {
+	if(!doc->sbDoc || [doc->sbDoc isEqual:[NSNull null]]) {
 		freeDocument(doc);
-		if([sbWindow isEqual:[NSNull null]]) {
+		if(!sbWindow || [sbWindow isEqual:[NSNull null]]) {
 			displayAlert("Zotero could not find an open document. Please open \
 						 a document and try again.", DIALOG_ICON_STOP, 
 						 DIALOG_BUTTONS_OK, NULL);
