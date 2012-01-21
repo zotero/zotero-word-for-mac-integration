@@ -554,30 +554,29 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				if(toField) {
 					// We don't need to convert the other entries in this note.
 					i += nFieldsInNote-1;
-				} else if(toBookmark) {
-					// Need to update conversions so that notes can be converted
-					// to bookmarks later
-					[field->sbField release];
-					[field->sbContentRange release];
-					
-					field->sbField = [[[sbNote textObject] fields]
-									  objectAtIndex:0];
+				}
+				
+				// Need to update conversions
+				[field->sbField release];
+				[field->sbContentRange release];
+				
+				field->sbField = [[[sbNote textObject] fields]
+								  objectAtIndex:0];
+				CHECK_STATUS_LOCKED(doc)
+				field->sbContentRange = [field->sbField resultRange];
+				CHECK_STATUS_LOCKED(doc)
+				NSInteger entryIndex = [field->sbField entry_index];
+				CHECK_STATUS_LOCKED(doc)
+				
+				[field->sbField retain];
+				[field->sbContentRange retain];
+				
+				for(unsigned long j=0; j<nFieldsInNote; j++) {
+					fields[i+j]->entryIndex = entryIndex
+					- (field->entryIndex) - offsets[toNoteType];
 					CHECK_STATUS_LOCKED(doc)
-					field->sbContentRange = [field->sbField resultRange];
+					fields[i+j]->noteType = toNoteType;
 					CHECK_STATUS_LOCKED(doc)
-					NSInteger entryIndex = [field->sbField entry_index];
-					CHECK_STATUS_LOCKED(doc)
-					
-					[field->sbField retain];
-					[field->sbContentRange retain];
-					
-					for(unsigned long j=0; j<nFieldsInNote; j++) {
-						fields[i+j]->entryIndex = entryIndex
-						- (field->entryIndex) - offsets[toNoteType];
-						CHECK_STATUS_LOCKED(doc)
-						fields[i+j]->noteType = toNoteType;
-						CHECK_STATUS_LOCKED(doc)
-					}
 				}
 			} else if(field->sbBookmark) {
 				WordTextRange* sbNoteTextObject = [sbNote textObject];
@@ -843,7 +842,9 @@ statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 		if(noteType == NOTE_FOOTNOTE) {
 			// make new endnote at active document
 			[doc->sbApp sendEvent:'core' id:'crel'
-					   parameters:'kocl', @"w157", 'insh', sbCreateRange, nil];
+					   parameters:'kocl', [NSAppleEventDescriptor
+										   descriptorWithTypeCode:'w157'],
+			 'insh', sbCreateRange, nil];
 			CHECK_STATUS
 			*returnValue = [[doc->sbDoc endnotes]
 							objectAtIndex:([[[sbReferenceRange endnotes]
@@ -852,7 +853,9 @@ statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 		} else if(noteType == NOTE_ENDNOTE) {
 			// make new footnote at active document
 			[doc->sbApp sendEvent:'core' id:'crel'
-					   parameters:'kocl', @"w156", 'insh', sbCreateRange, nil];
+					   parameters:'kocl', [NSAppleEventDescriptor
+										   descriptorWithTypeCode:'w156'],
+			 'insh', sbCreateRange, nil];
 			CHECK_STATUS
 			*returnValue = [[doc->sbDoc footnotes]
 							objectAtIndex:([[[sbReferenceRange footnotes]
