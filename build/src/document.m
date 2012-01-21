@@ -990,6 +990,9 @@ statusCode setProperty(document_t *doc, NSString* propertyName,
 		if(property && [property exists]) {
 			[property delete];
 			if(errorHasOccurred()) {
+				// Try to set property to empty string, since sometimes delete
+				// doesn't seem to work.
+				[property setValue:@""];
 				clearError();
 				break;
 			}
