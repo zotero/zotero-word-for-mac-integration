@@ -887,7 +887,7 @@ class Field:
 			except appscript.reference.CommandError:
 				return None
 			
-			if field == k.missingValue:
+			if field == k.missing_value:
 				return None
 		
 	def getPreviousField(self):
@@ -907,7 +907,7 @@ class Field:
 			except appscript.reference.CommandError:
 				return None
 			
-			if field == k.missingValue:
+			if field == k.missing_value:
 				return None
 	
 	@property
