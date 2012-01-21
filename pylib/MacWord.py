@@ -837,6 +837,7 @@ class Field:
 	
 	def getText(self):
 		"""Gets text inside this field"""
+		self.wpDoc.prepareReadFieldCode()
 		return self.displayFieldRange.content.get()
 	
 	def setCode(self, code):
