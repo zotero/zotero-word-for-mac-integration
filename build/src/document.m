@@ -1011,17 +1011,24 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 	if(noteType) {
 		if(storyType == WordE160MainTextStory) {
 			// Create new note
-			
-			NSString* noteTypeCode;
+			NSAppleEventDescriptor* noteTypeCode;
 			if(noteType == NOTE_FOOTNOTE) {
-				noteTypeCode = @"w156";
+				noteTypeCode = [NSAppleEventDescriptor
+								descriptorWithTypeCode:'w156'];
 			} else if(noteType == NOTE_ENDNOTE) {
-				noteTypeCode = @"w157";
+				noteTypeCode = [NSAppleEventDescriptor
+								descriptorWithTypeCode:'w157'];
 			} else {
 				DIE(@"Invalid field type");
 			}
 			
-			// make new footnote/endnote at active document
+			// Select range, because otherwise we won't insert at the right
+			// place. If we could pass properties {text object:sbWhere} to 
+			// the make command, that would also take care of this, but alas,
+			// we can't construct them with Scripting Bridge.
+			[sbWhere select];
+			
+			// make new footnote/endnote at sbDoc
 			sbNote = [doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
 					  noteTypeCode, 'insh', doc->sbDoc, nil];
 			
@@ -1066,7 +1073,8 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		
 		// Create as a print date field, since otherwise there is no way to
 		// add any content to the result range.
-		// make new field at %@ with properties {field type:field print date}
+		// make new field at sbWhere with properties {field type:field print
+		// date}
 		WordField* sbField = [doc->sbApp sendEvent:'core' id:'crel'
 										parameters:'kocl',
 							  w170, 'insh', sbWhere, 'prdt', wFtP, nil];
