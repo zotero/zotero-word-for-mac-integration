@@ -197,7 +197,7 @@ function checkStatus(status) {
 	if(!status) return;
 	
 	if(status === 1) {
-		throw(getLastError);
+		throw(getLastError());
 	} else {
 		throw "ExceptionAlreadyDisplayed";
 	}
