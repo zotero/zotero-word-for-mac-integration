@@ -90,8 +90,10 @@ return STATUS_EXCEPTION; }
 #define IGNORING_SB_ERRORS_BEGIN setErrorMonitor(false);
 #define IGNORING_SB_ERRORS_END setErrorMonitor(true);
 
-typedef struct ListNode listNode_t;
-typedef struct FieldListListNode fieldListListNode_t;
+typedef struct ListNode {
+	void* value;
+	struct ListNode* next;
+} listNode_t;
 
 typedef struct Document {
 	char* wordPath;
@@ -160,11 +162,6 @@ typedef struct Field {
 	// story.
 	NSInteger noteLocation;
 } field_t;
-
-struct ListNode {
-	void* value;
-	struct ListNode* next;
-};
 
 typedef unsigned short statusCode;
 
