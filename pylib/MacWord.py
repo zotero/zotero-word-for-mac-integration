@@ -1161,7 +1161,10 @@ class Properties:
 			try:
 				property = self.asProperties[propertyName+u'_'+repr(i)]
 				if property.exists():
-					property.delete()
+					try:
+						property.delete()
+					except:
+						property.value.set("")
 				else:
 					break
 			except:
