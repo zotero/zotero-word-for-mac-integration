@@ -391,6 +391,9 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		IGNORING_SB_ERRORS_BEGIN
 		if(strncmp(field->code, "BIBL", 4) == 0) {
 			[[field->sbContentRange propertyWithCode:'1695']
+			 // Apple says "you should not call this method directly" but we are
+			 // going to anyway, because Word's scripting dictionary is broken,
+			 // and this works
 			 setTo:@"Bibliography"];
 		}
 		
