@@ -57,12 +57,16 @@ enum NOTE_TYPE {
 #define PREFS_PROPERTY @"ZOTERO_PREF"
 #define BOOKMARK_PREFIX = "ZOTERO_"
 
+// Checks to see that the last Scripting Bridge call succeeded. If not, returns
+// STATUS_EXCEPTION.
 #define CHECK_STATUS \
 if(errorHasOccurred()) {\
 	flagError(__FUNCTION__, __FILE__, __LINE__-1);\
 	return STATUS_EXCEPTION;\
 }
 
+// Same as CHECK_STATUS, but also unlocks an NSLock on (document_t*)x before
+// returning.
 #define CHECK_STATUS_LOCKED(x) \
 if(errorHasOccurred()) {\
 	[x->lock unlock];\
@@ -70,19 +74,23 @@ if(errorHasOccurred()) {\
 	return STATUS_EXCEPTION;\
 }
 
+// Returns x if x is non-zero.
 #define ENSURE_OK(x) \
 if(x) return x;
 
+// If y is non-zero, unlocks the lock on (document_t*)x and then returns y.
 #define ENSURE_OK_LOCKED(x, y) \
 if(y) {\
 	[(x)->lock unlock];\
 	return y;\
 }
 
+// Unlocks the lock on (document_t*)x and then returns.
 #define RETURN_STATUS_LOCKED(x, y) \
 { [(x)->lock unlock];\
 return y; }
 
+// Sets an error code x and then returns STATUS_EXCEPTION.
 #define DIE(x) \
 { throwError(x, __FUNCTION__, __FILE__, __LINE__-1);\
 return STATUS_EXCEPTION; }
@@ -251,5 +259,6 @@ statusCode ensureNoteLocationSet(field_t* field);
 
 // install.m
 statusCode install(const char zoteroDotPath[]);
+NSInteger getEntryIndex(document_t* x, SBObject* y);
 
 #endif
