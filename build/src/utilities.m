@@ -172,3 +172,13 @@ NSString* generateRandomString(NSUInteger length) {
 	
 	return [NSString stringWithUTF8String:randomString];
 }
+
+// If (document_t*)x is a Word 2004 document, returns [y entryIndex]. Otherwise,
+// returns [y entry_index].
+NSInteger getEntryIndex(document_t* x, SBObject* y) {
+	if(x->isWord2004) {
+		return (NSInteger) [y performSelector:@selector(entryIndex)];
+	} else {
+		return (NSInteger) [y performSelector:@selector(entry_index)];
+	}
+}

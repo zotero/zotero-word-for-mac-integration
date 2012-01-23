@@ -102,7 +102,7 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 		}
 		
 		if(entryIndex == -1) {
-			field->entryIndex = [field->sbField entry_index];
+			field->entryIndex = getEntryIndex(doc, field->sbField);
 			CHECK_STATUS
 		} else {
 			field->entryIndex = entryIndex;
@@ -421,14 +421,22 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 			// Find a reference point in the appropriate story
 			WordTextRange* referenceRange;
 			if(field->noteType == NOTE_FOOTNOTE) {
-				referenceRange = [[[(field->doc)->sbDoc footnotes] objectAtIndex:
-								   [[[field->sbContentRange footnotes]
-									 objectAtIndex:0] entry_index]-1] textObject];
+				referenceRange = [[[(field->doc)->sbDoc footnotes]
+								   objectAtIndex:
+								   getEntryIndex(field->doc,
+												 [[field->sbContentRange
+												   footnotes]
+												  objectAtIndex:0])-1]
+								  textObject];
 				CHECK_STATUS_LOCKED(field->doc)
 			} else if(field->noteType == NOTE_ENDNOTE) {
-				referenceRange = [[[(field->doc)->sbDoc endnotes] objectAtIndex:
-								   [[[field->sbContentRange endnotes]
-									 objectAtIndex:0] entry_index]-1] textObject];
+				referenceRange = [[[(field->doc)->sbDoc endnotes]
+								   objectAtIndex:
+								   getEntryIndex(field->doc,
+												 [[field->sbContentRange
+												   endnotes]
+												  objectAtIndex:0])-1]
+								  textObject];
 				CHECK_STATUS_LOCKED(field->doc)
 			} else {
 				referenceRange = [(field->doc)->sbDoc textObject];
@@ -525,11 +533,11 @@ statusCode getNoteIndex(field_t* field, unsigned long *returnValue) {
 	if(field->noteType == NOTE_FOOTNOTE) {
 		WordFootnote* note = [[field->sbContentRange footnotes]
 							  objectAtIndex:0];
-		*returnValue = [note entry_index];
+		*returnValue = getEntryIndex(field->doc, note);
 	} else if(field->noteType == NOTE_ENDNOTE){ 
 		WordEndnote* note = [[field->sbContentRange endnotes]
 							 objectAtIndex:0];
-		*returnValue = [note entry_index];
+		*returnValue = getEntryIndex(field->doc, note);
 	} else {
 		*returnValue = 0;
 	}

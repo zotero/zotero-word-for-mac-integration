@@ -27,6 +27,8 @@
 // Prototypes for file-local objects and functions
 void freeFieldList(listNode_t* fieldList, bool freeFields);
 statusCode getFieldCollections(document_t *doc, NSArray** fieldCollections);
+statusCode extractFieldsFromNotes(SBElementArray* notes, 
+								  NSArray** returnValue);
 statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 					unsigned short noteType,
 					WordFootnote **returnValue);
@@ -570,7 +572,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				CHECK_STATUS_LOCKED(doc)
 				field->sbContentRange = [field->sbField resultRange];
 				CHECK_STATUS_LOCKED(doc)
-				NSInteger entryIndex = [field->sbField entry_index];
+				NSInteger entryIndex = getEntryIndex(doc, field->sbField);
 				CHECK_STATUS_LOCKED(doc)
 				
 				[field->sbField retain];
@@ -726,16 +728,20 @@ statusCode setBibliographyStyle(document_t* doc, long firstLineIndent,
 	[doc->lock lock];
 	
 	WordWordStyle* sbBibliographyStyle;
+	NSString* sanityCheck = nil;
 	
 	sbBibliographyStyle = [[doc->sbDoc WordStyles]
 						   objectWithName:@"Bibliography"];
 	if(!errorHasOccurred()) {
-		SBElementArray* sbTabStops = [[sbBibliographyStyle paragraphFormat]
-									  tabStops];
-		[sbTabStops removeAllObjects];
+		sanityCheck = [sbBibliographyStyle nameLocal];
+		if(sanityCheck && !errorHasOccurred()) {
+			SBElementArray* sbTabStops = [[sbBibliographyStyle paragraphFormat]
+										  tabStops];
+			[sbTabStops removeAllObjects];
+		}
 	}
 	
-	if(errorHasOccurred()) {
+	if(!sanityCheck || errorHasOccurred()) {
 		clearError();
 		
 		// tell application "Microsoft Word" to make new Word style at %@
@@ -753,8 +759,8 @@ statusCode setBibliographyStyle(document_t* doc, long firstLineIndent,
 				 forKeyword:'2501'];
 		sbBibliographyStyle = [doc->sbApp sendEvent:'core' id:'crel'
 										 parameters:'kocl',
-		 [NSAppleEventDescriptor descriptorWithTypeCode:'w173'], 'insh', doc,
-							   'prdt', reco, nil];
+		 [NSAppleEventDescriptor descriptorWithTypeCode:'w173'], 'insh',
+							   doc->sbDoc, 'prdt', reco, nil];
 		CHECK_STATUS_LOCKED(doc)
 	}
 	
@@ -822,12 +828,45 @@ statusCode cleanup(document_t *doc) {
 statusCode getFieldCollections(document_t *doc, NSArray** fieldCollections) {
 	fieldCollections[0] = [doc->sbDoc fields];
 	CHECK_STATUS;
-	fieldCollections[1] = [[doc->sbDoc
-							getStoryRangeStoryType:WordE160FootnotesStory] fields];
-	CHECK_STATUS;
-	fieldCollections[2] = [[doc->sbDoc
-							getStoryRangeStoryType:WordE160EndnotesStory] fields];
-	CHECK_STATUS;
+	
+	if(doc->isWord2004) {
+		ENSURE_OK(extractFieldsFromNotes([doc->sbDoc footnotes],
+										 &fieldCollections[1]));
+		ENSURE_OK(extractFieldsFromNotes([doc->sbDoc endnotes],
+										 &fieldCollections[2]));
+	} else {
+		fieldCollections[1] = [[doc->sbDoc
+								getStoryRangeStoryType:WordE160FootnotesStory]
+							   fields];
+		CHECK_STATUS;
+		fieldCollections[2] = [[doc->sbDoc
+								getStoryRangeStoryType:WordE160EndnotesStory]
+							   fields];
+		CHECK_STATUS;
+	}
+	
+	return STATUS_OK;
+}
+
+// Get NSArrays representing fields from a given collection. Included only for 
+// Word 2004
+statusCode extractFieldsFromNotes(SBElementArray* sbNotes, 
+								  NSArray** returnValue) {
+	NSUInteger nNotes = [sbNotes count];
+	CHECK_STATUS
+	
+	NSMutableArray* sbFields = [NSMutableArray arrayWithCapacity:nNotes];
+	for(WordFootnote* sbNote in sbNotes) {
+		NSArray* sbNoteFields = [[[sbNote textObject] fields] get];
+		CHECK_STATUS
+		
+		if(!sbNoteFields) continue;
+		
+		[sbFields addObjectsFromArray:sbNoteFields];
+	}
+	
+	*returnValue = sbFields;
+	
 	return STATUS_OK;
 }
 
@@ -852,8 +891,10 @@ statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 			 'insh', sbCreateRange, nil];
 			CHECK_STATUS
 			*returnValue = [[doc->sbDoc endnotes]
-							objectAtIndex:([[[sbReferenceRange endnotes]
-											 objectAtIndex:0] entry_index]-1)];
+							objectAtIndex:(getEntryIndex(doc,
+														 [[sbReferenceRange
+														   endnotes]
+														  objectAtIndex:0])-1)];
 			CHECK_STATUS
 		} else if(noteType == NOTE_ENDNOTE) {
 			// make new footnote at active document
@@ -863,8 +904,10 @@ statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 			 'insh', sbCreateRange, nil];
 			CHECK_STATUS
 			*returnValue = [[doc->sbDoc footnotes]
-							objectAtIndex:([[[sbReferenceRange footnotes]
-											 objectAtIndex:0] entry_index]-1)];
+							objectAtIndex:(getEntryIndex(doc,
+														 [[sbReferenceRange
+														   footnotes]
+														  objectAtIndex:0])-1)];
 			CHECK_STATUS
 		} else {
 			DIE(@"Invalid note type")
@@ -890,15 +933,19 @@ statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 			[[[sbNote textObject] footnoteOptions] footnoteConvert];
 			CHECK_STATUS
 			*returnValue = [[doc->sbDoc endnotes]
-							objectAtIndex:([[[sbReferenceRange endnotes]
-											 objectAtIndex:0] entry_index]-1)];
+							objectAtIndex:(getEntryIndex(doc,
+														 [[sbReferenceRange
+														   endnotes]
+														  objectAtIndex:0])-1)];
 			CHECK_STATUS
 		} else if(noteType == NOTE_ENDNOTE) {
 			[[[sbNote textObject] endnoteOptions] endnoteConvert];
 			CHECK_STATUS
 			*returnValue = [[doc->sbDoc footnotes]
-							objectAtIndex:([[[sbReferenceRange footnotes]
-											 objectAtIndex:0] entry_index]-1)];
+							objectAtIndex:(getEntryIndex(doc,
+														 [[sbReferenceRange
+														   footnotes]
+														  objectAtIndex:0])-1)];
 			CHECK_STATUS
 		} else {
 			DIE(@"Invalid note type")
@@ -942,16 +989,17 @@ statusCode setProperty(document_t *doc, NSString* propertyName,
 										 /MAX_PROPERTY_LENGTH);
 	
 	// Set fields with value
+	NSMutableString* scriptToRun = nil;
 	for(NSUInteger i=0; i<numberOfProperties; i++) {
-		NSString *currentPropertyName = [NSString stringWithFormat:@"%@_%d",
+		NSString* currentPropertyName = [NSString stringWithFormat:@"%@_%d",
 										 propertyName, i+1];
 		
-		NSString *currentPropertyValue;
+		NSString* currentPropertyValue;
 		if(i == numberOfProperties-1) {
 			currentPropertyValue = [propertyValue substringFromIndex:
 									i*MAX_PROPERTY_LENGTH];
 		} else {
-			currentPropertyValue = [propertyValue  substringWithRange:
+			currentPropertyValue = [propertyValue substringWithRange:
 									NSMakeRange(i*MAX_PROPERTY_LENGTH,
 												MAX_PROPERTY_LENGTH)];
 		}
@@ -959,25 +1007,65 @@ statusCode setProperty(document_t *doc, NSString* propertyName,
 		WordCustomDocumentProperty* property = [doc->sbProperties
 												objectWithName:
 												currentPropertyName];
-		[property setValue:currentPropertyValue];
+		BOOL exists = [property exists];
 		
-		if(errorHasOccurred()) {
+		if(!errorHasOccurred() && exists) {
+			[property setValue:currentPropertyValue];
+		} else {
 			clearError();
 			
-			// make new custom document property at active document with
-			// properties {name:currentPropertyName, value:currentPropertyValue}
-			NSAppleEventDescriptor *rd = [NSAppleEventDescriptor
-										  recordDescriptor];
-			[rd setDescriptor:[NSAppleEventDescriptor
-							   descriptorWithString:currentPropertyName]
-				   forKeyword:'pnam'];
-			[rd setDescriptor:[NSAppleEventDescriptor
-							   descriptorWithString:currentPropertyValue]
-				   forKeyword:'DPVu'];
-			[doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl', @"mCDP",
-			 'insh', doc->sbDoc, 'prdt', rd, nil];
-			CHECK_STATUS
+			if(doc->isWord2004) {
+				// In Word 2004, we need to insert the custom document property
+				// at the end of the active document. Otherwise, it doesn't
+				// work.
+				if(!scriptToRun) {
+					scriptToRun = [NSMutableString stringWithCapacity:
+								   512*numberOfProperties+256];
+					[scriptToRun appendFormat:
+					 @"tell application \"Microsoft Word\"\n"];
+				}
+				
+				[scriptToRun appendFormat:@"make new custom document property "
+				 "at end of active document with properties {name:\"%@\", "
+				 "value:\"%@\"}\n",
+				 [[currentPropertyName
+				   stringByReplacingOccurrencesOfString:@"\\"
+				   withString:@"\\\\"]
+				  stringByReplacingOccurrencesOfString:@"\""
+				  withString:@"\\\""],
+				 [[currentPropertyValue
+				   stringByReplacingOccurrencesOfString:@"\\"
+				   withString:@"\\\\"]
+				  stringByReplacingOccurrencesOfString:@"\""
+				  withString:@"\\\""]];
+			} else {
+				// make new custom document property at active document with
+				// properties {name:currentPropertyName,
+				// value:currentPropertyValue}
+				NSAppleEventDescriptor *rd = [NSAppleEventDescriptor
+											  recordDescriptor];
+				[rd setDescriptor:[NSAppleEventDescriptor
+								   descriptorWithString:currentPropertyName]
+					   forKeyword:'pnam'];
+				[rd setDescriptor:[NSAppleEventDescriptor
+								   descriptorWithString:currentPropertyValue]
+					   forKeyword:'DPVu'];
+				[doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
+				 @"mCDP", 'insh', doc->sbDoc, 'prdt', rd, nil];
+				CHECK_STATUS
+			}
 		}
+	}
+	
+	// Word 2004: run AppleScript developed above
+	if(scriptToRun) {
+		[scriptToRun appendString:@"end tell"];
+		NSLog(@"Should run:\n%@", scriptToRun);
+		NSAppleScript* script = [[NSAppleScript alloc]
+								 initWithSource:scriptToRun];
+		NSAppleEventDescriptor *result = [script executeAndReturnError:nil];
+		[script release];
+		if(!result) DIE(@"Error running AppleScript");
 	}
 	
 	// Delete extra fields
@@ -1107,7 +1195,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 			|| [sbField isEqual:[NSNull null]];
 			if(!rangeNoLongerWorks) {
 				// It's possible the reference will fail if we try to use it
-				[sbField entry_index];
+				getEntryIndex(doc, sbField);
 				rangeNoLongerWorks = errorHasOccurred()
 				|| [sbField isEqual:[NSNull null]];
 			}
@@ -1129,7 +1217,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 				CHECK_STATUS
 			}
 			
-			entryIndex = [sbField entry_index];
+			entryIndex = getEntryIndex(doc, sbField);
 			CHECK_STATUS
 		} else {
 			// Need to find the field within the document text. Luckily, we know
@@ -1138,7 +1226,8 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 									   ([sbWhere startOfContent]-1)
 															   end:([sbWhere endOfContent]+1)];
 			CHECK_STATUS
-			entryIndex = [[[tmpRange fields] objectAtIndex:0] entry_index];
+			entryIndex = getEntryIndex(doc,
+									   [[tmpRange fields] objectAtIndex:0]);
 			CHECK_STATUS
 			sbField = [[doc->sbDoc fields] objectAtIndex:(entryIndex-1)];
 			CHECK_STATUS

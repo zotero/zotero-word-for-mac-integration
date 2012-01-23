@@ -6898,6 +6898,7 @@ typedef enum Word4055 Word4055;
 // Represents a field.
 @interface WordField : WordBaseObject
 
+@property (readonly) NSInteger entryIndex;  // HACK: Modification for Word 2004 support.
 @property (readonly) NSInteger entry_index;  // Returns the index for the position of the object in its container element list.
 @property (copy) WordTextRange *fieldCode;  // Returns a text range object that represents a field's code. A field's code is everything that's enclosed by the field characters including the leading space and trailing space characters.
 @property (readonly) WordE187 fieldKind;  // Returns the type of link for a field object.
