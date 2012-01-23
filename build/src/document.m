@@ -184,7 +184,12 @@ statusCode cursorInField(document_t *doc, const char fieldType[],
 	if(strcmp(fieldType, "Field") == 0) {
 		SBElementArray* sbFields = [sbSelection fields];
 		CHECK_STATUS_LOCKED(doc)
-		if([sbFields count]) {
+		
+		IGNORING_SB_ERRORS_BEGIN
+		NSInteger fieldCount = [sbFields count];
+		IGNORING_SB_ERRORS_END
+		
+		if(fieldCount) {
 			statusCode status = initField(doc, (WordField*) [sbFields
 															objectAtIndex:0],
 										 -1,  -1, NO, returnValue);
