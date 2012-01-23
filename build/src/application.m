@@ -95,10 +95,24 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	
 	// Capture settings
 	IGNORING_SB_ERRORS_BEGIN
-	doc->restoreFullScreenMode = [doc->sbView fullScreen];
-	doc->restoreInsertionsAndDeletions = [doc->sbView
-										  showInsertionsAndDeletions];
-	doc->restoreFormatChanges = [doc->sbView showFormatChanges];
+	if([doc->sbView respondsToSelector:@selector(fullScreen)]) {
+		doc->restoreFullScreenMode = [doc->sbView fullScreen];
+	} else {
+		doc->restoreFullScreenMode = false;
+	}
+	
+	if([doc->sbView respondsToSelector:@selector(showInsertionsAndDeletions)]) {
+		doc->restoreInsertionsAndDeletions = [doc->sbView
+											  showInsertionsAndDeletions];
+	} else {
+		doc->restoreInsertionsAndDeletions = false;
+	}
+	
+	if([doc->sbView respondsToSelector:@selector(showFormatChanges)]) {
+		doc->restoreFormatChanges = [doc->sbView showFormatChanges];
+	} else {
+		doc->restoreFormatChanges = false;
+	}
 	IGNORING_SB_ERRORS_END
 	
 	// Get out of full screen mode
