@@ -227,9 +227,27 @@ Installer.prototype = {
 	"secondaryFieldType":"Bookmark"
 };
 
-var Application = function() {};
-Application.prototype = {
-	classDescription: "Zotero Word for Mac Integration Application",
+var Application2004 = function() {};
+Application2004.prototype = {
+	classDescription: "Zotero Word 2004 for Mac Integration Application",
+	classID:		Components.ID("{b063dd87-5615-45c5-ac3d-4b0583034616}"),
+	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2004;1",
+	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
+		Components.interfaces.zoteroIntegrationApplication]),
+	"service":		true,
+	"getDocument":function(path) {
+		init();
+		var docPtr = new document_t.ptr();
+		checkStatus(f.getDocument(true, path, null, docPtr.address()));
+		return new Document(docPtr);
+	},
+	"primaryFieldType":"Field",
+	"secondaryFieldType":"Bookmark"
+};
+
+var Application2008 = function() {};
+Application2008.prototype = {
+	classDescription: "Zotero Word 2008+ for Mac Integration Application",
 	classID:		Components.ID("{ea584d70-2797-4cd1-8015-1a5f5fb85af7}"),
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2008;1",
 	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
@@ -438,5 +456,6 @@ Field.prototype = {
 
 const NSGetFactory = XPCOMUtils.generateNSGetFactory([
 	Installer,
-	Application
+	Application2004,
+	Application2008
 ]);
