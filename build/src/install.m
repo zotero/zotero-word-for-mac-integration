@@ -99,9 +99,11 @@ statusCode install(const char templatePath[]) {
 			version = [file version];
 		}
 		
-		NSInteger intVersion = [[version substringToIndex:
-								 [version rangeOfString:@"."].location]
-								intValue];
+		if(!version) continue;
+		NSUInteger dotIndex = [version rangeOfString:@"."].location;
+		if(dotIndex == NSNotFound) continue;
+		
+		NSInteger intVersion = [[version substringToIndex:dotIndex] intValue];
 		if(intVersion == 10) {
 			wordXFound = YES;
 		}
