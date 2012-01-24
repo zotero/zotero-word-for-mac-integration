@@ -59,15 +59,23 @@ var Plugin = new function() {
 	this.install = function(zpi) {
 		zoteroPluginInstaller = zpi;
 		
+		Zotero.debug("installing");
 		try {
 			var installer = Components.classes["@zotero.org/Zotero/integration/installer?agent=MacWord;1"].
 				createInstance(Components.interfaces.nsIRunnable);
 			installer.run();
 			zoteroPluginInstaller.success();
 		} catch(e) {
-			if(e == "ExceptionAlreadyDisplayed") return;
-			zoteroPluginInstaller.error("Installation could not be completed because an error occurred.\n\n"+e);
-			throw e;
+			if(e.toString().indexOf("ExceptionAlreadyDisplayed") !== -1) {
+				Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
+					.getService(Components.interfaces.nsIPromptService)
+					.alert(null, this.EXTENSION_STRING,
+					"You cancelled installation of Zotero Word for Mac Integration. To install later, visit the Cite pane in the Zotero preferences.");
+				zoteroPluginInstaller.cancelled();
+			} else {
+				zoteroPluginInstaller.error("Installation could not be completed because an error occurred.\n\n"+e);
+				throw e;
+			}
 		}
 	}
 }

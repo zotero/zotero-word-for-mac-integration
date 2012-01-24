@@ -26,13 +26,21 @@
 #include "zoteroMacWordIntegration.h"
 #include "Finder.h"
 
+#define AUTH_PROMPT "Zotero Word for Mac Integration requires administator "\
+	"privileges to complete installation."
+#define PATH_MKDIR "/bin/mkdir"
+#define PATH_RM "/bin/rm"
+#define PATH_DITTO "/usr/bin/ditto"
+
 statusCode installTemplate(NSString* templatePath, NSString* path);
-statusCode installScripts(void);
+statusCode installScripts(NSString* templatePath);
 statusCode parseAuthorizationStatus(OSStatus status, const char file[],
 									const char function[], unsigned int line);
-statusCode getAuthorizationRef(AuthorizationRef* outRef);
-statusCode performAuthorizedMkdir(NSString *path, BOOL emptyIfExists);
-statusCode performAuthorizedCopy(NSString* path1, NSString* path2);
+statusCode getAuthorizationRef(NSString* templatePath);
+statusCode performAuthorizedMkdir(NSString* templatePath, NSString *path,
+								  BOOL emptyIfExists);
+statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
+								 NSString* path2);
 
 statusCode install(const char templatePath[]) {
 	NSString* templatePathNS = [NSString stringWithUTF8String:templatePath];
@@ -119,7 +127,7 @@ statusCode install(const char templatePath[]) {
 	}
 	
 	if(installScripts) {
-		statusCode status = installScripts();
+		statusCode status = installScripts(templatePathNS);
 		if(status) return status;
 		installed = true;
 	}
@@ -199,20 +207,22 @@ statusCode installTemplate(NSString* templatePath, NSString* path) {
 	}
 	
 	// Make sure directory exists, but don't empty it
-	statusCode status = performAuthorizedMkdir(startupDirectory, false);
+	statusCode status = performAuthorizedMkdir(templatePath, startupDirectory,
+											   false);
 	if(status) return status;
 	
 	// Try to copy template to directory
-	status = performAuthorizedCopy(templatePath, [startupDirectory
-												  stringByAppendingPathComponent:
-												  @"Zotero.dot"]
+	status = performAuthorizedCopy(templatePath, templatePath,
+								   [startupDirectory
+									stringByAppendingPathComponent:
+									@"Zotero.dot"]
 								   );
 	if(status) return status;
 	
 	return STATUS_OK;
 }
 
-statusCode installScripts(void) {
+statusCode installScripts(NSString* templatePath) {
 	NSString* potentialMicrosoftUserDataNames[] = {@"Microsoft User Data",
 		@"Microsoft-Benutzerdaten", @"Données Utilisateurs Microsoft",
 		@"Datos del Usuario de Microsoft", @"Datos de Usuario de Microsoft",
@@ -277,7 +287,8 @@ statusCode installScripts(void) {
 	// Clobber the Zotero folder
 	NSString* zoteroFolder = [microsoftUserDataFolder
 							  stringByAppendingPathComponent:@"Zotero"];
-	statusCode status = performAuthorizedMkdir(zoteroFolder, true);
+	statusCode status = performAuthorizedMkdir(templatePath, zoteroFolder,
+											   true);
 	if(status) return status;
 	
 	// Generate the scripts
@@ -345,32 +356,53 @@ statusCode parseAuthorizationStatus(OSStatus status, const char file[],
 }
 
 AuthorizationRef authorizationRef = NULL;
-statusCode getAuthorizationRef(AuthorizationRef* outRef) {
+statusCode getAuthorizationRef(NSString* templatePath) {
 	if(!authorizationRef) {
+		AuthorizationItem authRightItems[] = {
+			{kAuthorizationRightExecute, strlen(PATH_MKDIR), PATH_MKDIR, 0},
+			{kAuthorizationRightExecute, strlen(PATH_RM), PATH_RM, 0},
+			{kAuthorizationRightExecute, strlen(PATH_DITTO), PATH_DITTO, 0}
+		};
+		AuthorizationItem authEnvironmentItems[] = {
+			{kAuthorizationEnvironmentPrompt, strlen(AUTH_PROMPT), AUTH_PROMPT,
+				0},
+			{kAuthorizationEnvironmentIcon, 0, NULL, 0}
+		};
+		AuthorizationRights authRights = {3, authRightItems};
+		AuthorizationEnvironment authEnvironment = {2, authEnvironmentItems};
+		
+		//  Get path to Zotero icon from templatePath
+		NSString* iconPathNS = [[templatePath stringByDeletingLastPathComponent]
+								stringByAppendingPathComponent:@"zotero.png"];
+		char* iconPath = copyNSString(iconPathNS);
+		authEnvironmentItems[1].valueLength = strlen(iconPath);
+		authEnvironmentItems[1].value = iconPath;
+		
 		OSStatus status;
-		status = AuthorizationCreate(NULL, kAuthorizationEmptyEnvironment,
-									 kAuthorizationFlagDefaults,
+		status = AuthorizationCreate(&authRights, &authEnvironment,
+									 kAuthorizationFlagExtendRights | 
+									 kAuthorizationFlagInteractionAllowed,
 									 &authorizationRef);
+		free(iconPath);
 		if(status) {
 			return parseAuthorizationStatus(status, __FILE__, __FUNCTION__,
-											__LINE__);
+											__LINE__-2);
 		}
 	}
-	*outRef = authorizationRef;
 	return STATUS_OK;
 }
 
 // Performs an mkdir operation, requesting privileges if necessary and
 // optionally emptying the directory if it exists
-statusCode performAuthorizedMkdir(NSString *path, BOOL emptyIfExists) {
+statusCode performAuthorizedMkdir(NSString* templatePath, NSString *path,
+								  BOOL emptyIfExists) {
 	NSFileManager *fm = [NSFileManager defaultManager];
 	BOOL isDirectory;
 	if([fm fileExistsAtPath:path isDirectory:&isDirectory]) {
 		if(emptyIfExists) {
 			// File exists but we were asked to empty it
 			if(![fm removeItemAtPath:path error:NULL]) {
-				AuthorizationRef authorizationRef;
-				statusCode status = getAuthorizationRef(&authorizationRef);
+				statusCode status = getAuthorizationRef(templatePath);
 				if(status) return status;
 				
 				char *argv[3];
@@ -378,7 +410,7 @@ statusCode performAuthorizedMkdir(NSString *path, BOOL emptyIfExists) {
 				argv[1] = copyNSString(path);
 				argv[2] = NULL;
 				OSStatus authStatus = AuthorizationExecuteWithPrivileges(authorizationRef,
-																		 "/bin/rm",
+																		 PATH_RM,
 																		 kAuthorizationFlagDefaults,
 																		 argv, NULL);
 				free(argv[1]);
@@ -400,8 +432,7 @@ statusCode performAuthorizedMkdir(NSString *path, BOOL emptyIfExists) {
 	
 	if(![fm createDirectoryAtPath:path
 	  withIntermediateDirectories:YES attributes:nil error:NULL]) {
-		AuthorizationRef authorizationRef;
-		statusCode status = getAuthorizationRef(&authorizationRef);
+		statusCode status = getAuthorizationRef(templatePath);
 		if(status) return status;
 
 		char *argv[5];
@@ -411,7 +442,7 @@ statusCode performAuthorizedMkdir(NSString *path, BOOL emptyIfExists) {
 		argv[3] = copyNSString(path);
 		argv[4] = NULL;
 		OSStatus authStatus = AuthorizationExecuteWithPrivileges(authorizationRef,
-																 "/bin/mkdir",
+																 PATH_MKDIR,
 																 kAuthorizationFlagDefaults,
 																 argv, NULL);
 		free(argv[3]);
@@ -425,7 +456,8 @@ statusCode performAuthorizedMkdir(NSString *path, BOOL emptyIfExists) {
 }
 
 // Performs a copy using ditto, requesting privileges if necessary
-statusCode performAuthorizedCopy(NSString* path1, NSString* path2) {
+statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
+								 NSString* path2) {
 	// First try copying with copyfile (because it will happily clobber the
 	// existing file, even if we don't have permissions on the directory,
 	// whereas Cocoa APIs won't)
@@ -434,8 +466,7 @@ statusCode performAuthorizedCopy(NSString* path1, NSString* path2) {
 	}
 	
 	// Create authorization reference
-	AuthorizationRef authorizationRef;
-	statusCode status = getAuthorizationRef(&authorizationRef);
+	statusCode status = getAuthorizationRef(templatePath);
 	if(status) return status;
 	
 	// Run the tool using the authorization reference
@@ -444,7 +475,7 @@ statusCode performAuthorizedCopy(NSString* path1, NSString* path2) {
 	argv[1] = copyNSString(path2);
 	argv[2] = NULL;
 	OSStatus authStatus = AuthorizationExecuteWithPrivileges(authorizationRef,
-															 "/usr/bin/ditto",
+															 PATH_DITTO,
 															 kAuthorizationFlagDefaults,
 															 argv, NULL);
 	free(argv[0]);
