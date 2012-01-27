@@ -197,12 +197,13 @@ NSString* generateRandomString(NSUInteger length);
 // application.m
 statusCode getDocument(bool isWord2004, const char* wordPath,
 					   const char* documentName, document_t** returnValue);
-statusCode displayAlert(char const dialogText[], unsigned short icon,
-						unsigned short buttons, unsigned short* returnValue);
 
 // document.m
 void freeDocument(document_t *doc);
 statusCode activate(document_t *doc);
+statusCode displayAlert(document_t *doc, char const dialogText[],
+						unsigned short icon, unsigned short buttons,
+						unsigned short* returnValue);
 statusCode canInsertField(document_t *doc, const char fieldType[],
 						  bool* returnValue);
 statusCode cursorInField(document_t *doc, const char fieldType[],

@@ -83,17 +83,17 @@ function init() {
 		"getDocument":lib.declare("getDocument", ctypes.default_abi, statusCode, ctypes.bool,
 			ctypes.char.ptr, ctypes.char.ptr, document_t.ptr.ptr),
 		
-		// statusCode displayAlert(char const dialogText[], unsigned short icon,
-		//						   unsigned short buttons, unsigned short* returnValue);
-		"displayAlert":lib.declare("displayAlert", ctypes.default_abi, ctypes.unsigned_short,
-			ctypes.char.ptr, ctypes.unsigned_short, ctypes.unsigned_short,
-			ctypes.unsigned_short.ptr),
-		
 		// void freeDocument(Document *doc);
 		"freeDocument":lib.declare("freeDocument", ctypes.default_abi, statusCode, document_t.ptr),
 			
 		// statusCode activate(Document *doc);
 		"activate":lib.declare("activate", ctypes.default_abi, statusCode, document_t.ptr),
+		
+		// statusCode displayAlert(char const dialogText[], unsigned short icon,
+		//						   unsigned short buttons, unsigned short* returnValue);
+		"displayAlert":lib.declare("displayAlert", ctypes.default_abi, ctypes.unsigned_short,
+			document_t.ptr, ctypes.char.ptr, ctypes.unsigned_short, ctypes.unsigned_short,
+			ctypes.unsigned_short.ptr),
 		
 		// statusCode canInsertField(Document *doc, const char fieldType[], bool* returnValue);
 		"canInsertField":lib.declare("canInsertField", ctypes.default_abi, statusCode,
@@ -276,8 +276,9 @@ Document.prototype = {
 	
 	"displayAlert":function(dialogText, icon, buttons) {
 		var buttonPressed = new ctypes.unsigned_short();
-		checkStatus(f.displayAlert(dialogText, icon, buttons, buttonPressed.address()));
-		return buttonPressed.contents;
+		checkStatus(f.displayAlert(this._document_t, dialogText, icon, buttons,
+			buttonPressed.address()));
+		return buttonPressed.value;
 	},
 	
 	"activate":function() {

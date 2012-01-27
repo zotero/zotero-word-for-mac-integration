@@ -132,6 +132,60 @@ statusCode activate(document_t *doc) {
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
 }
 
+// Displays an alert within Word
+statusCode displayAlert(document_t *doc, char const dialogText[],
+						unsigned short icon, unsigned short buttons,
+						unsigned short *returnValue) {
+	[doc->lock lock];
+	
+	// Make button list descriptor
+	NSArray* buttonArray;
+	if(buttons == DIALOG_BUTTONS_OK_CANCEL) {
+		buttonArray = [NSArray arrayWithObjects:@"Cancel", @"OK", nil];
+	} else if(buttons == DIALOG_BUTTONS_YES_NO) {
+		buttonArray = [NSArray arrayWithObjects:@"No", @"Yes", nil];
+	} else if(buttons == DIALOG_BUTTONS_YES_NO_CANCEL) {
+		buttonArray = [NSArray arrayWithObjects:@"Cancel", @"No", @"Yes",
+					   nil];
+	} else {
+		buttonArray = [NSArray arrayWithObjects:@"OK", nil];
+	}
+	
+	NSAppleEventDescriptor *buttonList = [NSAppleEventDescriptor
+										  listDescriptor];
+	for(NSString* buttonName in buttonArray) {
+		[buttonList insertDescriptor:
+		 [NSAppleEventDescriptor descriptorWithString:buttonName] atIndex:0];
+	}
+	
+	// Get icon
+	NSAppleEventDescriptor *dialogType;
+	if(icon == DIALOG_ICON_CAUTION) {
+		dialogType = [NSAppleEventDescriptor descriptorWithEnumCode:'warN'];
+	} else if(icon == DIALOG_ICON_NOTICE) {
+		dialogType = [NSAppleEventDescriptor descriptorWithEnumCode:'infA'];
+	} else {
+		dialogType = [NSAppleEventDescriptor descriptorWithEnumCode:'criT'];
+	}
+	
+	// Display dialog
+	NSString* dialogTextNS = [NSString stringWithUTF8String:dialogText];
+	NSDictionary *response = [doc->sbApp sendEvent:'syso' id:'disA'
+						  parameters:'----', dialogTextNS,
+							  'as A', dialogType,
+							  'btns', buttonList, nil];
+	CHECK_STATUS_LOCKED(doc);
+	
+	// Check button clicked
+	if(returnValue != NULL) {
+		NSString *buttonPressed = [response objectForKey:
+								   [NSNumber numberWithInt:(int) 'bhit']];
+		*returnValue = [buttonArray indexOfObject:buttonPressed];
+	}
+	
+	RETURN_STATUS_LOCKED(doc, STATUS_OK);
+}
+
 // Disables Track Changes settings so that we can read field codes
 statusCode prepareReadFieldCode(document_t *doc) {
 	[doc->lock lock];
@@ -158,7 +212,8 @@ statusCode canInsertField(document_t *doc, const char fieldType[],
 	[doc->lock lock];
 	
 	if([doc->sbView viewType] == WordE202WordNoteView) {
-		displayAlert("Zotero cannot insert a citation here because Word does "
+		displayAlert(doc,
+					 "Zotero cannot insert a citation here because Word does "
 					 "not support inserting fields in Notebook Layout.",
 					 DIALOG_ICON_STOP, DIALOG_BUTTONS_OK, NULL);
 		RETURN_STATUS_LOCKED(doc, STATUS_EXCEPTION_ALREADY_DISPLAYED)

@@ -79,11 +79,13 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	if(!doc->sbDoc || [doc->sbDoc isEqual:[NSNull null]]) {
 		freeDocument(doc);
 		if(!sbWindow || [sbWindow isEqual:[NSNull null]]) {
-			displayAlert("Zotero could not find an open document. Please open \
-						 a document and try again.", DIALOG_ICON_STOP, 
+			displayAlert(doc,
+						 "Zotero could not find an open document. Please open "
+						 "a document and try again.", DIALOG_ICON_STOP, 
 						 DIALOG_BUTTONS_OK, NULL);
 		} else {
-			displayAlert("Zotero could not perform this action. Please ensure "
+			displayAlert(doc,
+						 "Zotero could not perform this action. Please ensure "
 						 "that a document is open. If you have performed a "
 						 "custom installation of Office, you may need to run "
 						 "the installer again, ensuring that \"Visual Basic "
@@ -135,61 +137,5 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	doc->lock = [[NSRecursiveLock alloc] init];
 	
 	*returnValue = doc;
-	return STATUS_OK;
-}
-
-// Displays an alert within Word
-statusCode displayAlert(char const dialogText[], unsigned short icon,
-						unsigned short buttons, unsigned short *returnValue) {
-	// Escape quotation marks and backslashes
-	NSMutableString* dialogTextNS = escapeString(dialogText);
-	
-	// Get array of buttons
-	NSArray *buttonArray;
-	if(buttons == DIALOG_BUTTONS_OK_CANCEL) {
-		buttonArray = [NSArray arrayWithObjects:@"Cancel", @"OK", nil];
-	} else if(buttons == DIALOG_BUTTONS_YES_NO) {
-		buttonArray = [NSArray arrayWithObjects:@"No", @"Yes", nil];
-	} else if(buttons == DIALOG_BUTTONS_YES_NO_CANCEL) {
-		buttonArray = [NSArray arrayWithObjects:@"Cancel", @"No", @"Yes",
-					   nil];
-	} else {
-		buttonArray = [NSArray arrayWithObjects:@"OK", nil];
-	}
-	NSString *buttonCode = [buttonArray componentsJoinedByString: @"\", \""];
-	
-	// Get icon
-	NSString *dialogType;
-	if(icon == DIALOG_ICON_CAUTION) {
-		dialogType = @"warning";
-	} else if(icon == DIALOG_ICON_NOTICE) {
-		dialogType = @"informational";
-	} else {
-		dialogType = @"critical";
-	}
-	
-	// Generate dialog code
-	NSString* dialogCode = [[NSString alloc] initWithFormat:
-							@"tell application \"Microsoft Word\" "
-							"to display alert \"%@\" as %@ buttons {\"%@\"}",
-							dialogTextNS, dialogType, buttonCode];
-	
-	// Display dialog
-	NSDictionary *errorDict = nil;
-	NSAppleScript* scriptObject = [[NSAppleScript alloc]
-								   initWithSource:dialogCode];
-	NSAppleEventDescriptor *resultDescriptor = [scriptObject
-												executeAndReturnError:
-												&errorDict];
-	[scriptObject release];
-	
-	// Check button clicked
-	if(returnValue != NULL) {
-		NSAppleEventDescriptor *buttonDesc = [resultDescriptor
-											  descriptorForKeyword:'bhit'];
-		NSString *buttonPressed = [buttonDesc stringValue];
-		*returnValue = [buttonArray indexOfObject:buttonPressed];
-	}
-	
 	return STATUS_OK;
 }
