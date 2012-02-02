@@ -11,25 +11,25 @@
 		F402FC3A14B2C51E00CC305F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F402FC3914B2C51E00CC305F /* Foundation.framework */; };
 		F402FC4014B4126A00CC305F /* field.m in Sources */ = {isa = PBXBuildFile; fileRef = F402FC3F14B4126A00CC305F /* field.m */; };
 		F402FC8F14B5608600CC305F /* utilities.m in Sources */ = {isa = PBXBuildFile; fileRef = F402FC8E14B5608600CC305F /* utilities.m */; };
+		F4129F9114DAEB2B008A696A /* libzoteroMacWordIntegration.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = F42F45D014B2ADC600F945DB /* libzoteroMacWordIntegration.dylib */; };
 		F42F45DA14B2AE7300F945DB /* application.m in Sources */ = {isa = PBXBuildFile; fileRef = F42F45D914B2AE7300F945DB /* application.m */; };
 		F42F45DE14B2AEFF00F945DB /* document.m in Sources */ = {isa = PBXBuildFile; fileRef = F42F45DD14B2AEFF00F945DB /* document.m */; };
 		F42F45E014B2AF0600F945DB /* zoteroMacWordIntegration.h in Headers */ = {isa = PBXBuildFile; fileRef = F42F45DF14B2AF0600F945DB /* zoteroMacWordIntegration.h */; };
 		F42F45E214B2B7BF00F945DB /* Word.h in Headers */ = {isa = PBXBuildFile; fileRef = F42F45E114B2B7BF00F945DB /* Word.h */; };
 		F49583D314BA876800159335 /* install.m in Sources */ = {isa = PBXBuildFile; fileRef = F49583D214BA876800159335 /* install.m */; };
 		F49583D514BA9E4700159335 /* Finder.h in Headers */ = {isa = PBXBuildFile; fileRef = F49583D414BA9E4700159335 /* Finder.h */; };
-		F4C1356714B7ABA50034852E /* libzoteroMacWordIntegration.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = F42F45D014B2ADC600F945DB /* libzoteroMacWordIntegration.dylib */; };
 		F4E5C73214BAAA9600AF7B9F /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4E5C73114BAAA9600AF7B9F /* Security.framework */; };
 		F4E5C73514BAAACA00AF7B9F /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4E5C73414BAAACA00AF7B9F /* AppKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		F4C1356614B7AAED0034852E /* CopyFiles */ = {
+		F4129F9014DAEB18008A696A /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
-			dstPath = "/Users/simon/Desktop/Development/FS/zotero-word-for-mac-integration/resource";
+			dstPath = "$(SRCROOT)/../../resource";
 			dstSubfolderSpec = 0;
 			files = (
-				F4C1356714B7ABA50034852E /* libzoteroMacWordIntegration.dylib in CopyFiles */,
+				F4129F9114DAEB2B008A696A /* libzoteroMacWordIntegration.dylib in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -116,7 +116,7 @@
 				F42F45CC14B2ADC600F945DB /* Sources */,
 				F42F45CD14B2ADC600F945DB /* Frameworks */,
 				F42F45CE14B2ADC600F945DB /* Headers */,
-				F4C1356614B7AAED0034852E /* CopyFiles */,
+				F4129F9014DAEB18008A696A /* CopyFiles */,
 			);
 			buildRules = (
 			);
