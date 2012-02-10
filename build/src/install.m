@@ -41,7 +41,10 @@ statusCode performAuthorizedMkdir(NSString* templatePath, NSString *path,
 								  BOOL emptyIfExists);
 statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
 								 NSString* path2);
+statusCode getScriptItemsDirectoryNS(NSString** scriptFolder);
+statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent);
 
+// Installs all scripts and templates, given the path to Zotero.dot
 statusCode install(const char templatePath[]) {
 	NSString* templatePathNS = [NSString stringWithUTF8String:templatePath];
 	FinderApplication* finder = nil;
@@ -117,7 +120,7 @@ statusCode install(const char templatePath[]) {
 		}
 		
 		// Install scripts for Word 2008 or later
-		shouldInstallScripts = installScripts || intVersion >= 12;
+		shouldInstallScripts = shouldInstallScripts || intVersion >= 12;
 		// Install scripts for Word 2004 or Word 2011
 		if(intVersion == 11 || intVersion >= 14) {
 			statusCode status = installTemplate(templatePathNS, path);
@@ -126,7 +129,7 @@ statusCode install(const char templatePath[]) {
 		}
 	}
 	
-	if(installScripts) {
+	if(shouldInstallScripts) {
 		statusCode status = installScripts(templatePathNS);
 		if(status) return status;
 		installed = true;
@@ -181,6 +184,7 @@ statusCode install(const char templatePath[]) {
 	return STATUS_OK;
 }
 
+// Installs a template to a given path
 statusCode installTemplate(NSString* templatePath, NSString* path) {
 	// Get path to startup folder
 	NSString* officeDirectory = [path stringByDeletingLastPathComponent];
@@ -222,12 +226,13 @@ statusCode installTemplate(NSString* templatePath, NSString* path) {
 	return STATUS_OK;
 }
 
-statusCode installScripts(NSString* templatePath) {
+// Gets the location of the Script Menu Items directory
+statusCode getScriptItemsDirectoryNS(NSString** scriptFolder) {
 	NSString* potentialMicrosoftUserDataNames[] = {@"Microsoft User Data",
 		@"Microsoft-Benutzerdaten", @"Données Utilisateurs Microsoft",
 		@"Datos del Usuario de Microsoft", @"Datos de Usuario de Microsoft",
 		@"Dati utente Microsoft", NULL};
-	NSString* microsoftUserDataFolder = nil;
+	*scriptFolder = nil;
 	NSFileManager *fm = [NSFileManager defaultManager];
 	
 	NSArray *temp = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
@@ -244,7 +249,7 @@ statusCode installScripts(NSString* templatePath) {
 	
 	// Look for Script Menu Items folder in various places
 	for(unsigned short i=0;
-		!microsoftUserDataFolder && potentialMicrosoftUserDataNames[i] != NULL;
+		!*scriptFolder && potentialMicrosoftUserDataNames[i] != NULL;
 		i++) {
 		NSString *testPath = [[documentsFolder stringByAppendingPathComponent:
 							   potentialMicrosoftUserDataNames[i]]
@@ -253,7 +258,7 @@ statusCode installScripts(NSString* templatePath) {
 		BOOL isDirectory;
 		if([fm fileExistsAtPath:testPath isDirectory:&isDirectory]
 		   && isDirectory) {
-			microsoftUserDataFolder = testPath;
+			*scriptFolder = testPath;
 			break;
 		} else {
 			testPath = [[preferencesFolder stringByAppendingPathComponent:
@@ -262,14 +267,14 @@ statusCode installScripts(NSString* templatePath) {
 						@"Word Script Menu Items"];
 			if([fm fileExistsAtPath:testPath isDirectory:&isDirectory]
 			   && isDirectory) {
-				microsoftUserDataFolder = testPath;
+				*scriptFolder = testPath;
 				break;
 			}
 		}
 	}
 	
 	// We couldn't find Script Menu Items folder, so ask user to locate it
-	if(!microsoftUserDataFolder) {
+	if(!*scriptFolder) {
 		NSOpenPanel* openPanel = [NSOpenPanel openPanel];
 		[openPanel setCanChooseFiles:NO];
 		[openPanel setCanChooseDirectories:YES];
@@ -278,14 +283,67 @@ statusCode installScripts(NSString* templatePath) {
 		 "usually located in Documents/Microsoft User Data"];
 		[openPanel setDirectory:documentsFolder];
 		if([openPanel runModal] == NSFileHandlingPanelOKButton) {
-			microsoftUserDataFolder = [[[openPanel URLs] objectAtIndex:0] path];
+			*scriptFolder = [[[openPanel URLs] objectAtIndex:0] path];
 		} else {
 			return STATUS_EXCEPTION_ALREADY_DISPLAYED;
 		}
 	}
 	
+	return STATUS_OK;
+}
+
+statusCode getScriptItemsDirectory(char** scriptFolder) {
+	NSString* scriptFolderNS;
+	ENSURE_OK(getScriptItemsDirectoryNS(&scriptFolderNS));
+	*scriptFolder = copyNSString(scriptFolderNS);
+	return STATUS_OK;
+}
+
+statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent) {
+	NSTask *task;
+	task = [[NSTask alloc] init];
+	[task autorelease];
+	[task setLaunchPath: @"/usr/bin/osacompile"];
+	NSPipe *outPipe = [NSPipe pipe];
+	NSPipe *inPipe = [NSPipe pipe];
+	[task setStandardInput:inPipe];
+	[task setStandardOutput:outPipe];
+	NSFileHandle *outFile = [outPipe fileHandleForReading];
+	NSFileHandle *inFile = [inPipe fileHandleForWriting];
+	
+	SInt32 versMaj, versMin;
+	Gestalt(gestaltSystemVersionMajor, &versMaj);
+	Gestalt(gestaltSystemVersionMinor, &versMin);
+	if(versMaj > 10 || versMin >= 7) {
+		// Lion doesn't add a type or creator by default
+		[task setArguments:[NSArray arrayWithObjects: @"-t", @"osas", @"-c",
+							@"ToyS", @"-o", scriptPath, nil]];
+	} else {
+		// Older versions of Mac OS X support the arguments above, but they
+		// somehow get reversed.
+		[task setArguments:[NSArray arrayWithObjects: @"-o", scriptPath,
+							nil]];
+	}
+	
+	[task launch];
+	[inFile writeData:[scriptContent dataUsingEncoding:NSUTF8StringEncoding]];
+	[inFile closeFile];
+	[outFile readDataToEndOfFile];
+
+	return STATUS_OK;
+}
+
+statusCode writeScript(char* scriptPath, char* scriptContent) {
+	return writeScriptNS([NSString stringWithUTF8String:scriptPath],
+						 [NSString stringWithUTF8String:scriptContent]);
+}
+
+statusCode installScripts(NSString* templatePath) {
+	NSString* scriptFolder;
+	ENSURE_OK(getScriptItemsDirectoryNS(&scriptFolder))
+	
 	// Clobber the Zotero folder
-	NSString* zoteroFolder = [microsoftUserDataFolder
+	NSString* zoteroFolder = [scriptFolder
 							  stringByAppendingPathComponent:@"Zotero"];
 	statusCode status = performAuthorizedMkdir(templatePath, zoteroFolder,
 											   true);
@@ -301,43 +359,15 @@ statusCode installScripts(NSString* templatePath) {
 		"editBibliography", "editCitation", "refresh", "removeCodes",
 		"setDocPrefs", NULL};
 	for(unsigned short i=0; W2008_SCRIPT_NAMES[i] != NULL; i++) {
-		NSTask *task;
-		task = [[NSTask alloc] init];
-		[task autorelease];
-		[task setLaunchPath: @"/usr/bin/osacompile"];
-		NSPipe *outPipe = [NSPipe pipe];
-		NSPipe *inPipe = [NSPipe pipe];
-		[task setStandardInput:inPipe];
-		[task setStandardOutput:outPipe];
-		NSFileHandle *outFile = [outPipe fileHandleForReading];
-		NSFileHandle *inFile = [inPipe fileHandleForWriting];
-		
-		SInt32 versMaj, versMin;
-		Gestalt(gestaltSystemVersionMajor, &versMaj);
-		Gestalt(gestaltSystemVersionMinor, &versMin);
 		NSString* scriptPath = [zoteroFolder stringByAppendingPathComponent:
 								[NSString stringWithUTF8String: 
 								 W2008_SCRIPT_NAMES[i]]];
-		if(versMaj > 10 || versMin >= 7) {
-			// Lion doesn't add a type or creator by default
-			[task setArguments:[NSArray arrayWithObjects: @"-t", @"osas", @"-c",
-								@"ToyS", @"-o", scriptPath, nil]];
-		} else {
-			// Older versions of Mac OS X support the arguments above, but they
-			// somehow get reversed.
-			[task setArguments:[NSArray arrayWithObjects: @"-o", scriptPath,
-								nil]];
-		}
-		
-		[task launch];
-		[inFile writeData:[[NSString stringWithFormat:@"try\n"
-		 "do shell script \"PIPE=\\\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\\\";  if [ ! -e \\\"$PIPE\\\" ]; then PIPE=~/.zoteroIntegrationPipe; fi; if [ -e \\\"$PIPE\\\" ]; then echo 'MacWord2008 %s '\" & quoted form of POSIX path of (path to current application) & \" > \\\"$PIPE\\\"; else exit 1; fi;\"\n"
-		 "on error\n"
-		 "display alert \"Word could not communicate with Zotero. Please ensure that Firefox is open and try again.\" as critical\n"
-						   "end try\n", W2008_SCRIPT_COMMANDS[i]]
-						   dataUsingEncoding:NSUTF8StringEncoding]];
-		[inFile closeFile];
-		[outFile readDataToEndOfFile];
+		NSString* scriptContent = [NSString stringWithFormat:@"try\n"
+								   "do shell script \"PIPE=\\\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\\\";  if [ ! -e \\\"$PIPE\\\" ]; then PIPE=~/.zoteroIntegrationPipe; fi; if [ -e \\\"$PIPE\\\" ]; then echo 'MacWord2008 %s '\" & quoted form of POSIX path of (path to current application) & \" > \\\"$PIPE\\\"; else exit 1; fi;\"\n"
+								   "on error\n"
+								   "display alert \"Word could not communicate with Zotero. Please ensure that Firefox is open and try again.\" as critical\n"
+								   "end try\n", W2008_SCRIPT_COMMANDS[i]];
+		ENSURE_OK(writeScriptNS(scriptPath, scriptContent));
 	}
 	return STATUS_OK;
 }

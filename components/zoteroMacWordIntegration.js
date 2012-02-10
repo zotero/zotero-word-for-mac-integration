@@ -170,6 +170,17 @@ function init() {
 		
 		// statusCode install(const char templatePath[]);
 		"install":lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr),
+		
+		// statusCode getScriptItemsDirectory(char** scriptFolder);
+		"getScriptItemsDirectory":lib.declare("getScriptItemsDirectory", ctypes.default_abi,
+			statusCode, ctypes.char.ptr.ptr),
+		
+		// statusCode writeScript(char* scriptPath, char* scriptContent);
+		"writeScript":lib.declare("writeScript", ctypes.default_abi, statusCode, ctypes.char.ptr,
+			ctypes.char.ptr),
+		
+		// statusCode freeString(char* string);
+		"freeString":lib.declare("freeString", ctypes.default_abi, statusCode, ctypes.char.ptr)
 	};
 	
 	fieldPtr = new ctypes.PointerType(field_t);
@@ -208,6 +219,7 @@ function checkStatus(status) {
  */
 var Installer = function() {
 	init();
+	this.wrappedJSObject = this;
 };
 Installer.prototype = {
 	classDescription: "Zotero Word for Mac Integration Installer",
@@ -223,8 +235,16 @@ Installer.prototype = {
 		template.append("Zotero.dot");
 		checkStatus(f.install(template.path));
 	},
-	"primaryFieldType":"Field",
-	"secondaryFieldType":"Bookmark"
+	"getScriptItemsDirectory":function() {
+		var returnValue = new ctypes.char.ptr();
+		checkStatus(f.getScriptItemsDirectory(returnValue.address()));
+		var outString = returnValue.readString();
+		f.freeString(returnValue);
+		return outString;
+	},
+	"writeScript":function(scriptPath, scriptContent) {
+		checkStatus(f.writeScript(scriptPath, scriptContent));
+	}
 };
 
 var Application2004 = function() {};

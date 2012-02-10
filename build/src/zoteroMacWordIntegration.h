@@ -76,13 +76,19 @@ if(errorHasOccurred()) {\
 
 // Returns x if x is non-zero.
 #define ENSURE_OK(x) \
-if(x) return x;
+{ \
+statusCode statusToEnsure = x; \
+if(statusToEnsure) return statusToEnsure; \
+}
 
 // If y is non-zero, unlocks the lock on (document_t*)x and then returns y.
 #define ENSURE_OK_LOCKED(x, y) \
-if(y) {\
+{ \
+statusCode statusToEnsure = y; \
+if(statusToEnsure) {\
 	[(x)->lock unlock];\
-	return y;\
+	return statusToEnsure;\
+} \
 }
 
 // Unlocks the lock on (document_t*)x and then returns.
@@ -261,5 +267,10 @@ statusCode ensureNoteLocationSet(field_t* field);
 // install.m
 statusCode install(const char zoteroDotPath[]);
 NSInteger getEntryIndex(document_t* x, SBObject* y);
+statusCode getScriptItemsDirectory(char** scriptFolder);
+statusCode writeScript(char* scriptPath, char* scriptContent);
+
+// utilities.m
+void freeString(char* string);
 
 #endif

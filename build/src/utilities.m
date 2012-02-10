@@ -148,15 +148,8 @@ char* copyNSString(NSString* string) {
 }
 
 // Escapes a C string for use with AppleScript
-NSMutableString* escapeString(const char string[]) {
-	NSMutableString* newString = [[NSMutableString alloc]
-								  initWithUTF8String:string];
-	NSRange stringRange = NSMakeRange(0, [newString length]);
-	[newString replaceOccurrencesOfString: @"\\" withString: @"\\\\"
-								  options:0 range:stringRange];
-	[newString replaceOccurrencesOfString: @"\"" withString: @"\\\""
-								  options:0 range:stringRange];
-	return [newString autorelease];
+void freeString(char* string) {
+	free(string);
 }
 
 // Generates a random string.
