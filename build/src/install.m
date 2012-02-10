@@ -365,7 +365,7 @@ statusCode installScripts(NSString* templatePath) {
 		NSString* scriptContent = [NSString stringWithFormat:@"try\n"
 								   "do shell script \"PIPE=\\\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\\\";  if [ ! -e \\\"$PIPE\\\" ]; then PIPE=~/.zoteroIntegrationPipe; fi; if [ -e \\\"$PIPE\\\" ]; then echo 'MacWord2008 %s '\" & quoted form of POSIX path of (path to current application) & \" > \\\"$PIPE\\\"; else exit 1; fi;\"\n"
 								   "on error\n"
-								   "display alert \"Word could not communicate with Zotero. Please ensure that Firefox is open and try again.\" as critical\n"
+								   "display alert \"Word could not communicate with Zotero. Please ensure that Zotero Standalone or Firefox is open and try again.\" as critical\n"
 								   "end try\n", W2008_SCRIPT_COMMANDS[i]];
 		ENSURE_OK(writeScriptNS(scriptPath, scriptContent));
 	}
