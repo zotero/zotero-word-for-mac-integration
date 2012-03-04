@@ -490,7 +490,14 @@ statusCode getText(field_t* field, char** returnValue) {
 		[(field->doc)->lock unlock];
 		ENSURE_OK(status)
 		
-		field->text = copyNSString([field->sbContentRange content]);
+		NSString* content = [field->sbContentRange content];
+		// If a field is empty, Word for Mac will return missing value instead
+		// of an empty string
+		if(content == nil) {
+			content = [NSString string];
+		}
+		
+		field->text = copyNSString(content);
 		CHECK_STATUS
 	}
 	
