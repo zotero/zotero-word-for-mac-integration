@@ -295,6 +295,7 @@ Document.prototype = {
 		Components.interfaces.zoteroIntegrationDocument]),
 	
 	"displayAlert":function(dialogText, icon, buttons) {
+		Zotero.debug("ZoteroMacWordIntegration: displayAlert", 4);
 		var buttonPressed = new ctypes.unsigned_short();
 		checkStatus(f.displayAlert(this._document_t, dialogText, icon, buttons,
 			buttonPressed.address()));
@@ -302,44 +303,52 @@ Document.prototype = {
 	},
 	
 	"activate":function() {
+		Zotero.debug("ZoteroMacWordIntegration: activate", 4);
 		checkStatus(f.activate(this._document_t));
 	},
 	
 	"canInsertField":function(fieldType) {
+		Zotero.debug("ZoteroMacWordIntegration: canInsertField", 4);
 		var returnValue = new ctypes.bool();
 		checkStatus(f.canInsertField(this._document_t, fieldType, returnValue.address()));
 		return returnValue.value;
 	},
 	
 	"cursorInField":function(fieldType) {
+		Zotero.debug("ZoteroMacWordIntegration: cursorInField", 4);
 		var returnValue = new field_t.ptr();
 		checkStatus(f.cursorInField(this._document_t, fieldType, returnValue.address()));
 		return (returnValue.isNull() ? null : new Field(returnValue));
 	},
 	
 	"getDocumentData":function() {
+		Zotero.debug("ZoteroMacWordIntegration: getDocumentData", 4);
 		var returnValue = new ctypes.char.ptr();
 		checkStatus(f.getDocumentData(this._document_t, returnValue.address()));
 		return returnValue.readString();
 	},
 	
 	"setDocumentData":function(documentData) {
+		Zotero.debug("ZoteroMacWordIntegration: setDocumentData", 4);
 		checkStatus(f.setDocumentData(this._document_t, documentData));
 	},
 	
 	"insertField":function(fieldType, noteType) {
+		Zotero.debug("ZoteroMacWordIntegration: insertField", 4);
 		var returnValue = new field_t.ptr();
 		checkStatus(f.insertField(this._document_t, fieldType, noteType, returnValue.address()));
 		return new Field(returnValue);
 	},
 	
 	"getFields":function(fieldType) {
+		Zotero.debug("ZoteroMacWordIntegration: getFields", 4);
 		var fieldListNode = new fieldListNode_t.ptr();
 		checkStatus(f.getFields(this._document_t, fieldType, fieldListNode.address()));
 		return new FieldEnumerator(fieldListNode);
 	},
 	
 	"getFieldsAsync":function(fieldType, observer) {
+		Zotero.debug("ZoteroMacWordIntegration: getFieldsAsync", 4);
 		var callback = progressFunction_t(function(progress) {
 			// Remove global reference that prevents GC
 			dataInUse.splice(dataInUse.indexOf(callback), 2);
@@ -357,17 +366,22 @@ Document.prototype = {
 		// Prevent GC
 		dataInUse = dataInUse.concat([callback, fieldListNode]);
 		
-		checkStatus(f.getFieldsAsync(this._document_t, fieldType, fieldListNode.address(),
-			callback));
+		var me = this;
+		Zotero.setTimeout(function() {
+			checkStatus(f.getFieldsAsync(me._document_t, fieldType, fieldListNode.address(),
+				callback));
+		}, 0);
 	},
 	
 	"setBibliographyStyle":function(firstLineIndent, bodyIndent, lineSpacing, entrySpacing,
 			tabStops) {
+		Zotero.debug("ZoteroMacWordIntegration: setBibliographyStyle", 4);
 		checkStatus(f.setBibliographyStyle(this._document_t, firstLineIndent, bodyIndent, lineSpacing,
 			entrySpacing, ctypes.long.array(tabStops.length)(tabStops), tabStops.length));
 	},
 	
 	"convert":function(fieldEnumerator, toFieldType, toNoteTypes, nFields) {
+		Zotero.debug("ZoteroMacWordIntegration: convert", 4);
 		var fieldPointers = [];
 		while(fieldEnumerator.hasMoreElements()) {
 			fieldPointers.push(fieldEnumerator.getNext().wrappedJSObject._field_t);
@@ -378,10 +392,12 @@ Document.prototype = {
 	},
 	
 	"cleanup":function() {
+		Zotero.debug("ZoteroMacWordIntegration: cleanup", 4);
 		checkStatus(f.cleanup(this._document_t));
 	},
 	
 	"complete":function() {
+		Zotero.debug("ZoteroMacWordIntegration: complete", 4);
 		f.freeDocument(this._document_t);
 	}
 };
@@ -421,36 +437,44 @@ Field.prototype = {
 		Components.interfaces.zoteroIntegrationField]),
 	
 	"delete":function() {
+		Zotero.debug("ZoteroMacWordIntegration: delete", 4);
 		checkStatus(f.deleteField(this._field_t));
 	},
 	
 	"removeCode":function() {
+		Zotero.debug("ZoteroMacWordIntegration: removeCode", 4);
 		checkStatus(f.removeCode(this._field_t));
 	},
 	
 	"select":function() {
+		Zotero.debug("ZoteroMacWordIntegration: select", 4);
 		checkStatus(f.selectField(this._field_t));
 	},
 	
 	"setText":function(text, isRich) {
+		Zotero.debug("ZoteroMacWordIntegration: setText", 4);
 		checkStatus(f.setText(this._field_t, text, isRich));
 	},
 	
 	"getText":function(text) {
+		Zotero.debug("ZoteroMacWordIntegration: getText", 4);
 		var returnValue = new ctypes.char.ptr();
 		checkStatus(f.getText(this._field_t, returnValue.address()));
 		return returnValue.readString();
 	},
 	
 	"setCode":function(code) {
+		Zotero.debug("ZoteroMacWordIntegration: setCode", 4);
 		checkStatus(f.setCode(this._field_t, code));
 	},
 	
 	"getCode":function(code) {
+		Zotero.debug("ZoteroMacWordIntegration: getCode", 4);
 		return this._field_t.contents.addressOfField("code").contents.readString();
 	},
 	
 	"equals":function(field) {
+		Zotero.debug("ZoteroMacWordIntegration: equals", 4);
 		// Obviously, a field cannot be equal to a bookmark
 		if(this._isBookmark !== field.wrappedJSObject._isBookmark) return false;
 		
@@ -469,6 +493,7 @@ Field.prototype = {
 	},
 	
 	"getNoteIndex":function(field) {
+		Zotero.debug("ZoteroMacWordIntegration: getNoteIndex", 4);
 		var returnValue = new ctypes.unsigned_long();
 		checkStatus(f.getNoteIndex(this._field_t, returnValue.address()));
 		return returnValue.value;
