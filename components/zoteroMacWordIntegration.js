@@ -43,7 +43,7 @@ function init() {
 	var fileURI = resHandler.getSubstitution("zotero-macword-integration")
 		.QueryInterface(Components.interfaces.nsIFileURL);
 	libPath = fileURI.file;
-	libPath.append("libZoteroMacWordIntegration.dylib");
+	libPath.append("libzoteroMacWordIntegration.dylib");
 	
 	lib = ctypes.open(libPath.path);
 	
