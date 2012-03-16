@@ -364,7 +364,18 @@ statusCode getFields(document_t *doc, const char fieldType[],
 		// Get numbers of fields and first fields
 		unsigned long fieldCollectionSizes[3];
 		for(unsigned short noteType=0; noteType<3; noteType++) {
-			fieldCollectionSizes[noteType] = [fieldCollections[noteType] count];
+			if(noteType == 0 || doc->isWord2004) {
+				fieldCollectionSizes[noteType] = [fieldCollections[noteType]
+												  count];
+			} else {
+				// This is necessary because the count selector always returns
+				// 0 for Word 2008
+				SBElementArray* sbFieldCollection = (SBElementArray*)
+					fieldCollections[noteType];
+				fieldCollectionSizes[noteType] =
+					getEntryIndex(doc, [sbFieldCollection objectAtLocation:
+										[NSNumber numberWithInt:-1]]);
+			}
 			
 			if(errorHasOccurred()) {
 				// There aren't actually any fields
