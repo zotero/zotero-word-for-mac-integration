@@ -1162,57 +1162,60 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 	
 	WordFootnote* sbNote = nil;
 	NSInteger fieldStart;
-	if(noteType) {
-		if(storyType == WordE160MainTextStory) {
-			// Create new note
-			NSAppleEventDescriptor* noteTypeCode;
-			if(noteType == NOTE_FOOTNOTE) {
-				noteTypeCode = [NSAppleEventDescriptor
-								descriptorWithTypeCode:'w156'];
-			} else if(noteType == NOTE_ENDNOTE) {
-				noteTypeCode = [NSAppleEventDescriptor
-								descriptorWithTypeCode:'w157'];
-			} else {
-				DIE(@"Invalid field type");
-			}
-			
-			// Select range, because otherwise we won't insert at the right
-			// place. If we could pass properties {text object:sbWhere} to 
-			// the make command, that would also take care of this, but alas,
-			// we can't construct them with Scripting Bridge.
-			[sbWhere select];
-			
-			// make new footnote/endnote at sbDoc
-			sbNote = [doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
-					  noteTypeCode, 'insh', doc->sbDoc, nil];
-			
-			// Clear range content
-			sbWhere = [sbNote textObject];
-			CHECK_STATUS
-			[sbWhere setContent:@""];
-			CHECK_STATUS
-			
-			// Move selection end past new footnote if necessary
-			WordSelectionObject *sbSelection = [doc->sbApp selection];
-			CHECK_STATUS
-			WordTextRange *sbNoteReference = [sbNote noteReference];
-			CHECK_STATUS
-			if([sbSelection selectionEnd] == [sbNoteReference startOfContent]) {
-				[sbSelection setSelectionStart:[sbNoteReference endOfContent]];
-				CHECK_STATUS
-				[sbSelection setSelectionEnd:[sbNoteReference endOfContent]];
-				CHECK_STATUS
-			}
-			CHECK_STATUS
-			
-			sbWhere = [sbNote textObject];
-		} else if(storyType == WordE160FootnotesStory) {
-			sbNote = [[sbWhere footnotes] objectAtIndex:0];
-		} else if(storyType == WordE160EndnotesStory) {
-			sbNote = [[sbWhere endnotes] objectAtIndex:0];
+	if(noteType && storyType == WordE160MainTextStory) {
+		// Create new note
+		NSAppleEventDescriptor* noteTypeCode;
+		if(noteType == NOTE_FOOTNOTE) {
+			noteTypeCode = [NSAppleEventDescriptor
+							descriptorWithTypeCode:'w156'];
+		} else if(noteType == NOTE_ENDNOTE) {
+			noteTypeCode = [NSAppleEventDescriptor
+							descriptorWithTypeCode:'w157'];
+		} else {
+			DIE(@"Invalid field type");
 		}
-		fieldStart = [sbWhere startOfContent];
+		
+		// Select range, because otherwise we won't insert at the right
+		// place. If we could pass properties {text object:sbWhere} to 
+		// the make command, that would also take care of this, but alas,
+		// we can't construct them with Scripting Bridge.
+		[sbWhere select];
+		
+		// make new footnote/endnote at sbDoc
+		sbNote = [doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
+				  noteTypeCode, 'insh', doc->sbDoc, nil];
+		
+		// Clear range content
+		sbWhere = [sbNote textObject];
+		CHECK_STATUS
+		[sbWhere setContent:@""];
+		CHECK_STATUS
+		
+		// Move selection end past new footnote if necessary
+		WordSelectionObject *sbSelection = [doc->sbApp selection];
+		CHECK_STATUS
+		WordTextRange *sbNoteReference = [sbNote noteReference];
+		CHECK_STATUS
+		if([sbSelection selectionEnd] == [sbNoteReference startOfContent]) {
+			[sbSelection setSelectionStart:[sbNoteReference endOfContent]];
+			CHECK_STATUS
+			[sbSelection setSelectionEnd:[sbNoteReference endOfContent]];
+			CHECK_STATUS
+		}
+		CHECK_STATUS
+		
+		sbWhere = [sbNote textObject];
+	} else if(storyType == WordE160FootnotesStory) {
+		sbNote = [[sbWhere footnotes] objectAtIndex:0];
+		noteType = NOTE_FOOTNOTE;
+	} else if(storyType == WordE160EndnotesStory) {
+		sbNote = [[sbWhere endnotes] objectAtIndex:0];
+		noteType = NOTE_ENDNOTE;
 	}
+	
+	// Keep track of field start, so that we can find the field in the note
+	// after we lose it due to a Word bug
+	if(sbNote) fieldStart = [sbWhere startOfContent];
 	
 	if(strcmp(fieldType, "Field") == 0) {
 		// field
