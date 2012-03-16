@@ -215,6 +215,13 @@ function checkStatus(status) {
 }
 
 /**
+ * Ensures that the document associated with this object has not been garbage collected
+ */
+function checkIfFreed(documentStatus) {
+	if(!documentStatus.active) throw "complete() method already called on document";
+}
+
+/**
  * Handles installation of Zotero Word for Mac Integration scripts and template file.
  */
 var Installer = function() {
@@ -282,13 +289,6 @@ Application2008.prototype = {
 	"primaryFieldType":"Field",
 	"secondaryFieldType":"Bookmark"
 };
-
-/**
- * Ensures that the document has not been garbage collected
- */
-function checkIfFreed(documentStatus) {
-	if(!documentStatus.active) throw "complete() method already called on document";
-}
 
 /**
  * See zoteroIntegration.idl
@@ -365,14 +365,15 @@ Document.prototype = {
 	"getFieldsAsync":function(fieldType, observer) {
 		Zotero.debug("ZoteroMacWordIntegration: getFieldsAsync", 4);
 		checkIfFreed(this._documentStatus);
-		var callback = progressFunction_t(function(progress) {
+		var documentStatus = this._documentStatus,
+			callback = progressFunction_t(function(progress) {
 			// Remove global reference that prevents GC
 			dataInUse.splice(dataInUse.indexOf(callback), 2);
 			
 			if(progress == -1) {
 				observer.observe(getLastError(), "fields-error", null);
 			} else if(progress == 100) {
-				observer.observe(new FieldEnumerator(fieldListNode, this._documentStatus),
+				observer.observe(new FieldEnumerator(fieldListNode, documentStatus),
 					"fields-available", null);
 			} else {
 				observer.observe(progress, "fields-progress", null);
