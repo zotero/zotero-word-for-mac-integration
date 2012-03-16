@@ -284,10 +284,18 @@ Application2008.prototype = {
 };
 
 /**
+ * Ensures that the document has not been garbage collected
+ */
+function checkIfFreed(documentStatus) {
+	if(!documentStatus.active) throw "complete() method already called on document";
+}
+
+/**
  * See zoteroIntegration.idl
  */
 var Document = function(cDoc) {
 	this._document_t = cDoc;
+	this._documentStatus = {"active":true};
 	this.wrappedJSObject = this;
 };
 Document.prototype = {
@@ -304,11 +312,13 @@ Document.prototype = {
 	
 	"activate":function() {
 		Zotero.debug("ZoteroMacWordIntegration: activate", 4);
+		checkIfFreed(this._documentStatus);
 		checkStatus(f.activate(this._document_t));
 	},
 	
 	"canInsertField":function(fieldType) {
 		Zotero.debug("ZoteroMacWordIntegration: canInsertField", 4);
+		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.bool();
 		checkStatus(f.canInsertField(this._document_t, fieldType, returnValue.address()));
 		return returnValue.value;
@@ -316,13 +326,15 @@ Document.prototype = {
 	
 	"cursorInField":function(fieldType) {
 		Zotero.debug("ZoteroMacWordIntegration: cursorInField", 4);
+		checkIfFreed(this._documentStatus);
 		var returnValue = new field_t.ptr();
 		checkStatus(f.cursorInField(this._document_t, fieldType, returnValue.address()));
-		return (returnValue.isNull() ? null : new Field(returnValue));
+		return (returnValue.isNull() ? null : new Field(returnValue, this._documentStatus));
 	},
 	
 	"getDocumentData":function() {
 		Zotero.debug("ZoteroMacWordIntegration: getDocumentData", 4);
+		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.char.ptr();
 		checkStatus(f.getDocumentData(this._document_t, returnValue.address()));
 		return returnValue.readString();
@@ -330,25 +342,29 @@ Document.prototype = {
 	
 	"setDocumentData":function(documentData) {
 		Zotero.debug("ZoteroMacWordIntegration: setDocumentData", 4);
+		checkIfFreed(this._documentStatus);
 		checkStatus(f.setDocumentData(this._document_t, documentData));
 	},
 	
 	"insertField":function(fieldType, noteType) {
 		Zotero.debug("ZoteroMacWordIntegration: insertField", 4);
+		checkIfFreed(this._documentStatus);
 		var returnValue = new field_t.ptr();
 		checkStatus(f.insertField(this._document_t, fieldType, noteType, returnValue.address()));
-		return new Field(returnValue);
+		return new Field(returnValue, this._documentStatus);
 	},
 	
 	"getFields":function(fieldType) {
 		Zotero.debug("ZoteroMacWordIntegration: getFields", 4);
+		checkIfFreed(this._documentStatus);
 		var fieldListNode = new fieldListNode_t.ptr();
 		checkStatus(f.getFields(this._document_t, fieldType, fieldListNode.address()));
-		return new FieldEnumerator(fieldListNode);
+		return new FieldEnumerator(fieldListNode, this._documentStatus);
 	},
 	
 	"getFieldsAsync":function(fieldType, observer) {
 		Zotero.debug("ZoteroMacWordIntegration: getFieldsAsync", 4);
+		checkIfFreed(this._documentStatus);
 		var callback = progressFunction_t(function(progress) {
 			// Remove global reference that prevents GC
 			dataInUse.splice(dataInUse.indexOf(callback), 2);
@@ -356,7 +372,8 @@ Document.prototype = {
 			if(progress == -1) {
 				observer.observe(getLastError(), "fields-error", null);
 			} else if(progress == 100) {
-				observer.observe(new FieldEnumerator(fieldListNode), "fields-available", null);
+				observer.observe(new FieldEnumerator(fieldListNode, this._documentStatus),
+					"fields-available", null);
 			} else {
 				observer.observe(progress, "fields-progress", null);
 			}
@@ -376,12 +393,14 @@ Document.prototype = {
 	"setBibliographyStyle":function(firstLineIndent, bodyIndent, lineSpacing, entrySpacing,
 			tabStops) {
 		Zotero.debug("ZoteroMacWordIntegration: setBibliographyStyle", 4);
+		checkIfFreed(this._documentStatus);
 		checkStatus(f.setBibliographyStyle(this._document_t, firstLineIndent, bodyIndent, lineSpacing,
 			entrySpacing, ctypes.long.array(tabStops.length)(tabStops), tabStops.length));
 	},
 	
 	"convert":function(fieldEnumerator, toFieldType, toNoteTypes, nFields) {
 		Zotero.debug("ZoteroMacWordIntegration: convert", 4);
+		checkIfFreed(this._documentStatus);
 		var fieldPointers = [];
 		while(fieldEnumerator.hasMoreElements()) {
 			fieldPointers.push(fieldEnumerator.getNext().wrappedJSObject._field_t);
@@ -393,31 +412,43 @@ Document.prototype = {
 	
 	"cleanup":function() {
 		Zotero.debug("ZoteroMacWordIntegration: cleanup", 4);
-		checkStatus(f.cleanup(this._document_t));
+		if(this._documentStatus.active) {
+			checkStatus(f.cleanup(this._document_t));
+		} else {
+			Zotero.debug("complete() already called on document; ignoring");
+		}
 	},
 	
 	"complete":function() {
 		Zotero.debug("ZoteroMacWordIntegration: complete", 4);
-		f.freeDocument(this._document_t);
+		if(this._documentStatus.active) {
+			f.freeDocument(this._document_t);
+			this._documentStatus.active = false;
+		} else {
+			Zotero.debug("complete() already called on document; ignoring");
+		}
 	}
 };
 
 /**
  * An enumerator implementation to handle passing off fields
  */
-var FieldEnumerator = function(startNode) {
+var FieldEnumerator = function(startNode, documentStatus) {
 	this._currentNode = startNode;
+	this._documentStatus = documentStatus;
 };
 FieldEnumerator.prototype = {
 	"hasMoreElements":function() {
+		checkIfFreed(this._documentStatus);
 		return !this._currentNode.isNull();
 	},
 	
 	"getNext":function() {
+		checkIfFreed(this._documentStatus);
 		var contents = this._currentNode.contents;
 		var fieldPtr = contents.addressOfField("field").contents;
 		this._currentNode = contents.addressOfField("next").contents;
-		return new Field(fieldPtr);
+		return new Field(fieldPtr, this._documentStatus);
 	},
 	
 	"QueryInterface": XPCOMUtils.generateQI([Components.interfaces.nsISupports,
@@ -427,9 +458,10 @@ FieldEnumerator.prototype = {
 /**
  * See zoteroIntegration.idl
  */
-var Field = function(field_t) {
+var Field = function(field_t, documentStatus) {
 	this._field_t = field_t;
 	this._isBookmark = field_t.contents.addressOfField("sbField").contents.isNull();
+	this._documentStatus = documentStatus;
 	this.wrappedJSObject = this;
 };
 Field.prototype = {
@@ -438,26 +470,31 @@ Field.prototype = {
 	
 	"delete":function() {
 		Zotero.debug("ZoteroMacWordIntegration: delete", 4);
+		checkIfFreed(this._documentStatus);
 		checkStatus(f.deleteField(this._field_t));
 	},
 	
 	"removeCode":function() {
 		Zotero.debug("ZoteroMacWordIntegration: removeCode", 4);
+		checkIfFreed(this._documentStatus);
 		checkStatus(f.removeCode(this._field_t));
 	},
 	
 	"select":function() {
 		Zotero.debug("ZoteroMacWordIntegration: select", 4);
+		checkIfFreed(this._documentStatus);
 		checkStatus(f.selectField(this._field_t));
 	},
 	
 	"setText":function(text, isRich) {
 		Zotero.debug("ZoteroMacWordIntegration: setText", 4);
+		checkIfFreed(this._documentStatus);
 		checkStatus(f.setText(this._field_t, text, isRich));
 	},
 	
 	"getText":function(text) {
 		Zotero.debug("ZoteroMacWordIntegration: getText", 4);
+		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.char.ptr();
 		checkStatus(f.getText(this._field_t, returnValue.address()));
 		return returnValue.readString();
@@ -465,16 +502,19 @@ Field.prototype = {
 	
 	"setCode":function(code) {
 		Zotero.debug("ZoteroMacWordIntegration: setCode", 4);
+		checkIfFreed(this._documentStatus);
 		checkStatus(f.setCode(this._field_t, code));
 	},
 	
 	"getCode":function(code) {
 		Zotero.debug("ZoteroMacWordIntegration: getCode", 4);
+		checkIfFreed(this._documentStatus);
 		return this._field_t.contents.addressOfField("code").contents.readString();
 	},
 	
 	"equals":function(field) {
 		Zotero.debug("ZoteroMacWordIntegration: equals", 4);
+		checkIfFreed(this._documentStatus);
 		// Obviously, a field cannot be equal to a bookmark
 		if(this._isBookmark !== field.wrappedJSObject._isBookmark) return false;
 		
@@ -494,6 +534,7 @@ Field.prototype = {
 	
 	"getNoteIndex":function(field) {
 		Zotero.debug("ZoteroMacWordIntegration: getNoteIndex", 4);
+		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.unsigned_long();
 		checkStatus(f.getNoteIndex(this._field_t, returnValue.address()));
 		return returnValue.value;
