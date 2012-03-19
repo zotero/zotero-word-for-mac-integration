@@ -283,10 +283,8 @@ statusCode removeCode(field_t* field) {
 	if(field->sbBookmark) {
 		[field->sbBookmark delete];
 	} else {
-		[(field->doc)->lock lock];
-		[(field->doc)->sbApp unlink:field->sbField];
-		CHECK_STATUS_LOCKED(field->doc)
-		[(field->doc)->lock unlock];
+		[field->sbField sendEvent:'sWRD' id:'2489'
+					   parameters:'\000\000\000\000', nil];
 	}
 	CHECK_STATUS
 	return STATUS_OK;
