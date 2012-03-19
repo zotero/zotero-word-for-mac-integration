@@ -239,7 +239,7 @@ statusCode cursorInField(document_t *doc, const char fieldType[],
 	CHECK_STATUS_LOCKED(doc)
 	
 	if(strcmp(fieldType, "Field") == 0) {
-		SBElementArray* sbFields = [sbSelection fields];
+		NSArray* sbFields = [[sbSelection fields] get];
 		CHECK_STATUS_LOCKED(doc)
 		
 		IGNORING_SB_ERRORS_BEGIN
@@ -253,8 +253,8 @@ statusCode cursorInField(document_t *doc, const char fieldType[],
 			RETURN_STATUS_LOCKED(doc, status);
 		}
 	
-		sbFields = [[[[sbSelection paragraphs] objectAtIndex:0] textObject]
-				  fields];
+		sbFields = [[[[[sbSelection paragraphs] objectAtIndex:0] textObject]
+				  fields] get];
 		CHECK_STATUS_LOCKED(doc)
 		if([sbFields count]) {
 			// Check if fields are in the selection
@@ -1274,7 +1274,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 				
 				// Loop through fields in note text object until we find this
 				// one
-				SBElementArray* sbNoteFields = [[sbNote textObject] fields];
+				NSArray* sbNoteFields = [[[sbNote textObject] fields] get];
 				CHECK_STATUS
 				for(WordField* sbNoteField in sbNoteFields) {
 					if([[sbNoteField fieldCode] startOfContent]
