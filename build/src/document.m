@@ -243,6 +243,7 @@ statusCode cursorInField(document_t *doc, const char fieldType[],
 		
 		NSArray* sbFields = [[sbSelection fields] get];
 		if(errorHasOccurred()) {
+			clearError();
 			fieldCount = 0;
 		} else {
 			fieldCount = [sbFields count];
