@@ -239,12 +239,14 @@ statusCode cursorInField(document_t *doc, const char fieldType[],
 	CHECK_STATUS_LOCKED(doc)
 	
 	if(strcmp(fieldType, "Field") == 0) {
-		NSArray* sbFields = [[sbSelection fields] get];
-		CHECK_STATUS_LOCKED(doc)
+		NSInteger fieldCount;
 		
-		IGNORING_SB_ERRORS_BEGIN
-		NSInteger fieldCount = [sbFields count];
-		IGNORING_SB_ERRORS_END
+		NSArray* sbFields = [[sbSelection fields] get];
+		if(errorHasOccurred()) {
+			fieldCount = 0;
+		} else {
+			fieldCount = [sbFields count];
+		}
 		
 		if(fieldCount) {
 			statusCode status = initField(doc, (WordField*) [sbFields
