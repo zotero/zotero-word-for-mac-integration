@@ -65,6 +65,13 @@ if(errorHasOccurred()) {\
 	return STATUS_EXCEPTION;\
 }
 
+// Checks an OSStatus. If the OSStatus is false, returns.
+#define CHECK_OSSTATUS(x) \
+{ OSStatus statusToEnsure = x; \
+if(x) {\
+return flagOSError(statusToEnsure, __FUNCTION__, __FILE__, __LINE__-1);\
+} }
+
 // Same as CHECK_STATUS, but also unlocks an NSLock on (document_t*)x before
 // returning.
 #define CHECK_STATUS_LOCKED(x) \
@@ -272,5 +279,7 @@ statusCode writeScript(char* scriptPath, char* scriptContent);
 
 // utilities.m
 void freeString(char* string);
+statusCode flagOSError(OSStatus status, const char file[],
+					   const char function[], unsigned int line);
 
 #endif

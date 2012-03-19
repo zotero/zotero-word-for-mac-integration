@@ -372,19 +372,6 @@ statusCode installScripts(NSString* templatePath) {
 	return STATUS_OK;
 }
 
-// Gets a string for an authorization failure
-statusCode parseAuthorizationStatus(OSStatus status, const char file[],
-									const char function[], unsigned int line) {
-	if(status == errAuthorizationCanceled) {
-		return STATUS_EXCEPTION_ALREADY_DISPLAYED;
-	}
-	
-	NSString* err = [NSError errorWithDomain:NSOSStatusErrorDomain code:status
-									userInfo:nil];
-	throwError(err, file, function, line);
-	return STATUS_EXCEPTION;
-}
-
 AuthorizationRef authorizationRef = NULL;
 statusCode getAuthorizationRef(NSString* templatePath) {
 	if(!authorizationRef) {
@@ -414,10 +401,7 @@ statusCode getAuthorizationRef(NSString* templatePath) {
 									 kAuthorizationFlagInteractionAllowed,
 									 &authorizationRef);
 		free(iconPath);
-		if(status) {
-			return parseAuthorizationStatus(status, __FILE__, __FUNCTION__,
-											__LINE__-2);
-		}
+		CHECK_OSSTATUS(status)
 	}
 	return STATUS_OK;
 }
@@ -444,10 +428,7 @@ statusCode performAuthorizedMkdir(NSString* templatePath, NSString *path,
 																		 kAuthorizationFlagDefaults,
 																		 argv, NULL);
 				free(argv[1]);
-				if(authStatus) {
-					return parseAuthorizationStatus(authStatus, __FILE__,
-													__FUNCTION__, __LINE__);
-				}
+				CHECK_OSSTATUS(authStatus)
 			}
 		} else {
 			// Exists and we were not asked to empty
@@ -476,10 +457,7 @@ statusCode performAuthorizedMkdir(NSString* templatePath, NSString *path,
 																 kAuthorizationFlagDefaults,
 																 argv, NULL);
 		free(argv[3]);
-		if(authStatus) {
-			return parseAuthorizationStatus(authStatus, __FILE__,
-											__FUNCTION__, __LINE__);
-		}
+		CHECK_OSSTATUS(authStatus)
 	}
 	
 	return STATUS_OK;
@@ -510,10 +488,7 @@ statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
 															 argv, NULL);
 	free(argv[0]);
 	free(argv[1]);
-	if(authStatus) {
-		return parseAuthorizationStatus(authStatus, __FILE__,
-										__FUNCTION__, __LINE__);
-	}
+	CHECK_OSSTATUS(authStatus)
 	
 	return STATUS_OK;
 }

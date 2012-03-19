@@ -36,11 +36,20 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	doc->allocatedFieldListsStart = NULL;
 	doc->allocatedFieldListsEnd = NULL;
 	
-	// Get application by path
-	NSString* wordPathNS = [NSString stringWithUTF8String:wordPath];
-	WordApplication *wordApp = nil;
+	// Get application by path if a path has been specified
+	NSString* wordPathNS;
+	if(!wordPath) {
+		NSURL* url;
+		CHECK_OSSTATUS(LSGetApplicationForInfo(kLSUnknownType, 'MSWD', NULL,
+												  kLSRolesAll, NULL,
+												  (CFURLRef*) &url));
+		wordPathNS = [url path];
+	} else {
+		wordPathNS = [NSString stringWithUTF8String:wordPath];
+	}
 	
 	// Get WordApplication object for path only if not already cached
+	WordApplication *wordApp = nil;
 	if(!wordApps || !(wordApp = [wordApps objectForKey:wordPathNS])) {
 		NSURL* wordURL = [[NSURL alloc] initFileURLWithPath:wordPathNS];
 		wordApp = [SBApplication applicationWithURL:wordURL];
@@ -129,9 +138,7 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	doc->statusFormatChanges = doc->restoreFormatChanges;
 	
 	// Put path into structure
-	size_t pathSize = strlen(wordPath) + 1;
-	doc->wordPath = (char*) malloc(sizeof(char)*pathSize);
-	memcpy(doc->wordPath, wordPath, pathSize);
+	doc->wordPath = copyNSString(wordPathNS);
 	
 	// Initialize lock
 	doc->lock = [[NSRecursiveLock alloc] init];

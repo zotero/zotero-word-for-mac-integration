@@ -59,6 +59,19 @@ void flagError(const char file[], const char function[], unsigned int line) {
 									file, function, line]);
 }
 
+// Gets a string for an authorization failure
+statusCode flagOSError(OSStatus status, const char file[],
+					   const char function[], unsigned int line) {
+	if(status == errAuthorizationCanceled) {
+		return STATUS_EXCEPTION_ALREADY_DISPLAYED;
+	}
+	
+	NSString* err = [NSError errorWithDomain:NSOSStatusErrorDomain code:status
+									userInfo:nil];
+	throwError(err, file, function, line);
+	return STATUS_EXCEPTION;
+}
+
 // Manually throws an exception up to JS
 void throwError(NSString *errorString, const char file[], const char function[],
 				unsigned int line) {

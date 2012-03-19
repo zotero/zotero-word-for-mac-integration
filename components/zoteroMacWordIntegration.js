@@ -268,6 +268,9 @@ Application2004.prototype = {
 		checkStatus(f.getDocument(true, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
+	"getActiveDocument":function(path) {
+		return this.getDocument(null);
+	},
 	"primaryFieldType":"Field",
 	"secondaryFieldType":"Bookmark"
 };
@@ -285,6 +288,9 @@ Application2008.prototype = {
 		var docPtr = new document_t.ptr();
 		checkStatus(f.getDocument(false, path, null, docPtr.address()));
 		return new Document(docPtr);
+	},
+	"getActiveDocument":function(path) {
+		return this.getDocument(null);
 	},
 	"primaryFieldType":"Field",
 	"secondaryFieldType":"Bookmark"
