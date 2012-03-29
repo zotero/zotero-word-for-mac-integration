@@ -133,7 +133,6 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	}
 	
 	// Set statuses
-	doc->statusFullScreenMode = false;
 	doc->statusInsertionsAndDeletions = doc->restoreInsertionsAndDeletions;
 	doc->statusFormatChanges = doc->restoreFormatChanges;
 	

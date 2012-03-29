@@ -86,6 +86,13 @@ statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 void freeDocument(document_t* doc) {
 	[doc->lock lock];
 	
+	// Restore full screen mode
+	if(doc->restoreFullScreenMode) {
+		IGNORING_SB_ERRORS_BEGIN
+		[doc->sbView setFullScreen:YES];
+		IGNORING_SB_ERRORS_END
+	}
+	
 	// Free allocated fields
 	freeFieldList(doc->allocatedFieldsStart, true);
 	
@@ -882,11 +889,6 @@ statusCode cleanup(document_t *doc) {
 		[doc->sbView setShowFormatChanges:YES];
 		CHECK_STATUS_LOCKED(doc)
 		doc->statusFormatChanges = YES;
-	}
-	if(doc->restoreFullScreenMode && !doc->statusFullScreenMode) {
-		[doc->sbView setFullScreen:YES];
-		CHECK_STATUS_LOCKED(doc)
-		doc->statusFullScreenMode = YES;
 	}
 	deleteTemporaryFile();
 	

@@ -125,7 +125,6 @@ typedef struct Document {
 	SBElementArray* sbProperties;
 	
 	BOOL restoreFullScreenMode;
-	BOOL statusFullScreenMode;
 	
 	BOOL restoreInsertionsAndDeletions;
 	BOOL statusInsertionsAndDeletions;
