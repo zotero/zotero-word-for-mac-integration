@@ -41,7 +41,7 @@ statusCode performAuthorizedMkdir(NSString* templatePath, NSString *path,
 								  BOOL emptyIfExists);
 statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
 								 NSString* path2);
-statusCode getScriptItemsDirectoryNS(NSString** scriptFolder);
+statusCode getScriptItemsDirectories(NSMutableArray* scriptFolders);
 statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent);
 
 // Installs all scripts and templates, given the path to Zotero.dot
@@ -227,29 +227,41 @@ statusCode installTemplate(NSString* templatePath, NSString* path) {
 }
 
 // Gets the location of the Script Menu Items directory
-statusCode getScriptItemsDirectoryNS(NSString** scriptFolder) {
-	NSString* potentialMicrosoftUserDataNames[] = {@"Microsoft User Data",
-		@"Microsoft-Benutzerdaten", @"Données Utilisateurs Microsoft",
-		@"Datos del Usuario de Microsoft", @"Datos de Usuario de Microsoft",
-		@"Dati utente Microsoft", NULL};
-	*scriptFolder = nil;
+statusCode getScriptItemsDirectories(NSMutableArray* scriptFolders) {
 	NSFileManager *fm = [NSFileManager defaultManager];
 	
-	NSArray *temp = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
+	// Look for Script Menu Items folder in
+	// Application Support/Microsoft/Office/Word Script Menu Items
+	NSArray *temp = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory,
 														NSUserDomainMask, YES);
-	if(!temp || ![temp count]) DIE(@"Could not find documents directory");
+	if(!temp || ![temp count]) DIE(@"Could not find Application Support directory");
+	NSString *testPath = [[temp objectAtIndex:0] stringByAppendingPathComponent:
+						   @"Microsoft/Office/Word Script Menu Items"];
+	BOOL isDirectory;
+	if([fm fileExistsAtPath:testPath isDirectory:&isDirectory]
+	   && isDirectory) {
+		[scriptFolders addObject:testPath];
+	}
+	
+	// Look for Script Menu Items folder in Microsoft User Data folder
+	temp = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
+												NSUserDomainMask, YES);
+	if(!temp || ![temp count]) DIE(@"Could not find Documents directory");
 	NSString* documentsFolder = [temp objectAtIndex:0];
 	
 	temp = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory,
 											   NSUserDomainMask, YES);
-	if(!temp || ![temp count]) DIE(@"Could not find library directory");
+	if(!temp || ![temp count]) DIE(@"Could not find Library directory");
 	NSString* preferencesFolder = [[temp objectAtIndex:0]
 								   stringByAppendingPathComponent:
 								   @"Preferences"];
 	
-	// Look for Script Menu Items folder in various places
-	for(unsigned short i=0;
-		!*scriptFolder && potentialMicrosoftUserDataNames[i] != NULL;
+	// Look for Script Menu Items folder in various other places
+	NSString* potentialMicrosoftUserDataNames[] = {@"Microsoft User Data",
+		@"Microsoft-Benutzerdaten", @"Données Utilisateurs Microsoft",
+		@"Datos del Usuario de Microsoft", @"Datos de Usuario de Microsoft",
+		@"Dati utente Microsoft", NULL};
+	for(unsigned short i=0; potentialMicrosoftUserDataNames[i] != NULL;
 		i++) {
 		NSString *testPath = [[documentsFolder stringByAppendingPathComponent:
 							   potentialMicrosoftUserDataNames[i]]
@@ -258,7 +270,7 @@ statusCode getScriptItemsDirectoryNS(NSString** scriptFolder) {
 		BOOL isDirectory;
 		if([fm fileExistsAtPath:testPath isDirectory:&isDirectory]
 		   && isDirectory) {
-			*scriptFolder = testPath;
+			[scriptFolders addObject:testPath];
 			break;
 		} else {
 			testPath = [[preferencesFolder stringByAppendingPathComponent:
@@ -267,14 +279,14 @@ statusCode getScriptItemsDirectoryNS(NSString** scriptFolder) {
 						@"Word Script Menu Items"];
 			if([fm fileExistsAtPath:testPath isDirectory:&isDirectory]
 			   && isDirectory) {
-				*scriptFolder = testPath;
+				[scriptFolders addObject:testPath];
 				break;
 			}
 		}
 	}
 	
 	// We couldn't find Script Menu Items folder, so ask user to locate it
-	if(!*scriptFolder) {
+	if(![scriptFolders count]) {
 		NSOpenPanel* openPanel = [NSOpenPanel openPanel];
 		[openPanel setCanChooseFiles:NO];
 		[openPanel setCanChooseDirectories:YES];
@@ -283,7 +295,7 @@ statusCode getScriptItemsDirectoryNS(NSString** scriptFolder) {
 		 "usually located in Documents/Microsoft User Data"];
 		[openPanel setDirectory:documentsFolder];
 		if([openPanel runModal] == NSFileHandlingPanelOKButton) {
-			*scriptFolder = [[[openPanel URLs] objectAtIndex:0] path];
+			[scriptFolders addObject:[[[openPanel URLs] objectAtIndex:0] path]];
 		} else {
 			return STATUS_EXCEPTION_ALREADY_DISPLAYED;
 		}
@@ -293,9 +305,9 @@ statusCode getScriptItemsDirectoryNS(NSString** scriptFolder) {
 }
 
 statusCode getScriptItemsDirectory(char** scriptFolder) {
-	NSString* scriptFolderNS;
-	ENSURE_OK(getScriptItemsDirectoryNS(&scriptFolderNS));
-	*scriptFolder = copyNSString(scriptFolderNS);
+	NSMutableArray* scriptFolders = [NSMutableArray array];
+	ENSURE_OK(getScriptItemsDirectories(scriptFolders))
+	*scriptFolder = copyNSString([scriptFolders objectAtIndex:0]);
 	return STATUS_OK;
 }
 
@@ -339,35 +351,37 @@ statusCode writeScript(char* scriptPath, char* scriptContent) {
 }
 
 statusCode installScripts(NSString* templatePath) {
-	NSString* scriptFolder;
-	ENSURE_OK(getScriptItemsDirectoryNS(&scriptFolder))
+	NSMutableArray* scriptFolders = [NSMutableArray array];
+	ENSURE_OK(getScriptItemsDirectories(scriptFolders))
 	
-	// Clobber the Zotero folder
-	NSString* zoteroFolder = [scriptFolder
-							  stringByAppendingPathComponent:@"Zotero"];
-	statusCode status = performAuthorizedMkdir(templatePath, zoteroFolder,
-											   true);
-	if(status) return status;
-	
-	// Generate the scripts
-	const char* W2008_SCRIPT_NAMES[] = {"Add Bibliography\\cob.scpt",
-		"Add Citation\\coa.scpt", "Edit Bibliography\\cod.scpt",
-		"Edit Citation\\coe.scpt", "Refresh\\cor.scpt",
-		"Remove Field Codes.scpt", "Set Document Preferences\\cop.scpt",
-		NULL};
-	const char* W2008_SCRIPT_COMMANDS[] = {"addBibliography", "addCitation",
-		"editBibliography", "editCitation", "refresh", "removeCodes",
-		"setDocPrefs", NULL};
-	for(unsigned short i=0; W2008_SCRIPT_NAMES[i] != NULL; i++) {
-		NSString* scriptPath = [zoteroFolder stringByAppendingPathComponent:
-								[NSString stringWithUTF8String: 
-								 W2008_SCRIPT_NAMES[i]]];
-		NSString* scriptContent = [NSString stringWithFormat:@"try\n"
-								   "do shell script \"PIPE=\\\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\\\";  if [ ! -e \\\"$PIPE\\\" ]; then PIPE=~/.zoteroIntegrationPipe; fi; if [ -e \\\"$PIPE\\\" ]; then echo 'MacWord2008 %s '\" & quoted form of POSIX path of (path to current application) & \" > \\\"$PIPE\\\"; else exit 1; fi;\"\n"
-								   "on error\n"
-								   "display alert \"Word could not communicate with Zotero. Please ensure that Zotero Standalone or Firefox is open and try again.\" as critical\n"
-								   "end try\n", W2008_SCRIPT_COMMANDS[i]];
-		ENSURE_OK(writeScriptNS(scriptPath, scriptContent));
+	for(NSString *scriptFolder in scriptFolders) {
+		// Clobber the Zotero folder
+		NSString* zoteroFolder = [scriptFolder
+								  stringByAppendingPathComponent:@"Zotero"];
+		statusCode status = performAuthorizedMkdir(templatePath, zoteroFolder,
+												   true);
+		if(status) return status;
+		
+		// Generate the scripts
+		const char* W2008_SCRIPT_NAMES[] = {"Add Bibliography\\cob.scpt",
+			"Add Citation\\coa.scpt", "Edit Bibliography\\cod.scpt",
+			"Edit Citation\\coe.scpt", "Refresh\\cor.scpt",
+			"Remove Field Codes.scpt", "Set Document Preferences\\cop.scpt",
+			NULL};
+		const char* W2008_SCRIPT_COMMANDS[] = {"addBibliography", "addCitation",
+			"editBibliography", "editCitation", "refresh", "removeCodes",
+			"setDocPrefs", NULL};
+		for(unsigned short i=0; W2008_SCRIPT_NAMES[i] != NULL; i++) {
+			NSString* scriptPath = [zoteroFolder stringByAppendingPathComponent:
+									[NSString stringWithUTF8String: 
+									 W2008_SCRIPT_NAMES[i]]];
+			NSString* scriptContent = [NSString stringWithFormat:@"try\n"
+									   "do shell script \"PIPE=\\\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\\\";  if [ ! -e \\\"$PIPE\\\" ]; then PIPE=~/.zoteroIntegrationPipe; fi; if [ -e \\\"$PIPE\\\" ]; then echo 'MacWord2008 %s '\" & quoted form of POSIX path of (path to current application) & \" > \\\"$PIPE\\\"; else exit 1; fi;\"\n"
+									   "on error\n"
+									   "display alert \"Word could not communicate with Zotero. Please ensure that Zotero Standalone or Firefox is open and try again.\" as critical\n"
+									   "end try\n", W2008_SCRIPT_COMMANDS[i]];
+			ENSURE_OK(writeScriptNS(scriptPath, scriptContent))
+		}
 	}
 	return STATUS_OK;
 }
