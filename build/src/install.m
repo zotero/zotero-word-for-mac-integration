@@ -43,6 +43,9 @@ statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
 								 NSString* path2);
 statusCode getScriptItemsDirectories(NSMutableArray* scriptFolders);
 statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent);
+@interface PipeReader : NSObject
+- (void) getData:(NSNumber*)progressValue;
+@end
 
 // Installs all scripts and templates, given the path to Zotero.dot
 statusCode install(const char templatePath[]) {
@@ -315,6 +318,20 @@ statusCode getScriptItemsDirectory(char** scriptFolder) {
 	HANDLE_EXCEPTIONS_END
 }
 
+@implementation PipeReader
+- (void) getData:(NSNotification *)aNotification {
+	NSData *data = [[aNotification userInfo] objectForKey:NSFileHandleNotificationDataItem];
+
+	if(![data length]) {
+		[[NSNotificationCenter defaultCenter]
+		 removeObserver:self name:NSFileHandleReadCompletionNotification
+		 object:[[aNotification object]fileHandleForReading]];
+	}
+
+	[[aNotification object] readInBackgroundAndNotify];
+}
+@end
+
 statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent) {
 	NSTask *task;
 	task = [[NSTask alloc] init];
@@ -324,8 +341,15 @@ statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent) {
 	NSPipe *inPipe = [NSPipe pipe];
 	[task setStandardInput:inPipe];
 	[task setStandardOutput:outPipe];
-	NSFileHandle *outFile = [outPipe fileHandleForReading];
 	NSFileHandle *inFile = [inPipe fileHandleForWriting];
+	
+	// Read from the pipe until it's dead to avoid blocking
+	PipeReader* pipeReader = [[PipeReader alloc] init];
+	[pipeReader autorelease];
+	[[NSNotificationCenter defaultCenter]
+	 addObserver:pipeReader selector:@selector(getData:)
+	 name:NSFileHandleReadCompletionNotification object:outPipe];
+	[[[task standardOutput] fileHandleForReading] readInBackgroundAndNotify];
 	
 	SInt32 versMaj, versMin;
 	Gestalt(gestaltSystemVersionMajor, &versMaj);
@@ -344,8 +368,7 @@ statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent) {
 	[task launch];
 	[inFile writeData:[scriptContent dataUsingEncoding:NSUTF8StringEncoding]];
 	[inFile closeFile];
-	[outFile readDataToEndOfFile];
-
+	
 	return STATUS_OK;
 }
 
