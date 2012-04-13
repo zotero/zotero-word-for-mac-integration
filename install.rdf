@@ -11,7 +11,7 @@
 	<em:updateURL>https://www.zotero.org/download/update-source.rdf</em:updateURL>
 	<em:iconURL>chrome://zotero/skin/zotero_z_32px.png</em:iconURL>
 	<em:optionsURL>chrome://zotero/content/preferences/preferences.xul#cite</em:optionsURL>
-	<em:description>Integrates Zotero with Microsoft Word 2004 and 2008 for Macintosh</em:description>
+	<em:description>Integrates Zotero with Microsoft Word 2004, 2008, and 2011 for Macintosh</em:description>
 	<em:type>2</em:type> <!-- type=extension --> 
 	<em:unpack>true</em:unpack>
 	
