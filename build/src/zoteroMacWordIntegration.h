@@ -111,6 +111,15 @@ return STATUS_EXCEPTION; }
 #define IGNORING_SB_ERRORS_BEGIN setErrorMonitor(false);
 #define IGNORING_SB_ERRORS_END setErrorMonitor(true);
 
+#define HANDLE_EXCEPTIONS_BEGIN \
+@try {
+
+#define HANDLE_EXCEPTIONS_END \
+} @catch(NSException* e) { \
+throwError([NSString stringWithFormat:@"%@", e], __FUNCTION__, __FILE__, __LINE__); \
+return STATUS_EXCEPTION; \
+}
+
 typedef struct ListNode {
 	void* value;
 	struct ListNode* next;
@@ -194,6 +203,8 @@ void setErrorMonitor(BOOL status);
 void flagError(const char file[], const char function[], unsigned int line);
 void throwError(NSString *errorString, const char file[], const char function[],
 				unsigned int line);
+statusCode flagOSError(OSStatus status, const char file[],
+					   const char function[], unsigned int line);
 void clearError(void);
 char* getError(void);
 
@@ -203,8 +214,9 @@ NSString* getTemporaryFilePath(void);
 NSString* posixPathToHFSPath(NSString *posixPath);
 
 char* copyNSString(NSString* string);
-NSMutableString* escapeString(const char string[]);
+void freeString(char* string);
 NSString* generateRandomString(NSUInteger length);
+NSInteger getEntryIndex(document_t* x, SBObject* y);
 
 // application.m
 statusCode getDocument(bool isWord2004, const char* wordPath,
@@ -272,13 +284,7 @@ statusCode ensureNoteLocationSet(field_t* field);
 
 // install.m
 statusCode install(const char zoteroDotPath[]);
-NSInteger getEntryIndex(document_t* x, SBObject* y);
 statusCode getScriptItemsDirectory(char** scriptFolder);
 statusCode writeScript(char* scriptPath, char* scriptContent);
-
-// utilities.m
-void freeString(char* string);
-statusCode flagOSError(OSStatus status, const char file[],
-					   const char function[], unsigned int line);
 
 #endif

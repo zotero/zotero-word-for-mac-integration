@@ -46,6 +46,7 @@ statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent);
 
 // Installs all scripts and templates, given the path to Zotero.dot
 statusCode install(const char templatePath[]) {
+	HANDLE_EXCEPTIONS_BEGIN
 	NSString* templatePathNS = [NSString stringWithUTF8String:templatePath];
 	FinderApplication* finder = nil;
 	
@@ -182,6 +183,7 @@ statusCode install(const char templatePath[]) {
 	}
 	
 	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
 }
 
 // Installs a template to a given path
@@ -305,10 +307,12 @@ statusCode getScriptItemsDirectories(NSMutableArray* scriptFolders) {
 }
 
 statusCode getScriptItemsDirectory(char** scriptFolder) {
+	HANDLE_EXCEPTIONS_BEGIN
 	NSMutableArray* scriptFolders = [NSMutableArray array];
 	ENSURE_OK(getScriptItemsDirectories(scriptFolders))
 	*scriptFolder = copyNSString([scriptFolders objectAtIndex:0]);
 	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
 }
 
 statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent) {
@@ -346,8 +350,10 @@ statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent) {
 }
 
 statusCode writeScript(char* scriptPath, char* scriptContent) {
+	HANDLE_EXCEPTIONS_BEGIN
 	return writeScriptNS([NSString stringWithUTF8String:scriptPath],
 						 [NSString stringWithUTF8String:scriptContent]);
+	HANDLE_EXCEPTIONS_END
 }
 
 statusCode installScripts(NSString* templatePath) {

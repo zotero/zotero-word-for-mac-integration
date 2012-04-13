@@ -132,17 +132,20 @@ void freeFieldList(listNode_t* fieldList, bool freeFields) {
 
 // Activates Word to deal with a document
 statusCode activate(document_t *doc) {
+	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
 	[doc->sbApp activate];
 	CHECK_STATUS_LOCKED(doc)
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	HANDLE_EXCEPTIONS_END
 }
 
 // Displays an alert within Word
 statusCode displayAlert(document_t *doc, char const dialogText[],
 						unsigned short icon, unsigned short buttons,
 						unsigned short *returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
 	// Make button list descriptor
@@ -191,6 +194,7 @@ statusCode displayAlert(document_t *doc, char const dialogText[],
 	}
 	
 	RETURN_STATUS_LOCKED(doc, STATUS_OK);
+	HANDLE_EXCEPTIONS_END
 }
 
 // Disables Track Changes settings so that we can read field codes
@@ -216,6 +220,7 @@ statusCode prepareReadFieldCode(document_t *doc) {
 // position
 statusCode canInsertField(document_t *doc, const char fieldType[],
 						  bool* returnCode) {
+	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
 	if([doc->sbView viewType] == WordE202WordNoteView) {
@@ -234,12 +239,14 @@ statusCode canInsertField(document_t *doc, const char fieldType[],
 					   || position == WordE160EndnotesStory))
 					   || position == WordE160MainTextStory;
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	HANDLE_EXCEPTIONS_END
 }
 
 // Determines whether the cursor is in a field. Returns the a field struct if
 // it is, or NULL if it is not.
 statusCode cursorInField(document_t *doc, const char fieldType[],
 						 field_t **returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
 	WordSelectionObject* sbSelection = [doc->sbApp selection];
@@ -313,10 +320,12 @@ statusCode cursorInField(document_t *doc, const char fieldType[],
 	
 	*returnValue = NULL;
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	HANDLE_EXCEPTIONS_END
 }
 
 // Gets document data
 statusCode getDocumentData(document_t *doc, char **returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
 	NSString* returnString;
@@ -325,19 +334,23 @@ statusCode getDocumentData(document_t *doc, char **returnValue) {
 	*returnValue = copyNSString(returnString);
 	
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	HANDLE_EXCEPTIONS_END
 }
 
 // Sets document data
 statusCode setDocumentData(document_t *doc, const char documentData[]) {
+	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
 	NSString* propertyValue = [NSString stringWithUTF8String:documentData];
 	RETURN_STATUS_LOCKED(doc, (setProperty(doc, PREFS_PROPERTY, propertyValue)));
+	HANDLE_EXCEPTIONS_END
 }
 
 // Makes a field at the selection.
 statusCode insertField(document_t *doc, const char fieldType[],
 					   unsigned short noteType, field_t **returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
 	WordTextRange* sbWhere = [[doc->sbApp selection] textObject];
@@ -352,11 +365,13 @@ statusCode insertField(document_t *doc, const char fieldType[],
 									   nil, returnValue);
 	if(!status) setText(*returnValue, FIELD_PLACEHOLDER, false);
 	RETURN_STATUS_LOCKED(doc, status)
+	HANDLE_EXCEPTIONS_END
 }
 
 // Gets fields
 statusCode getFields(document_t *doc, const char fieldType[],
 					 listNode_t** returnNode) {
+	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
 	listNode_t* fieldListStart = NULL;
@@ -506,11 +521,13 @@ statusCode getFields(document_t *doc, const char fieldType[],
 	
 	*returnNode = fieldListStart;
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	HANDLE_EXCEPTIONS_END
 }
 
 statusCode getFieldsAsync(document_t *doc, const char fieldType[],
 						  listNode_t** returnNode,
 						  void (*onProgress)(int progress)) {
+	HANDLE_EXCEPTIONS_BEGIN
 	size_t bufferSize = strlen(fieldType)+1;
 	char* fieldTypeCopy = (char*) malloc(bufferSize);
 	memcpy(fieldTypeCopy, fieldType, bufferSize);
@@ -524,10 +541,12 @@ statusCode getFieldsAsync(document_t *doc, const char fieldType[],
 								  withObject:nil];
 	
 	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
 }
 
 statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				   const char toFieldType[], unsigned short toNoteTypes[]) {
+	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
 	statusCode status = prepareReadFieldCode(doc);
@@ -794,6 +813,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 	};
 	
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	HANDLE_EXCEPTIONS_END
 }
 
 // Sets the "Bibliography" style
@@ -801,6 +821,7 @@ statusCode setBibliographyStyle(document_t* doc, long firstLineIndent,
 								long bodyIndent, unsigned long lineSpacing,
 								unsigned long entrySpacing, long tabStops[],
 								unsigned long tabStopCount) {
+	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
 	WordWordStyle* sbBibliographyStyle;
@@ -873,10 +894,12 @@ statusCode setBibliographyStyle(document_t* doc, long firstLineIndent,
 	}
 	
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	HANDLE_EXCEPTIONS_END
 }
 
 // Run on exit to clean up anything we played with
 statusCode cleanup(document_t *doc) {
+	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
 	if(doc->restoreInsertionsAndDeletions
@@ -893,6 +916,7 @@ statusCode cleanup(document_t *doc) {
 	deleteTemporaryFile();
 	
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	HANDLE_EXCEPTIONS_END
 }
 
 // Get NSArrays representing fields in different parts of the document.

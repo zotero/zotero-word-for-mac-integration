@@ -29,6 +29,7 @@ NSMutableDictionary* wordApps = nil;
 
 statusCode getDocument(bool isWord2004, const char* wordPath,
 					   const char* documentName, document_t **returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
 	clearError();
 	document_t *doc = (document_t*) malloc(sizeof(document_t));
 	doc->allocatedFieldsStart = NULL;
@@ -144,4 +145,5 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	
 	*returnValue = doc;
 	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
 }

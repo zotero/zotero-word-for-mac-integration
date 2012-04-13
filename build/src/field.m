@@ -240,6 +240,7 @@ void freeField(field_t* field) {
 
 // Deletes this field
 statusCode deleteField(field_t* field) {
+	HANDLE_EXCEPTIONS_BEGIN
 	short offset = field->sbField ? 1 : 0;
 	if(field->noteType == NOTE_FOOTNOTE) {
 		WordFootnote* note = [[field->sbContentRange footnotes]
@@ -276,10 +277,12 @@ statusCode deleteField(field_t* field) {
 	}
 	
 	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
 }
 
 // Removes a field code
 statusCode removeCode(field_t* field) {
+	HANDLE_EXCEPTIONS_BEGIN
 	if(field->sbBookmark) {
 		[field->sbBookmark delete];
 	} else {
@@ -288,18 +291,23 @@ statusCode removeCode(field_t* field) {
 	}
 	CHECK_STATUS
 	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
 }
 
 // Selects this field
 statusCode selectField(field_t* field) {
+	HANDLE_EXCEPTIONS_BEGIN
 	[field->sbContentRange select];
 	CHECK_STATUS
 	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
 }
 
 // Sets text of this field
 statusCode setText(field_t* field, const char string[], bool isRich) {
+	HANDLE_EXCEPTIONS_BEGIN
 	return setTextRaw(field, string, isRich, YES);
+	HANDLE_EXCEPTIONS_END
 }
 
 // Raw version of setText that allows the bookmark not to be deleted after
@@ -482,6 +490,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 
 // Gets text inside this field
 statusCode getText(field_t* field, char** returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
 	if(!field->text) {
 		[(field->doc)->lock lock];
 		statusCode status = prepareReadFieldCode(field->doc);
@@ -501,10 +510,12 @@ statusCode getText(field_t* field, char** returnValue) {
 	
 	*returnValue = field->text;
 	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
 }
 
 // Sets the field code
 statusCode setCode(field_t *field, const char code[]) {
+	HANDLE_EXCEPTIONS_BEGIN
 	if(field->sbBookmark) {
 		[(field->doc)->lock lock];
 		NSString* rawCode = [NSString stringWithFormat:@"%@%@ ",
@@ -531,10 +542,12 @@ statusCode setCode(field_t *field, const char code[]) {
 	memcpy(field->code, code, codeLength);
 	
 	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
 }
 
 // Returns the index of the note in which this field resides
 statusCode getNoteIndex(field_t* field, unsigned long *returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
 	if(field->noteType == NOTE_FOOTNOTE) {
 		WordFootnote* note = [[field->sbContentRange footnotes]
 							  objectAtIndex:0];
@@ -548,10 +561,12 @@ statusCode getNoteIndex(field_t* field, unsigned long *returnValue) {
 	}
 	
 	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
 }
 
 // Compares two fields to determine which comes before which
 statusCode compareFields(field_t* a, field_t* b, short *returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
 	statusCode status;
 	status = ensureTextLocationSet(a);
 	if(status) return status;
@@ -584,6 +599,7 @@ statusCode compareFields(field_t* a, field_t* b, short *returnValue) {
 	
 	*returnValue = 0;
 	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
 }
 
 // Adapts the method signature for compareFields to work with the libc qsort_r
