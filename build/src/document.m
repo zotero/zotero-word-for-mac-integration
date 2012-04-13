@@ -1034,8 +1034,8 @@ statusCode getProperty(document_t *doc, NSString* propertyName,
 										 stringWithCapacity:512];
 	NSString* propertyValue = nil;
 	do {
-		NSString* currentPropertyName = [NSString stringWithFormat:@"%@_%d",
-										 propertyName, i];
+		NSString* currentPropertyName = [NSString stringWithFormat:@"%@_%ld",
+										 propertyName, (long) i];
 		IGNORING_SB_ERRORS_BEGIN
 		WordCustomDocumentProperty* property = [doc->sbProperties
 												objectWithName:
@@ -1062,8 +1062,8 @@ statusCode setProperty(document_t *doc, NSString* propertyName,
 	// Set fields with value
 	NSMutableString* scriptToRun = nil;
 	for(NSUInteger i=0; i<numberOfProperties; i++) {
-		NSString* currentPropertyName = [NSString stringWithFormat:@"%@_%d",
-										 propertyName, i+1];
+		NSString* currentPropertyName = [NSString stringWithFormat:@"%@_%lu",
+										 propertyName, (unsigned long) i+1];
 		
 		NSString* currentPropertyValue;
 		if(i == numberOfProperties-1) {
@@ -1142,8 +1142,8 @@ statusCode setProperty(document_t *doc, NSString* propertyName,
 	// Delete extra fields
 	NSUInteger i = numberOfProperties+1;
 	while(true) {
-		NSString *currentPropertyName = [NSString stringWithFormat:@"%s_%d",
-										 propertyName, i];
+		NSString *currentPropertyName = [NSString stringWithFormat:@"%@_%lu",
+										 propertyName, (unsigned long) i];
 		
 		IGNORING_SB_ERRORS_BEGIN
 		WordCustomDocumentProperty* property = [doc->sbProperties
