@@ -6,11 +6,11 @@
     <RDF:Seq>
       <RDF:li>
         <RDF:Description>
-          <version>3.5.2.SOURCE</version>
+          <version>3.5.3.SOURCE</version>
           <targetApplication>
             <RDF:Description>
               <id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</id>
-              <minVersion>11.0a1</minVersion>
+              <minVersion>4.0</minVersion>
               <maxVersion>13.*</maxVersion>
               <updateLink>http://download.zotero.org/integration/Zotero-MacWord-Plugin.xpi</updateLink>
               <updateHash>sha1:</updateHash>
