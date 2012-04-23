@@ -1287,8 +1287,8 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 			sbField = [[sbWhere fields] objectAtIndex:0];
 			
 			// Range might no longer work
-			rangeNoLongerWorks = errorHasOccurred()
-			|| [sbField isEqual:[NSNull null]];
+			rangeNoLongerWorks = errorHasOccurred() || doc->isWord2004
+				|| [sbField isEqual:[NSNull null]];
 			if(!rangeNoLongerWorks) {
 				// It's possible the reference will fail if we try to use it
 				getEntryIndex(doc, sbField);
@@ -1296,7 +1296,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 				|| [sbField isEqual:[NSNull null]];
 			}
 			
-			if(rangeNoLongerWorks || doc->isWord2004) {
+			if(rangeNoLongerWorks) {
 				clearError();
 				
 				// Loop through fields in note text object until we find this
