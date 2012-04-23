@@ -422,9 +422,8 @@ statusCode getFields(document_t *doc, const char fieldType[],
 			}
 		}
 		
-		BOOL isNextField = YES;
-		do {
-			isNextField = NO;
+		while(true) {
+			BOOL isNextField = NO;
 			
 			// Figure out which node should come next
 			unsigned short noteTypeA;
@@ -459,34 +458,33 @@ statusCode getFields(document_t *doc, const char fieldType[],
 					break;
 				}
 			}
+			if(!isNextField) break;
 			
-			if(isNextField) {
-				// Add node to linked list
-				addValueToList(currentFields[noteTypeA], &fieldListStart,
-							   &fieldListEnd);
+			// Add node to linked list
+			addValueToList(currentFields[noteTypeA], &fieldListStart,
+						   &fieldListEnd);
+			
+			// Get next node of type
+			currentFields[noteTypeA] = NULL;
+			while(currentFields[noteTypeA] == NULL &&
+				  currentFieldIndices[noteTypeA] <
+				  fieldCollectionSizes[noteTypeA]) {
 				
-				// Get next node of type
-				currentFields[noteTypeA] = NULL;
-				while(currentFields[noteTypeA] == NULL &&
-					  currentFieldIndices[noteTypeA] <
-					  fieldCollectionSizes[noteTypeA]) {
-					
-					statusCode status = initField(doc,
-												  [fieldCollections[noteTypeA]
-						objectAtIndex:(currentFieldIndices[noteTypeA])], noteTypeA,
-						currentFieldIndices[noteTypeA]+1, NO,
-						&currentFields[noteTypeA]);
-					ENSURE_OK_LOCKED(doc, status)
-					currentFieldIndices[noteTypeA]++;
-				}
+				statusCode status = initField(doc,
+											  [fieldCollections[noteTypeA]
+					objectAtIndex:(currentFieldIndices[noteTypeA])], noteTypeA,
+					currentFieldIndices[noteTypeA]+1, NO,
+					&currentFields[noteTypeA]);
+				ENSURE_OK_LOCKED(doc, status)
+				currentFieldIndices[noteTypeA]++;
 			}
-		} while(isNextField);
+		}
 	} else if(strcmp(fieldType, "Bookmark") == 0) {
 		[doc->sbView setShowBookmarks:YES];
 		SBElementArray *sbBookmarks = [doc->sbDoc bookmarks];
 		CHECK_STATUS_LOCKED(doc)
 		// We are going to allocate enough memory for all of the bookmarks to be
-		// fields. This may not end up being the case, but we need arrays and 
+		// fields. This may not end up being the case, but we need arrays and
 		// not linked lists to be able to use the 
 		field_t** fields = (field_t**) malloc(sizeof(field_t*) * 
 											[sbBookmarks count]);
@@ -1298,7 +1296,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 				|| [sbField isEqual:[NSNull null]];
 			}
 			
-			if(rangeNoLongerWorks) {
+			if(rangeNoLongerWorks || doc->isWord2004) {
 				clearError();
 				
 				// Loop through fields in note text object until we find this

@@ -61,51 +61,51 @@ enum NOTE_TYPE {
 // STATUS_EXCEPTION.
 #define CHECK_STATUS \
 if(errorHasOccurred()) {\
-	flagError(__FUNCTION__, __FILE__, __LINE__-1);\
+	flagError(__FUNCTION__, [@__FILE__ lastPathComponent], __LINE__-1);\
 	return STATUS_EXCEPTION;\
 }
 
 // Checks an OSStatus. If the OSStatus is false, returns.
-#define CHECK_OSSTATUS(x) \
-{ OSStatus statusToEnsure = x; \
-if(x) {\
-return flagOSError(statusToEnsure, __FUNCTION__, __FILE__, __LINE__-1);\
+#define CHECK_OSSTATUS(expr) \
+{ OSStatus statusToEnsure = expr; \
+if(statusToEnsure) {\
+return flagOSError(statusToEnsure, __FUNCTION__, [@__FILE__ lastPathComponent], __LINE__-1);\
 } }
 
-// Same as CHECK_STATUS, but also unlocks an NSLock on (document_t*)x before
+// Same as CHECK_STATUS, but also unlocks an NSLock on (document_t*)doc before
 // returning.
-#define CHECK_STATUS_LOCKED(x) \
+#define CHECK_STATUS_LOCKED(doc) \
 if(errorHasOccurred()) {\
-	[x->lock unlock];\
-	flagError(__FUNCTION__, __FILE__, __LINE__-1);\
+	[(doc)->lock unlock];\
+	flagError(__FUNCTION__, [@__FILE__ lastPathComponent], __LINE__-1);\
 	return STATUS_EXCEPTION;\
 }
 
-// Returns x if x is non-zero.
-#define ENSURE_OK(x) \
+// Returns expr if expr is non-zero.
+#define ENSURE_OK(expr) \
 { \
-statusCode statusToEnsure = x; \
+statusCode statusToEnsure = expr; \
 if(statusToEnsure) return statusToEnsure; \
 }
 
-// If y is non-zero, unlocks the lock on (document_t*)x and then returns y.
-#define ENSURE_OK_LOCKED(x, y) \
+// If y is non-zero, unlocks the lock on (document_t*)doc and then returns y.
+#define ENSURE_OK_LOCKED(doc, expr) \
 { \
-statusCode statusToEnsure = y; \
+statusCode statusToEnsure = expr; \
 if(statusToEnsure) {\
-	[(x)->lock unlock];\
+	[(doc)->lock unlock];\
 	return statusToEnsure;\
 } \
 }
 
-// Unlocks the lock on (document_t*)x and then returns.
-#define RETURN_STATUS_LOCKED(x, y) \
-{ [(x)->lock unlock];\
-return y; }
+// Unlocks the lock on (document_t*)doc and then returns.
+#define RETURN_STATUS_LOCKED(doc, expr) \
+{ [(doc)->lock unlock];\
+return expr; }
 
-// Sets an error code x and then returns STATUS_EXCEPTION.
-#define DIE(x) \
-{ throwError(x, __FUNCTION__, __FILE__, __LINE__-1);\
+// Sets an error code doc and then returns STATUS_EXCEPTION.
+#define DIE(err) \
+{ throwError(err, __FUNCTION__, [@__FILE__ lastPathComponent], __LINE__-1);\
 return STATUS_EXCEPTION; }
 
 #define IGNORING_SB_ERRORS_BEGIN setErrorMonitor(false);
@@ -116,7 +116,7 @@ return STATUS_EXCEPTION; }
 
 #define HANDLE_EXCEPTIONS_END \
 } @catch(NSException* e) { \
-throwError([NSString stringWithFormat:@"%@", e], __FUNCTION__, __FILE__, __LINE__); \
+throwError([NSString stringWithFormat:@"%@", e], __FUNCTION__, [@__FILE__ lastPathComponent], __LINE__); \
 return STATUS_EXCEPTION; \
 }
 
@@ -200,11 +200,11 @@ typedef unsigned short statusCode;
 @end
 BOOL errorHasOccurred(void);
 void setErrorMonitor(BOOL status);
-void flagError(const char file[], const char function[], unsigned int line);
-void throwError(NSString *errorString, const char file[], const char function[],
+void flagError(const char function[], NSString* file, unsigned int line);
+void throwError(NSString *errorString, const char function[], NSString* file,
 				unsigned int line);
-statusCode flagOSError(OSStatus status, const char file[],
-					   const char function[], unsigned int line);
+statusCode flagOSError(OSStatus status, const char function[], NSString* file,
+					   unsigned int line);
 void clearError(void);
 char* getError(void);
 

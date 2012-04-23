@@ -52,32 +52,32 @@ void setErrorMonitor(BOOL status) {
 }
 
 // Generates an error string
-void flagError(const char file[], const char function[], unsigned int line) {
+void flagError(const char function[], NSString* file, unsigned int line) {
 	if(lastErrorString) free(lastErrorString);
-	lastErrorString = copyNSString([NSString stringWithFormat:@"%@ @[%s:%s:%d]",
+	lastErrorString = copyNSString([NSString stringWithFormat:@"%@ @[%s:%@:%d]",
 									[lastError localizedDescription],
-									file, function, line]);
+									function, file, line]);
 }
 
 // Gets a string for an authorization failure
-statusCode flagOSError(OSStatus status, const char file[],
-					   const char function[], unsigned int line) {
+statusCode flagOSError(OSStatus status, const char function[], NSString* file,
+					    unsigned int line) {
 	if(status == errAuthorizationCanceled) {
 		return STATUS_EXCEPTION_ALREADY_DISPLAYED;
 	}
 	
 	NSString* err = [NSError errorWithDomain:NSOSStatusErrorDomain code:status
 									userInfo:nil];
-	throwError(err, file, function, line);
+	throwError(err, function, file, line);
 	return STATUS_EXCEPTION;
 }
 
 // Manually throws an exception up to JS
-void throwError(NSString *errorString, const char file[], const char function[],
+void throwError(NSString *errorString, const char function[], NSString* file,
 				unsigned int line) {
 	if(lastErrorString) free(lastErrorString);
-	lastErrorString = copyNSString([NSString stringWithFormat:@"%@ @[%s:%s:%d]",
-									errorString, file, function, line]);
+	lastErrorString = copyNSString([NSString stringWithFormat:@"%@ @[%s:%@:%d]",
+									errorString, function, file, line]);
 }
 
 // Clears the last error encountered
