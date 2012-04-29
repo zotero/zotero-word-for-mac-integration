@@ -314,13 +314,16 @@ statusCode setText(field_t* field, const char string[], bool isRich) {
 // citation insert
 statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 					  BOOL deleteBM) {
+	BOOL locked = field->sbBookmark || isRich;
 	BOOL restoreSelectionToEnd = NO;
-	if(field->sbBookmark) {
+	if(locked) {
 		[(field->doc)->lock lock];
+	}
+	
+	if(field->sbBookmark) {
 		restoreSelectionToEnd = [[(field->doc)->sbApp selection]
 								 selectionEnd] == [field->sbCodeRange endOfContent];
-		[(field->doc)->lock unlock];
-		CHECK_STATUS
+		CHECK_STATUS_LOCKED(field->doc);
 	}
 	
 	if(isRich) {
@@ -418,11 +421,8 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		[font setOtherName:oldFontOtherName];
 		[font setColorIndex:oldColorIndex];
 		IGNORING_SB_ERRORS_END
-		
-		[(field->doc)->lock unlock];
 	} else {
 		if(field->sbBookmark) {
-			[(field->doc)->lock lock];
 			// Find a reference point in the appropriate story
 			WordTextRange* referenceRange;
 			if(field->noteType == NOTE_FOOTNOTE) {
@@ -474,8 +474,6 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 			[field->sbBookmark setEndOfBookmark:
 			 (oldEnd+[referenceRange endOfContent]-oldStoryEnd)];
 			CHECK_STATUS_LOCKED(field->doc)
-			
-			[(field->doc)->lock unlock];
 		} else {
 			[field->sbContentRange
 			 setContent:[NSString stringWithUTF8String:string]];
@@ -485,12 +483,14 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 	
 	// If selection was at end of mark, put it there again
 	if(restoreSelectionToEnd) {
-		[(field->doc)->lock lock];
 		[[(field->doc)->sbApp selection] setSelectionStart:
 		 [field->sbCodeRange endOfContent]];
 		CHECK_STATUS_LOCKED(field->doc)
 		[[[(field->doc)->sbApp selection] fontObject] reset];
 		CHECK_STATUS_LOCKED(field->doc)
+	}
+	
+	if(locked) {
 		[(field->doc)->lock unlock];
 	}
 	
