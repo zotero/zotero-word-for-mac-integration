@@ -314,9 +314,16 @@ statusCode setText(field_t* field, const char string[], bool isRich) {
 // citation insert
 statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 					  BOOL deleteBM) {
-	if(isRich) {
+	BOOL restoreSelectionToEnd = NO;
+	if(field->sbBookmark) {
 		[(field->doc)->lock lock];
-		
+		restoreSelectionToEnd = [[(field->doc)->sbApp selection]
+								 selectionEnd] == [field->sbCodeRange endOfContent];
+		[(field->doc)->lock unlock];
+		CHECK_STATUS
+	}
+	
+	if(isRich) {
 		IGNORING_SB_ERRORS_BEGIN
 		// Make sure temp bookmark is gone
 		[[[(field->doc)->sbDoc bookmarks] objectWithName:@ RTF_TEMP_BOOKMARK]
@@ -331,9 +338,12 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		IGNORING_SB_ERRORS_END
 		
 		WordBookmark* tempBookmark;
-		BOOL selectionAtEnd = NO;
 		const char* bookmarkName;
+		WordTextRange* insertRange;
 		if(field->sbBookmark) {
+			// Check if cursor is at end of citation
+			CHECK_STATUS_LOCKED(field->doc)
+			
 			// Rename bookmark to a temporary name
 			statusCode status = insertFieldRaw(field->doc, "Bookmark", 0,
 											   field->sbCodeRange,
@@ -345,16 +355,14 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 							objectWithName:@ RTF_TEMP_BOOKMARK];
 			CHECK_STATUS_LOCKED(field->doc)
 			
-			// Check if cursor is at end of citation
-			selectionAtEnd = [[(field->doc)->sbApp selection] selectionEnd]
-			== [field->sbCodeRange endOfContent];
-			CHECK_STATUS_LOCKED(field->doc)
-			
 			// We are going to insert bookmark with the proper name
 			bookmarkName = field->bookmarkName;
+			insertRange = [tempBookmark textObject];
+			CHECK_STATUS_LOCKED(field->doc)
 		} else {
 			// We are going to insert a temporary bookmark
 			bookmarkName = RTF_TEMP_BOOKMARK;
+			insertRange = field->sbContentRange;
 			
 			// Clear content range
 			[field->sbContentRange setContent:@""];
@@ -373,7 +381,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		
 		// Insert file
 		NSString* temporaryFilePath = getTemporaryFilePath();
-		[(field->doc)->sbApp insertFileAt:field->sbContentRange
+		[(field->doc)->sbApp insertFileAt:insertRange
 								 fileName:posixPathToHFSPath(temporaryFilePath)
 								fileRange:[NSString
 										   stringWithUTF8String:bookmarkName]
@@ -410,15 +418,6 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		[font setOtherName:oldFontOtherName];
 		[font setColorIndex:oldColorIndex];
 		IGNORING_SB_ERRORS_END
-		
-		// If selection was at end of mark, put it there again
-		if(selectionAtEnd) {
-			[[(field->doc)->sbApp selection] setSelectionStart:
-			 [field->sbCodeRange endOfContent]];
-			CHECK_STATUS_LOCKED(field->doc)
-			[[[(field->doc)->sbApp selection] fontObject] reset];
-			CHECK_STATUS_LOCKED(field->doc)
-		}
 		
 		[(field->doc)->lock unlock];
 	} else {
@@ -483,6 +482,18 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 			CHECK_STATUS
 		}
 	}
+	
+	// If selection was at end of mark, put it there again
+	if(restoreSelectionToEnd) {
+		[(field->doc)->lock lock];
+		[[(field->doc)->sbApp selection] setSelectionStart:
+		 [field->sbCodeRange endOfContent]];
+		CHECK_STATUS_LOCKED(field->doc)
+		[[[(field->doc)->sbApp selection] fontObject] reset];
+		CHECK_STATUS_LOCKED(field->doc)
+		[(field->doc)->lock unlock];
+	}
+	
 	if(field->text) free(field->text);
 	field->text = NULL;
 	return STATUS_OK;
