@@ -88,7 +88,7 @@ statusCode install(const char templatePath[]) {
 	
 	// Look for Word by creator code
 	CFURLRef testURL;
-	if(LSFindApplicationForInfo('MSWD', NULL, NULL, NULL, &testURL) && testURL) {
+	if(!LSFindApplicationForInfo('MSWD', NULL, NULL, NULL, &testURL) && testURL) {
 		[wordLocations addObject:[(NSURL*)testURL path]];
 	}
 	
