@@ -318,38 +318,14 @@ statusCode getScriptItemsDirectory(char** scriptFolder) {
 	HANDLE_EXCEPTIONS_END
 }
 
-@implementation PipeReader
-- (void) getData:(NSNotification *)aNotification {
-	NSData *data = [[aNotification userInfo] objectForKey:NSFileHandleNotificationDataItem];
-
-	if(![data length]) {
-		[[NSNotificationCenter defaultCenter]
-		 removeObserver:self name:NSFileHandleReadCompletionNotification
-		 object:[[aNotification object]fileHandleForReading]];
-	}
-
-	[[aNotification object] readInBackgroundAndNotify];
-}
-@end
-
 statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent) {
 	NSTask *task;
 	task = [[NSTask alloc] init];
 	[task autorelease];
 	[task setLaunchPath: @"/usr/bin/osacompile"];
-	NSPipe *outPipe = [NSPipe pipe];
 	NSPipe *inPipe = [NSPipe pipe];
 	[task setStandardInput:inPipe];
-	[task setStandardOutput:outPipe];
 	NSFileHandle *inFile = [inPipe fileHandleForWriting];
-	
-	// Read from the pipe until it's dead to avoid blocking
-	PipeReader* pipeReader = [[PipeReader alloc] init];
-	[pipeReader autorelease];
-	[[NSNotificationCenter defaultCenter]
-	 addObserver:pipeReader selector:@selector(getData:)
-	 name:NSFileHandleReadCompletionNotification object:outPipe];
-	[[[task standardOutput] fileHandleForReading] readInBackgroundAndNotify];
 	
 	SInt32 versMaj, versMin;
 	Gestalt(gestaltSystemVersionMajor, &versMaj);
