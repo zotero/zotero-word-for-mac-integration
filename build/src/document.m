@@ -647,33 +647,36 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 			if(field->sbField) {
 				offsets[field->noteType] -= nFieldsInNote;
 				offsets[toNoteType] += nFieldsInNote;
-				field->noteType = toNoteType;
 				
 				if(toField) {
 					// We don't need to convert the other entries in this note.
 					i += nFieldsInNote-1;
-				}
-				
-				// Need to update conversions
-				[field->sbField release];
-				[field->sbContentRange release];
-				
-				field->sbField = [[[sbNote textObject] fields]
-								  objectAtIndex:0];
-				CHECK_STATUS_LOCKED(doc)
-				field->sbContentRange = [field->sbField resultRange];
-				CHECK_STATUS_LOCKED(doc)
-				NSInteger entryIndex = getEntryIndex(doc, field->sbField);
-				CHECK_STATUS_LOCKED(doc)
-				
-				[field->sbField retain];
-				[field->sbContentRange retain];
-				
-				for(unsigned long j=0; j<nFieldsInNote; j++) {
-					fields[i+j]->entryIndex = entryIndex + j - offsets[toNoteType];
+					continue;
+				}  else {
+					// Need to update conversions
+					[field->sbField release];
+					[field->sbContentRange release];
+					
+					field->sbField = [[[sbNote textObject] fields]
+									  objectAtIndex:0];
 					CHECK_STATUS_LOCKED(doc)
-					fields[i+j]->noteType = toNoteType;
+					field->sbContentRange = [field->sbField resultRange];
 					CHECK_STATUS_LOCKED(doc)
+					NSInteger entryIndex = getEntryIndex(doc, field->sbField);
+					CHECK_STATUS_LOCKED(doc)
+					
+					[field->sbField retain];
+					[field->sbContentRange retain];
+					
+					NSUInteger oldEntryIndex = field->entryIndex;
+					for(unsigned long j=0; j<nFieldsInNote; j++) {
+						fields[i+j]->entryIndex = entryIndex
+							+ (fields[i+j]->entryIndex - oldEntryIndex)
+							- offsets[toNoteType];
+						CHECK_STATUS_LOCKED(doc)
+						fields[i+j]->noteType = toNoteType;
+						CHECK_STATUS_LOCKED(doc)
+					}
 				}
 			} else if(field->sbBookmark) {
 				WordTextRange* sbNoteTextObject = [sbNote textObject];
