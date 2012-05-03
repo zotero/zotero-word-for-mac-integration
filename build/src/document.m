@@ -574,9 +574,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 	}
 	
 	// Loop through fields in reverse order
-	unsigned long i = nFields;
-	while(i != 0) {
-		i--;
+	for(unsigned long i = 0; i<nFields; i++) {
 		field_t* field = fields[i];
 		
 		unsigned short toNoteType = toNoteTypes[i];
