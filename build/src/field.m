@@ -27,7 +27,7 @@
 NSString* FIELD_PREFIXES[] = {@" ADDIN ZOTERO_", @" CSL_", NULL};
 NSString* BOOKMARK_PREFIXES[] = {@"ZOTERO_", @"CSL_", NULL};
 
-// Allocates a field structure based on a WordField, optionall checking to make
+// Allocates a field structure based on a WordField, optionally checking to make
 // sure that the field code actually matches a Zotero field.
 statusCode initField(document_t *doc, WordField* sbField, short noteType,
 					 NSInteger entryIndex, BOOL ignoreCode,
@@ -52,6 +52,18 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 				NSRange range = [rawCode rangeOfString:FIELD_PREFIXES[i]];
 				if(range.location != NSNotFound) {
 					field = (field_t*) malloc(sizeof(field_t));
+					
+					// If field code is all caps, make sure text object isn't in
+					// all caps mode
+					if([rawCode isEqualToString:[rawCode uppercaseString]]) {
+						IGNORING_SB_ERRORS_BEGIN
+						WordFont *sbFontObject = [sbCodeRange fontObject];
+						if([sbFontObject allCaps]) {
+							[sbFontObject setAllCaps:NO];
+							rawCode = [sbCodeRange content];
+						}
+						IGNORING_SB_ERRORS_END
+					}
 					
 					// Get code
 					NSUInteger rawCodeLength = [rawCode length];
