@@ -574,9 +574,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 	}
 	
 	// Loop through fields in reverse order
-	unsigned long i = nFields;
-	while(i != 0) {
-		i--;
+	for(unsigned long i = 0; i<nFields; i++) {
 		field_t* field = fields[i];
 		
 		unsigned short toNoteType = toNoteTypes[i];
@@ -612,7 +610,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 		   (toNoteType == NOTE_FOOTNOTE && field->noteType == NOTE_ENDNOTE)) {
 			// Check which fields are in this note
 			unsigned long nFieldsInNote = 0;
-			while(nFieldsInNote < nFields &&
+			while(nFieldsInNote < nFields-i &&
 				  fields[nFieldsInNote+i]->textLocation
 				  == field->textLocation) {
 				nFieldsInNote++;
@@ -672,8 +670,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				[field->sbContentRange retain];
 				
 				for(unsigned long j=0; j<nFieldsInNote; j++) {
-					fields[i+j]->entryIndex = entryIndex
-					- (field->entryIndex) - offsets[toNoteType];
+					fields[i+j]->entryIndex = entryIndex + j - offsets[toNoteType];
 					CHECK_STATUS_LOCKED(doc)
 					fields[i+j]->noteType = toNoteType;
 					CHECK_STATUS_LOCKED(doc)
@@ -1153,7 +1150,6 @@ statusCode setProperty(document_t *doc, NSString* propertyName,
 	// Word 2004: run AppleScript developed above
 	if(scriptToRun) {
 		[scriptToRun appendString:@"end tell"];
-		NSLog(@"Should run:\n%@", scriptToRun);
 		NSAppleScript* script = [[NSAppleScript alloc]
 								 initWithSource:scriptToRun];
 		NSAppleEventDescriptor *result = [script executeAndReturnError:nil];
