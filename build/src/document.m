@@ -1317,12 +1317,33 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		} else {
 			// Need to find the field within the document text. Luckily, we know
 			// where we created it.
-			WordTextRange* tmpRange = [doc->sbDoc createRangeStart:
-									   ([sbWhere startOfContent]-1)
+			NSInteger whereStart = [sbWhere startOfContent];
+			WordTextRange* tmpRange = [doc->sbDoc createRangeStart:whereStart-1
 															   end:([sbWhere endOfContent]+1)];
-			CHECK_STATUS
-			entryIndex = getEntryIndex(doc,
-									   [[tmpRange fields] objectAtIndex:0]);
+			SBElementArray* sbFields = [tmpRange fields];
+			NSUInteger fieldsInRange = [sbFields count];
+			if(!fieldsInRange) DIE(@"Field reference lost")
+			
+			WordField* fieldInRange = nil;
+			
+			// Hack to fix https://github.com/zotero/zotero-word-for-mac-integration/issues/5
+			if(fieldsInRange != 1) {
+				IGNORING_SB_ERRORS_BEGIN
+				for(WordField* sbTestField in sbFields) {
+					if([[sbTestField resultRange] endOfContent]+1 == whereStart) {
+						fieldInRange = sbTestField;
+						break;
+					}
+				}
+				IGNORING_SB_ERRORS_END
+			}
+			
+			if(fieldInRange == nil) {
+				fieldInRange = [sbFields objectAtIndex:0];
+				CHECK_STATUS
+			}
+			
+			entryIndex = getEntryIndex(doc, fieldInRange);
 			CHECK_STATUS
 			sbField = [[doc->sbDoc fields] objectAtIndex:(entryIndex-1)];
 			CHECK_STATUS
