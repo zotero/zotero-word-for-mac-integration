@@ -1068,7 +1068,7 @@ statusCode getProperty(document_t *doc, NSString* propertyName,
 			[stringComponents appendString:propertyValue];
 			i++;
 		}
-	} while(propertyValue);
+	} while([propertyValue length]);
 	*returnValue = stringComponents;
 	
 	return STATUS_OK;
