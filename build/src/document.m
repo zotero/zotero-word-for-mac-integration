@@ -1068,7 +1068,7 @@ statusCode getProperty(document_t *doc, NSString* propertyName,
 			[stringComponents appendString:propertyValue];
 			i++;
 		}
-	} while(propertyValue);
+	} while([propertyValue length]);
 	*returnValue = stringComponents;
 	
 	return STATUS_OK;
@@ -1178,8 +1178,10 @@ statusCode setProperty(document_t *doc, NSString* propertyName,
 				// Try to set property to empty string, since sometimes delete
 				// doesn't seem to work.
 				[property setValue:@""];
-				clearError();
-				break;
+				if(getError()) {
+					clearError();
+					break;
+				}
 			}
 		} else {
 			break;
