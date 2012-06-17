@@ -151,6 +151,11 @@ statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark,
 		resolvedBookmarkName = [sbBookmark name];
 	}
 	
+	[doc->lock lock];
+	sbBookmark = [[doc->sbDoc bookmarks] objectWithName:resolvedBookmarkName];
+	CHECK_STATUS_LOCKED(doc)
+	[doc->lock unlock];
+	
 	if(ignoreCode) {
 		field = (field_t*) malloc(sizeof(field_t));
 		field->code = NULL;
