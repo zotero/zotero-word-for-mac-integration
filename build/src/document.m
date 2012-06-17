@@ -487,9 +487,9 @@ statusCode getFields(document_t *doc, const char fieldType[],
 		// fields. This may not end up being the case, but we need arrays and
 		// not linked lists to be able to use the 
 		field_t** fields = (field_t**) malloc(sizeof(field_t*) * 
-											[sbBookmarks count]);
-		unsigned long nFields = 0;
+											  [sbBookmarks count]);
 		CHECK_STATUS_LOCKED(doc)
+		unsigned long nFields = 0;
 		
 		// Generate field structures
 		for(WordBookmark* sbBookmark in sbBookmarks) {
@@ -503,6 +503,7 @@ statusCode getFields(document_t *doc, const char fieldType[],
 		statusCode status = STATUS_OK;
 		qsort_r(fields, nFields, sizeof(field_t *), &status,
 				&compareFieldsQsort);
+		CHECK_STATUS_LOCKED(doc)
 		
 		// Generate the linked list
 		for(unsigned long i=0; i<nFields; i++) {

@@ -632,12 +632,12 @@ statusCode compareFields(field_t* a, field_t* b, short *returnValue) {
 
 // Adapts the method signature for compareFields to work with the libc qsort_r
 // function
-int compareFieldsQsort(void* voidStatus, const void* a, const void* b) {
-	statusCode* status = ((statusCode*) voidStatus);
-	if(status) return 0;
+int compareFieldsQsort(void* status, const void* a, const void* b) {
+	if(*((statusCode*) status)) return 0;
 	
 	short returnValue;
-	*status = compareFields(*((field_t **) a), *((field_t **) b), &returnValue);
+	*((statusCode*) status) = compareFields(*((field_t **) a),
+											*((field_t **) b), &returnValue);
 	
 	return returnValue;
 }
