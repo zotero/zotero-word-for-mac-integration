@@ -1164,7 +1164,7 @@ statusCode setProperty(document_t *doc, NSString* propertyName,
 	NSUInteger i = numberOfProperties+1;
 	while(true) {
 		NSString *currentPropertyName = [NSString stringWithFormat:@"%@_%lu",
-										 propertyName, (unsigned long) i];
+										 propertyName, (unsigned long) i++];
 		
 		IGNORING_SB_ERRORS_BEGIN
 		WordCustomDocumentProperty* property = [doc->sbProperties
