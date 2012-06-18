@@ -480,17 +480,32 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 			
 			// Regenerate bookmark (an empty bookmark wouldn't have gotten
 			// erased)
+			NSInteger newEnd = oldEnd + [referenceRange endOfContent]
+			                   - oldStoryEnd;
 			if(oldStart != oldEnd) {
-				insertFieldRaw(field->doc, "Bookmark", 0, referenceRange,
-							   field->bookmarkNameNS, NULL);
+				if(field->noteType) {
+					// This approach to resetting the bookmark works everywhere,
+					// but may have trouble with tables
+					ENSURE_OK_LOCKED(field->doc,
+									 insertFieldRaw(field->doc, "Bookmark", 0,
+													referenceRange,
+													field->bookmarkNameNS, NULL));
+					[field->sbBookmark setStartOfBookmark:oldStart];
+					CHECK_STATUS_LOCKED(field->doc)
+					[field->sbBookmark setEndOfBookmark:newEnd];
+					CHECK_STATUS_LOCKED(field->doc)
+				} else {
+					// This is a more appropriate way of setting range text, but
+					// only works within the main story
+					WordTextRange* newRange = [(field->doc)->sbDoc
+											  createRangeStart:oldStart
+											  end:newEnd];
+					ENSURE_OK_LOCKED(field->doc,
+									 insertFieldRaw(field->doc, "Bookmark", 0,
+													newRange,
+													field->bookmarkNameNS, NULL));
+				}
 			}
-			
-			// Move around text
-			[field->sbBookmark setStartOfBookmark:oldStart];
-			CHECK_STATUS_LOCKED(field->doc)
-			[field->sbBookmark setEndOfBookmark:
-			 (oldEnd+[referenceRange endOfContent]-oldStoryEnd)];
-			CHECK_STATUS_LOCKED(field->doc)
 		} else {
 			[field->sbContentRange
 			 setContent:[NSString stringWithUTF8String:string]];
