@@ -363,7 +363,9 @@ statusCode insertField(document_t *doc, const char fieldType[],
 	
 	statusCode status = insertFieldRaw(doc, fieldType, noteType, sbWhere,
 									   nil, returnValue);
-	if(!status) setText(*returnValue, FIELD_PLACEHOLDER, false);
+	if(!status && strcmp(fieldType, "Bookmark") != 0) {
+		setText(*returnValue, FIELD_PLACEHOLDER, false);
+	}
 	RETURN_STATUS_LOCKED(doc, status)
 	HANDLE_EXCEPTIONS_END
 }
