@@ -1324,7 +1324,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 			NSInteger whereStart = [sbWhere startOfContent];
 			WordTextRange* tmpRange = [doc->sbDoc createRangeStart:whereStart-1
 															   end:([sbWhere endOfContent]+1)];
-			SBElementArray* sbFields = [tmpRange fields];
+			NSArray* sbFields = [[tmpRange fields] get];
 			NSUInteger fieldsInRange = [sbFields count];
 			if(!fieldsInRange) DIE(@"Field reference lost")
 			
