@@ -70,8 +70,32 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	
 	// Set other parameters
 	doc->isWord2004 = isWord2004;
-	doc->sbDoc = [doc->sbApp activeDocument];
+	
+	WordDocument* sbActiveDocument = [doc->sbApp activeDocument];
 	CHECK_STATUS
+	
+	// See if we can change the reference from "active document" to one by name
+	NSString* activeDocumentName = [sbActiveDocument name];
+	CHECK_STATUS
+	SBElementArray* sbDocuments = [doc->sbApp documents];
+	CHECK_STATUS
+	NSArray* documentNames = [sbDocuments valueForKey:@"name"];
+	CHECK_STATUS
+	NSUInteger foundDocuments = 0;
+	for(NSString* documentName in documentNames) {
+		if([activeDocumentName isEqualTo:documentName]) {
+			foundDocuments++;
+		}
+	}
+	
+	// It's possible that there are multiple documents by the same name. If
+	// that's the case, we should just retain our reference to "active document"
+	// Otherwise, we should use a reference by name
+	if(foundDocuments == 1) {
+		doc->sbDoc = [sbDocuments objectWithName:activeDocumentName];
+	} else {
+		doc->sbDoc = sbActiveDocument;
+	}
 	
 	[doc->sbDoc retain];
 	
