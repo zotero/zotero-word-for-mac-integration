@@ -82,7 +82,7 @@ statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 }
 @end
 
-// Frees a document struct. This 
+// Frees a document struct.
 void freeDocument(document_t* doc) {
 	[doc->lock lock];
 	
@@ -110,10 +110,10 @@ void freeDocument(document_t* doc) {
 	[doc->sbDoc release];
 	[doc->sbView release];
 	[doc->sbProperties release];
+	[doc->lock unlock];
+	[doc->lock release];
 	free(doc->wordPath);
 	free(doc);
-	
-	[doc->lock unlock];
 }
 
 // Free a field list. The second parameter determines whether the fields inside
