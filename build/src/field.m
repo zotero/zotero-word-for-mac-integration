@@ -255,7 +255,7 @@ void freeField(field_t* field) {
 	free(field);
 }
 
-// Deletes this field
+// Deletes this field from the document
 statusCode deleteField(field_t* field) {
 	HANDLE_EXCEPTIONS_BEGIN
 	short offset = field->sbField ? 1 : 0;
