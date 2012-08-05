@@ -179,8 +179,8 @@ function init() {
 		"writeScript":lib.declare("writeScript", ctypes.default_abi, statusCode, ctypes.char.ptr,
 			ctypes.char.ptr),
 		
-		// statusCode freeString(char* string);
-		"freeString":lib.declare("freeString", ctypes.default_abi, statusCode, ctypes.char.ptr)
+		// statusCode freeData(void* ptr);
+		"freeData":lib.declare("freeData", ctypes.default_abi, statusCode, ctypes.void_t.ptr)
 	};
 	
 	fieldPtr = new ctypes.PointerType(field_t);
@@ -246,7 +246,7 @@ Installer.prototype = {
 		var returnValue = new ctypes.char.ptr();
 		checkStatus(f.getScriptItemsDirectory(returnValue.address()));
 		var outString = returnValue.readString();
-		f.freeString(returnValue);
+		f.freeData(returnValue);
 		return outString;
 	},
 	"writeScript":function(scriptPath, scriptContent) {
@@ -343,7 +343,9 @@ Document.prototype = {
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.char.ptr();
 		checkStatus(f.getDocumentData(this._document_t, returnValue.address()));
-		return returnValue.readString();
+		var data = returnValue.readString();
+		f.freeData(returnValue);
+		return data;
 	},
 	
 	"setDocumentData":function(documentData) {
@@ -504,7 +506,7 @@ Field.prototype = {
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.char.ptr();
 		checkStatus(f.getText(this._field_t, returnValue.address()));
-		return returnValue.readString();
+		returnValue.readString();
 	},
 	
 	"setCode":function(code) {

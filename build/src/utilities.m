@@ -160,9 +160,9 @@ char* copyNSString(NSString* string) {
 	return newString;
 }
 
-// Escapes a C string for use with AppleScript
-void freeString(char* string) {
-	free(string);
+// Frees a C string
+void freeData(void* ptr) {
+	free(ptr);
 }
 
 // Generates a random string.

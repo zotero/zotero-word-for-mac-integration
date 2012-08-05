@@ -214,7 +214,7 @@ NSString* getTemporaryFilePath(void);
 NSString* posixPathToHFSPath(NSString *posixPath);
 
 char* copyNSString(NSString* string);
-void freeString(char* string);
+void freeData(void* ptr);
 NSString* generateRandomString(NSUInteger length);
 NSInteger getEntryIndex(document_t* x, SBObject* y);
 
