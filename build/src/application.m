@@ -64,6 +64,9 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	doc->sbApp = wordApp;
 	[doc->sbApp retain];
 	
+	// Initialize lock
+	doc->lock = [[NSRecursiveLock alloc] init];
+	
 	ZoteroSBApplicationDelegate *myDelegate = [[ZoteroSBApplicationDelegate
 												alloc] init];
 	[doc->sbApp setDelegate:myDelegate];
@@ -76,6 +79,21 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	
 	// See if we can change the reference from "active document" to one by name
 	NSString* activeDocumentName = [sbActiveDocument name];
+	CHECK_STATUS
+	if(!activeDocumentName) {
+		// Show appropriate error if there is no document to initialize, or if VBA
+		// is not installed
+		displayAlert(doc,
+					 "Zotero could not perform this action. Please ensure "
+					 "that a document is open. If you have performed a "
+					 "custom installation of Office, you may need to run "
+					 "the installer again, ensuring that \"Visual Basic "
+					 "for Applications\" is selected.", DIALOG_ICON_STOP,
+					 DIALOG_BUTTONS_OK, NULL);
+		[doc->sbApp release];
+		free(doc);
+		return STATUS_EXCEPTION_ALREADY_DISPLAYED;
+	}
 	CHECK_STATUS
 	SBElementArray* sbDocuments = [doc->sbApp documents];
 	CHECK_STATUS
@@ -107,27 +125,6 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	doc->sbProperties = [doc->sbDoc customDocumentProperties];
 	CHECK_STATUS
 	[doc->sbProperties retain];
-	
-	// Show appropriate error if there is no document to initialize, or if VBA
-	// is not installed
-	if(!doc->sbDoc || [doc->sbDoc isEqual:[NSNull null]]) {
-		freeDocument(doc);
-		if(!sbWindow || [sbWindow isEqual:[NSNull null]]) {
-			displayAlert(doc,
-						 "Zotero could not find an open document. Please open "
-						 "a document and try again.", DIALOG_ICON_STOP, 
-						 DIALOG_BUTTONS_OK, NULL);
-		} else {
-			displayAlert(doc,
-						 "Zotero could not perform this action. Please ensure "
-						 "that a document is open. If you have performed a "
-						 "custom installation of Office, you may need to run "
-						 "the installer again, ensuring that \"Visual Basic "
-						 "for Applications\" is selected.", DIALOG_ICON_STOP, 
-						 DIALOG_BUTTONS_OK, NULL);
-		}
-		// TODO raise ExceptionAlreadyDisplayed
-	}
 	
 	// Capture settings
 	IGNORING_SB_ERRORS_BEGIN
@@ -163,9 +160,6 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	
 	// Put path into structure
 	doc->wordPath = copyNSString(wordPathNS);
-	
-	// Initialize lock
-	doc->lock = [[NSRecursiveLock alloc] init];
 	
 	*returnValue = doc;
 	return STATUS_OK;
