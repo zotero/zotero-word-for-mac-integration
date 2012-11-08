@@ -506,7 +506,7 @@ Field.prototype = {
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.char.ptr();
 		checkStatus(f.getText(this._field_t, returnValue.address()));
-		returnValue.readString();
+		return returnValue.readString();
 	},
 	
 	"setCode":function(code) {
