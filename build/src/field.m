@@ -39,6 +39,7 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 	if(ignoreCode) {
 		field = (field_t*) malloc(sizeof(field_t));
 		field->code = NULL;
+		field->rawCode = nil;
 	} else {
 		// Read code
 		statusCode readCodeStatus = prepareReadFieldCode(doc);
@@ -75,6 +76,8 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 					if([rawCode characterAtIndex:(rawCodeLength-1)] == ' ') {
 						codeLength--;
 					}
+					field->rawCode = rawCode;
+					[rawCode retain];
 					field->code = copyNSString([rawCode substringWithRange:
 												NSMakeRange(codeStart,
 															codeLength)]);
@@ -200,6 +203,7 @@ statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark,
 		field->entryIndex = -1;
 		field->textLocation = -1;
 		field->noteLocation = -1;
+		field->rawCode = nil;
 		
 		field->bookmarkNameNS = resolvedBookmarkName;
 		field->bookmarkName = copyNSString(resolvedBookmarkName);
@@ -252,6 +256,7 @@ void freeField(field_t* field) {
 	[field->sbField release];
 	[field->sbCodeRange release];
 	[field->sbContentRange release];
+	[field->rawCode release];
 	free(field);
 }
 
@@ -567,6 +572,12 @@ statusCode setCode(field_t *field, const char code[]) {
 		ENSURE_OK_LOCKED(field->doc, status)
 		[(field->doc)->lock unlock];
 	} else {
+		if(field->rawCode != nil) {
+			NSString* currentCode = [field->sbCodeRange content];
+			if([currentCode isNotEqualTo:field->rawCode]) {
+				DIE(@"Document modified during update")
+			}
+		}
 		NSString* rawCode = [NSString stringWithFormat:@"%@%@ ",
 							 FIELD_PREFIXES[0],
 							 [NSString stringWithUTF8String:code]];

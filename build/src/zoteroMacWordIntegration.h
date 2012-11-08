@@ -190,6 +190,9 @@ typedef struct Field {
 	// The location of this field relative to the start of the footnote/endnote
 	// story.
 	NSInteger noteLocation;
+	
+	// The raw field code for fields only
+	NSString* rawCode;
 } field_t;
 
 typedef unsigned short statusCode;
