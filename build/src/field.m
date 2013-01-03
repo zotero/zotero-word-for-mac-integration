@@ -444,6 +444,14 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		[font setColorIndex:oldColorIndex];
 		IGNORING_SB_ERRORS_END
 	} else {
+		// Clear any superscripting. Unlike other font parameters,
+		// superscripted fields are far more likely to come from a style change
+		// than to be desired by the user.
+		IGNORING_SB_ERRORS_BEGIN
+		WordFont* font = [field->sbContentRange fontObject];
+		[font setSuperscript:NO];
+		IGNORING_SB_ERRORS_END
+		
 		if(field->sbBookmark) {
 			// Find a reference point in the appropriate story
 			WordTextRange* referenceRange;
