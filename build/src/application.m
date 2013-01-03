@@ -98,9 +98,7 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	SBElementArray* sbDocuments = [doc->sbApp documents];
 	CHECK_STATUS
 	
-	IGNORING_SB_ERRORS_BEGIN
 	NSArray* documentNames = [sbDocuments valueForKey:@"name"];
-	IGNORING_SB_ERRORS_END
 	if(errorHasOccurred()) {
 		// This can fail due to an incomplete Office installation.
 		displayAlert(doc,
