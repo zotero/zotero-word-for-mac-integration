@@ -97,8 +97,26 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	CHECK_STATUS
 	SBElementArray* sbDocuments = [doc->sbApp documents];
 	CHECK_STATUS
+	
+	IGNORING_SB_ERRORS_BEGIN
 	NSArray* documentNames = [sbDocuments valueForKey:@"name"];
-	CHECK_STATUS
+	IGNORING_SB_ERRORS_END
+	if(errorHasOccurred()) {
+		// This can fail due to an incomplete Office installation.
+		displayAlert(doc,
+					 "Zotero has detected an incomplete or malfunctioning "
+					 "Microsoft Office installation. This is typically caused "
+					 "an incompatibility between Office and Apple's Migration "
+					 "Assistant. To resolve this issue, manually copy the "
+					 "Microsoft Office folder from your previous system, or "
+					 "reinstall Office from the original disc.", DIALOG_ICON_STOP,
+					 DIALOG_BUTTONS_OK, NULL);
+		[doc->sbApp release];
+		clearError();
+		free(doc);
+		return STATUS_EXCEPTION_ALREADY_DISPLAYED;
+	}
+	
 	NSUInteger foundDocuments = 0;
 	for(NSString* documentName in documentNames) {
 		if([activeDocumentName isEqualTo:documentName]) {
