@@ -31,6 +31,7 @@
 #define PATH_MKDIR "/bin/mkdir"
 #define PATH_RM "/bin/rm"
 #define PATH_DITTO "/usr/bin/ditto"
+#define PATH_CHOWN "/usr/sbin/chown"
 
 statusCode installTemplate(NSString* templatePath, NSString* path);
 statusCode installScripts(NSString* templatePath);
@@ -50,20 +51,9 @@ statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent);
 // Installs all scripts and templates, given the path to Zotero.dot
 statusCode install(const char templatePath[]) {
 	HANDLE_EXCEPTIONS_BEGIN
+	NSFileManager *fm = [NSFileManager defaultManager];
 	NSString* templatePathNS = [NSString stringWithUTF8String:templatePath];
 	FinderApplication* finder = nil;
-	
-	// Fix template type and creator
-	NSError *err = nil;
-	NSFileManager *fm = [NSFileManager defaultManager];
-	if(![fm setAttributes:[NSDictionary dictionaryWithObjectsAndKeys:
-					   [NSNumber numberWithUnsignedInt:'MSWD'],
-					   NSFileHFSCreatorCode,
-					   [NSNumber numberWithUnsignedInt:'W8TN'],
-					   NSFileHFSTypeCode, nil]
-			 ofItemAtPath:templatePathNS error:&err]) {
-		DIE([err localizedDescription]);
-	}
 	
 	// Get directories
 	NSArray *temp = NSSearchPathForDirectoriesInDomains(NSApplicationDirectory,
@@ -221,12 +211,22 @@ statusCode installTemplate(NSString* templatePath, NSString* path) {
 	if(status) return status;
 	
 	// Try to copy template to directory
-	status = performAuthorizedCopy(templatePath, templatePath,
-								   [startupDirectory
-									stringByAppendingPathComponent:
-									@"Zotero.dot"]
-								   );
+	NSString *newTemplatePath = [startupDirectory
+								stringByAppendingPathComponent:
+								 @"Zotero.dot"];
+	status = performAuthorizedCopy(templatePath, templatePath, newTemplatePath);
 	if(status) return status;
+	
+	// Fix template type and creator
+	NSError *err = nil;
+	if(![fm setAttributes:[NSDictionary dictionaryWithObjectsAndKeys:
+						   [NSNumber numberWithUnsignedInt:'MSWD'],
+						   NSFileHFSCreatorCode,
+						   [NSNumber numberWithUnsignedInt:'W8TN'],
+						   NSFileHFSTypeCode, nil]
+			 ofItemAtPath:newTemplatePath error:&err]) {
+		DIE([err localizedDescription]);
+	}
 	
 	return STATUS_OK;
 }
@@ -496,7 +496,7 @@ statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
 	statusCode status = getAuthorizationRef(templatePath);
 	if(status) return status;
 	
-	// Run the tool using the authorization reference
+	// Copy the template
 	char *argv[3];
 	argv[0] = copyNSString(path1);
 	argv[1] = copyNSString(path2);
@@ -506,6 +506,21 @@ statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
 															 kAuthorizationFlagDefaults,
 															 argv, NULL);
 	free(argv[0]);
+	free(argv[1]);
+	CHECK_OSSTATUS(authStatus)
+	
+	// Make sure we own the template
+	char uid[11];
+	if(snprintf(uid, 11, "%d", getuid()) >= 11) {
+		DIE(@"UID too long")
+	}
+	argv[0] = uid;
+	argv[1] = copyNSString(path2);
+	argv[2] = NULL;
+	authStatus = AuthorizationExecuteWithPrivileges(authorizationRef,
+															 PATH_CHOWN,
+															 kAuthorizationFlagDefaults,
+															 argv, NULL);
 	free(argv[1]);
 	CHECK_OSSTATUS(authStatus)
 	
