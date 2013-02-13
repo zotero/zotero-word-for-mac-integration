@@ -32,6 +32,7 @@
 #define PATH_RM "/bin/rm"
 #define PATH_DITTO "/usr/bin/ditto"
 #define PATH_CHOWN "/usr/sbin/chown"
+#define PATH_CHMOD "/bin/chmod"
 
 statusCode installTemplate(NSString* templatePath, NSString* path);
 statusCode installScripts(NSString* templatePath);
@@ -402,14 +403,15 @@ statusCode performAuthorizedAction(NSString* templatePath,
 			{kAuthorizationRightExecute, strlen(PATH_MKDIR), PATH_MKDIR, 0},
 			{kAuthorizationRightExecute, strlen(PATH_RM), PATH_RM, 0},
 			{kAuthorizationRightExecute, strlen(PATH_DITTO), PATH_DITTO, 0},
-			{kAuthorizationRightExecute, strlen(PATH_CHOWN), PATH_CHOWN, 0}
+			{kAuthorizationRightExecute, strlen(PATH_CHOWN), PATH_CHOWN, 0},
+			{kAuthorizationRightExecute, strlen(PATH_CHMOD), PATH_CHMOD, 0}
 		};
 		AuthorizationItem authEnvironmentItems[] = {
 			{kAuthorizationEnvironmentPrompt, strlen(AUTH_PROMPT), AUTH_PROMPT,
 				0},
 			{kAuthorizationEnvironmentIcon, 0, NULL, 0}
 		};
-		AuthorizationRights authRights = {3, authRightItems};
+		AuthorizationRights authRights = {5, authRightItems};
 		AuthorizationEnvironment authEnvironment = {2, authEnvironmentItems};
 		
 		//  Get path to Zotero icon from templatePath
@@ -458,7 +460,7 @@ statusCode performAuthorizedMkdir(NSString* templatePath, NSString *path,
 				argv[0] = "-rf";
 				argv[1] = copyNSString(path);
 				argv[2] = NULL;
-				CHECK_STATUS(performAuthorizedAction(templatePath, PATH_RM, argv));
+				ENSURE_OK(performAuthorizedAction(templatePath, PATH_RM, argv))
 				free(argv[1]);
 			}
 		} else {
@@ -480,7 +482,7 @@ statusCode performAuthorizedMkdir(NSString* templatePath, NSString *path,
 		argv[2] = "775";
 		argv[3] = copyNSString(path);
 		argv[4] = NULL;
-		CHECK_STATUS(performAuthorizedAction(templatePath, PATH_MKDIR, argv));
+		ENSURE_OK(performAuthorizedAction(templatePath, PATH_MKDIR, argv))
 		free(argv[3]);
 	}
 	
@@ -502,8 +504,9 @@ statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
 	argv[0] = copyNSString(path1);
 	argv[1] = copyNSString(path2);
 	argv[2] = NULL;
-	CHECK_STATUS(performAuthorizedAction(templatePath, PATH_DITTO, argv));
+	ENSURE_OK(performAuthorizedAction(templatePath, PATH_DITTO, argv))
 	free(argv[0]);
+	free(argv[1]);
 	
 	// Make sure we own the template
 	char uid[11];
@@ -511,7 +514,17 @@ statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
 		DIE(@"UID too long")
 	}
 	argv[0] = uid;
-	CHECK_STATUS(performAuthorizedAction(templatePath, PATH_CHOWN, argv));
+	argv[1] = copyNSString(path2);
+	argv[2] = NULL;
+	ENSURE_OK(performAuthorizedAction(templatePath, PATH_CHOWN, argv))
+	free(argv[1]);
+	
+	// Make sure we have read access on the parent
+	argv[0] = "755";
+	argv[1] = copyNSString([path2 stringByDeletingLastPathComponent]);
+	argv[2] = NULL;
+	ENSURE_OK(performAuthorizedAction(templatePath, PATH_CHMOD, argv))
+	free(argv[1]);
 	
 	return STATUS_OK;
 }
