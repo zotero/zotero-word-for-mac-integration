@@ -37,7 +37,8 @@ statusCode installTemplate(NSString* templatePath, NSString* path);
 statusCode installScripts(NSString* templatePath);
 statusCode parseAuthorizationStatus(OSStatus status, const char file[],
 									const char function[], unsigned int line);
-statusCode getAuthorizationRef(NSString* templatePath);
+statusCode performAuthorizedAction(NSString* templatePath,
+								   const char* commandPath, char* const* argv);
 statusCode performAuthorizedMkdir(NSString* templatePath, NSString *path,
 								  BOOL emptyIfExists);
 statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
@@ -392,12 +393,16 @@ statusCode installScripts(NSString* templatePath) {
 }
 
 AuthorizationRef authorizationRef = NULL;
-statusCode getAuthorizationRef(NSString* templatePath) {
+// Get authorization reference, perform a command as root, and block until it is
+// complete
+statusCode performAuthorizedAction(NSString* templatePath,
+								   const char* commandPath, char* const* argv) {
 	if(!authorizationRef) {
 		AuthorizationItem authRightItems[] = {
 			{kAuthorizationRightExecute, strlen(PATH_MKDIR), PATH_MKDIR, 0},
 			{kAuthorizationRightExecute, strlen(PATH_RM), PATH_RM, 0},
-			{kAuthorizationRightExecute, strlen(PATH_DITTO), PATH_DITTO, 0}
+			{kAuthorizationRightExecute, strlen(PATH_DITTO), PATH_DITTO, 0},
+			{kAuthorizationRightExecute, strlen(PATH_CHOWN), PATH_CHOWN, 0}
 		};
 		AuthorizationItem authEnvironmentItems[] = {
 			{kAuthorizationEnvironmentPrompt, strlen(AUTH_PROMPT), AUTH_PROMPT,
@@ -422,6 +427,20 @@ statusCode getAuthorizationRef(NSString* templatePath) {
 		free(iconPath);
 		CHECK_OSSTATUS(status)
 	}
+	
+	// Execute command
+	FILE *communicationsPipe;
+	OSStatus authStatus = AuthorizationExecuteWithPrivileges(authorizationRef,
+															 commandPath,
+															 kAuthorizationFlagDefaults,
+															 argv, &communicationsPipe);
+	CHECK_OSSTATUS(authStatus)
+	
+	// Block until command closed stdout
+	char buffer[1024];
+	while(fread(&buffer, 1024, 1, communicationsPipe)) {};
+	fclose(communicationsPipe);
+	
 	return STATUS_OK;
 }
 
@@ -435,19 +454,12 @@ statusCode performAuthorizedMkdir(NSString* templatePath, NSString *path,
 		if(emptyIfExists) {
 			// File exists but we were asked to empty it
 			if(![fm removeItemAtPath:path error:NULL]) {
-				statusCode status = getAuthorizationRef(templatePath);
-				if(status) return status;
-				
 				char *argv[3];
 				argv[0] = "-rf";
 				argv[1] = copyNSString(path);
 				argv[2] = NULL;
-				OSStatus authStatus = AuthorizationExecuteWithPrivileges(authorizationRef,
-																		 PATH_RM,
-																		 kAuthorizationFlagDefaults,
-																		 argv, NULL);
+				CHECK_STATUS(performAuthorizedAction(templatePath, PATH_RM, argv));
 				free(argv[1]);
-				CHECK_OSSTATUS(authStatus)
 			}
 		} else {
 			// Exists and we were not asked to empty
@@ -462,21 +474,14 @@ statusCode performAuthorizedMkdir(NSString* templatePath, NSString *path,
 	
 	if(![fm createDirectoryAtPath:path
 	  withIntermediateDirectories:YES attributes:nil error:NULL]) {
-		statusCode status = getAuthorizationRef(templatePath);
-		if(status) return status;
-
 		char *argv[5];
 		argv[0] = "-p";
 		argv[1] = "-m";
 		argv[2] = "775";
 		argv[3] = copyNSString(path);
 		argv[4] = NULL;
-		OSStatus authStatus = AuthorizationExecuteWithPrivileges(authorizationRef,
-																 PATH_MKDIR,
-																 kAuthorizationFlagDefaults,
-																 argv, NULL);
+		CHECK_STATUS(performAuthorizedAction(templatePath, PATH_MKDIR, argv));
 		free(argv[3]);
-		CHECK_OSSTATUS(authStatus)
 	}
 	
 	return STATUS_OK;
@@ -492,22 +497,13 @@ statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
 		return STATUS_OK;
 	}
 	
-	// Create authorization reference
-	statusCode status = getAuthorizationRef(templatePath);
-	if(status) return status;
-	
-	// Copy the template
+	// Set up arguments
 	char *argv[3];
 	argv[0] = copyNSString(path1);
 	argv[1] = copyNSString(path2);
 	argv[2] = NULL;
-	OSStatus authStatus = AuthorizationExecuteWithPrivileges(authorizationRef,
-															 PATH_DITTO,
-															 kAuthorizationFlagDefaults,
-															 argv, NULL);
+	CHECK_STATUS(performAuthorizedAction(templatePath, PATH_DITTO, argv));
 	free(argv[0]);
-	free(argv[1]);
-	CHECK_OSSTATUS(authStatus)
 	
 	// Make sure we own the template
 	char uid[11];
@@ -515,14 +511,7 @@ statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
 		DIE(@"UID too long")
 	}
 	argv[0] = uid;
-	argv[1] = copyNSString(path2);
-	argv[2] = NULL;
-	authStatus = AuthorizationExecuteWithPrivileges(authorizationRef,
-															 PATH_CHOWN,
-															 kAuthorizationFlagDefaults,
-															 argv, NULL);
-	free(argv[1]);
-	CHECK_OSSTATUS(authStatus)
+	CHECK_STATUS(performAuthorizedAction(templatePath, PATH_CHOWN, argv));
 	
 	return STATUS_OK;
 }
