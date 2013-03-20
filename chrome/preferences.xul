@@ -11,18 +11,21 @@
 			</hbox>
 			<script>
 			<![CDATA[
-			var ZoteroMacWordInstaller = Components.utils.import("resource://zotero-macword-integration/installer.jsm").Installer;
-			window.addEventListener("load", function() {
-				var zpi = new ZoteroMacWordInstaller(true);
-				updateMacWordIntegration(zpi);
-			}, false);
-			
-			function updateMacWordIntegration(zpi) {
-				var isInstalled = zpi.isInstalled();
-				document.getElementById("wordProcessors-macWordIntegration-description").textContent =
-					"The Zotero Word for Mac add-on is "+(isInstalled ? "" : "not ")+"currently installed.";
-				document.getElementById("wordProcessors-macWordIntegration-install").label =
-					(isInstalled ? "Reinstall" : "Install")+" Word Add-in";
+			var ZoteroMacWordInstaller;
+			if(!ZoteroMacWordInstaller) {
+				ZoteroMacWordInstaller = Components.utils.import("resource://zotero-macword-integration/installer.jsm").Installer;
+				window.addEventListener("load", function() {
+					var zpi = new ZoteroMacWordInstaller(true);
+					updateMacWordIntegration(zpi);
+				}, false);
+				
+				function updateMacWordIntegration(zpi) {
+					var isInstalled = zpi.isInstalled();
+					document.getElementById("wordProcessors-macWordIntegration-description").textContent =
+						"The Zotero Word for Mac add-on is "+(isInstalled ? "" : "not ")+"currently installed.";
+					document.getElementById("wordProcessors-macWordIntegration-install").label =
+						(isInstalled ? "Reinstall" : "Install")+" Word Add-in";
+				}
 			}
 			]]>
 			</script>
