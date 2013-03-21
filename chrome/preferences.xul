@@ -1,34 +1,18 @@
 <?xml version="1.0"?>
 <overlay id="macWordIntegration"
-         xmlns:html="http://www.w3.org/1999/xhtml"
          xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-	<tabpanel id="wordProcessors">
-		<groupbox id="wordProcessors-macWordIntegration" position="1">
-			<caption label="Microsoft Word for Mac 2004 and later"/>
-			<description id="wordProcessors-macWordIntegration-description" width="45em" />
-			<hbox pack="center">
-				<button id="wordProcessors-macWordIntegration-install" oncommand="updateMacWordIntegration(new ZoteroMacWordInstaller(false, true));"/>
-			</hbox>
-			<script>
-			<![CDATA[
-			var ZoteroMacWordInstaller;
-			if(!ZoteroMacWordInstaller) {
-				ZoteroMacWordInstaller = Components.utils.import("resource://zotero-macword-integration/installer.jsm").Installer;
-				window.addEventListener("load", function() {
-					var zpi = new ZoteroMacWordInstaller(true);
-					updateMacWordIntegration(zpi);
-				}, false);
-				
-				function updateMacWordIntegration(zpi) {
-					var isInstalled = zpi.isInstalled();
-					document.getElementById("wordProcessors-macWordIntegration-description").textContent =
-						"The Zotero Word for Mac add-on is "+(isInstalled ? "" : "not ")+"currently installed.";
-					document.getElementById("wordProcessors-macWordIntegration-install").label =
-						(isInstalled ? "Reinstall" : "Install")+" Word Add-in";
-				}
+	<script>
+	<![CDATA[
+	document.addEventListener("DOMContentLoaded", function() {
+		document.getElementById("zotero-prefpane-cite").addEventListener("paneload", function() {
+			try {
+				var installer = Components.utils.import("resource://zotero-macword-integration/installer.jsm").Installer;
+				(new installer(true)).showPreferences(document);
+			} catch(e) {
+				Zotero.logError(e);
 			}
-			]]>
-			</script>
-		</groupbox>
-	</tabpanel>
+		}, false);
+	}, false);
+	]]>
+	</script>
 </overlay>

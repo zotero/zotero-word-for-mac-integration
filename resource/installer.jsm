@@ -45,7 +45,7 @@ var Plugin = new function() {
 		minVersion: "2.1a1.SVN",
 		required: true
 	}, {
-		name: "Zotero OpenOffice Integration",
+		name: "Zotero LibreOffice Integration",
 		url: "zotero.org/support/word_processor_plugin_installation",
 		id: "zoteroOpenOfficeIntegration@zotero.org",
 		minVersion: "3.5b2.SOURCE",
