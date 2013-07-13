@@ -591,6 +591,10 @@ statusCode setCode(field_t *field, const char code[]) {
 							 [NSString stringWithUTF8String:code]];
 		[field->sbCodeRange setContent:rawCode];
 		CHECK_STATUS
+
+		[field->rawCode release];
+		[rawCode retain];
+		field->rawCode = rawCode;
 	}
 	
 	// Store code in struct
