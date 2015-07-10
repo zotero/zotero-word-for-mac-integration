@@ -138,16 +138,36 @@ statusCode install(const char templatePath[]) {
 	}
 
     if (shouldInstallContainerTemplate) {
-        NSString *newTemplatePath = [NSHomeDirectory() stringByAppendingPathComponent:
-                                     @"Library/Group Containers/UBF8T346G9.Office/User Content.localized/Startup.localized/Word/Zotero.dot"];
-        NSError *err = nil;
-        if([fm fileExistsAtPath:newTemplatePath]) {
-            if(![fm removeItemAtPath:newTemplatePath error:&err]) {
-                DIE([err localizedDescription]);
-            }
-        }
-        if(![fm copyItemAtPath:templatePathNS toPath:newTemplatePath error:&err]) {
-            DIE([err localizedDescription]);
+		NSString *startupDirectory = [NSHomeDirectory() stringByAppendingPathComponent:
+									  @"Library/Group Containers/UBF8T346G9.Office/User Content.localized/Startup.localized/Word"];
+		NSString *newTemplatePath = [startupDirectory stringByAppendingPathComponent:
+									 @"Zotero.dot"];
+		NSError *err = nil;
+		if(![fm fileExistsAtPath:startupDirectory]) {
+			// Word startup directory does not exist yet. Warn user they will have to
+			// restart Firefox/Zotero
+			if(![fm createDirectoryAtPath:startupDirectory withIntermediateDirectories:YES
+			     attributes:nil error:&err]) {
+				DIE([err localizedDescription]);
+			}
+
+			NSAlert *alert = [NSAlert alertWithMessageText:@"Zotero Word for Mac "
+							  "Integration has been successfully installed, but "
+							  "Zotero or Firefox must be restarted before it can be used."
+											 defaultButton:nil
+										   alternateButton:nil
+											   otherButton:nil
+								 informativeTextWithFormat:@"Please restart Zotero or Firefox "
+							                                "before continuing."];
+			[alert runModal];
+		}
+		if([fm fileExistsAtPath:newTemplatePath]) {
+			if(![fm removeItemAtPath:newTemplatePath error:&err]) {
+				DIE([err localizedDescription]);
+			}
+		}
+		if(![fm copyItemAtPath:templatePathNS toPath:newTemplatePath error:&err]) {
+			DIE([err localizedDescription]);
         }
         statusCode status = setTemplateTypeCreator(newTemplatePath);
         if(status) return status;
