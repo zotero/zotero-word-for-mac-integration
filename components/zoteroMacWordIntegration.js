@@ -78,9 +78,9 @@ function init() {
 		// void clearError(void);
 		"clearError":lib.declare("clearError", ctypes.default_abi, ctypes.void_t),
 		
-		// statusCode getDocument(bool isWord2004, const char* wordPath,
+		// statusCode getDocument(int wordVersion, const char* wordPath,
 		//					   const char* documentName, Document** returnValue);
-		"getDocument":lib.declare("getDocument", ctypes.default_abi, statusCode, ctypes.bool,
+		"getDocument":lib.declare("getDocument", ctypes.default_abi, statusCode, ctypes.int,
 			ctypes.char.ptr, ctypes.char.ptr, document_t.ptr.ptr),
 		
 		// void freeDocument(Document *doc);
@@ -265,7 +265,7 @@ Application2004.prototype = {
 	"getDocument":function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(true, path, null, docPtr.address()));
+		checkStatus(f.getDocument(2004, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
 	"getActiveDocument":function(path) {
@@ -277,7 +277,7 @@ Application2004.prototype = {
 
 var Application2008 = function() {};
 Application2008.prototype = {
-	classDescription: "Zotero Word 2008+ for Mac Integration Application",
+	classDescription: "Zotero Word 2008/2011 for Mac Integration Application",
 	classID:		Components.ID("{ea584d70-2797-4cd1-8015-1a5f5fb85af7}"),
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2008;1",
 	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
@@ -286,7 +286,28 @@ Application2008.prototype = {
 	"getDocument":function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(false, path, null, docPtr.address()));
+		checkStatus(f.getDocument(2008, path, null, docPtr.address()));
+		return new Document(docPtr);
+	},
+	"getActiveDocument":function(path) {
+		return this.getDocument(null);
+	},
+	"primaryFieldType":"Field",
+	"secondaryFieldType":"Bookmark"
+};
+
+var Application2016 = function() {};
+Application2016.prototype = {
+	classDescription: "Zotero Word 2016 for Mac Integration Application",
+	classID:		Components.ID("{9c6e787b-27d7-4567-98d4-b57d0afa3d8c}"),
+	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2016;1",
+	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
+		Components.interfaces.zoteroIntegrationApplication]),
+	"service":		true,
+	"getDocument":function(path) {
+		init();
+		var docPtr = new document_t.ptr();
+		checkStatus(f.getDocument(2016, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
 	"getActiveDocument":function(path) {
@@ -553,5 +574,6 @@ Field.prototype = {
 const NSGetFactory = XPCOMUtils.generateNSGetFactory([
 	Installer,
 	Application2004,
-	Application2008
+	Application2008,
+	Application2016
 ]);

@@ -34,7 +34,8 @@
 #define PATH_CHOWN "/usr/sbin/chown"
 #define PATH_CHMOD "/bin/chmod"
 
-statusCode installTemplate(NSString* templatePath, NSString* path);
+statusCode installTemplateIntoStartupDirectory(NSString* templatePath, NSString* path);
+statusCode setTemplateTypeCreator(NSString* templatePath);
 statusCode installScripts(NSString* templatePath);
 statusCode parseAuthorizationStatus(OSStatus status, const char file[],
 									const char function[], unsigned int line);
@@ -70,7 +71,9 @@ statusCode install(const char templatePath[]) {
 	[wordLocations addObject:[applicationsFolder stringByAppendingPathComponent:
 							  @"Microsoft Office 2008/Microsoft Word.app"]];
 	[wordLocations addObject:[applicationsFolder stringByAppendingPathComponent:
-							  @"Microsoft Office 2011/Microsoft Word.app"]];
+                              @"Microsoft Office 2011/Microsoft Word.app"]];
+    [wordLocations addObject:[applicationsFolder stringByAppendingPathComponent:
+                              @"Microsoft Word.app"]];
 	
 	// Look for Word bundle
 	NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
@@ -84,7 +87,7 @@ statusCode install(const char templatePath[]) {
 		[wordLocations addObject:[(NSURL*)testURL path]];
 	}
 	
-	BOOL shouldInstallScripts = NO, installed = NO, wordXFound = NO;
+	BOOL shouldInstallScripts = NO, shouldInstallContainerTemplate = NO, installed = NO, wordXFound = NO;
 	for(NSString* path in wordLocations) {
 		BOOL isDirectory;
 		NSString* version;
@@ -115,14 +118,17 @@ statusCode install(const char templatePath[]) {
 			wordXFound = YES;
 		}
 		
-		// Install scripts for Word 2008 or later
-		shouldInstallScripts = shouldInstallScripts || intVersion >= 12;
-		// Install scripts for Word 2004 or Word 2011
-		if(intVersion == 11 || intVersion >= 14) {
-			statusCode status = installTemplate(templatePathNS, path);
+		// Install scripts for Word 2008 and 2011
+		shouldInstallScripts = shouldInstallScripts || (intVersion >= 12 && intVersion < 15);
+        if(intVersion == 11 || intVersion == 14) {
+            // Install template into startup directory for Word 2004 or Word 2011
+			statusCode status = installTemplateIntoStartupDirectory(templatePathNS, path);
 			if(status) return status;
 			installed = true;
-		}
+        } else if(intVersion == 15) {
+            // Install template into container directory for Word 2016
+            shouldInstallContainerTemplate = true;
+        }
 	}
 	
 	if(shouldInstallScripts) {
@@ -130,6 +136,22 @@ statusCode install(const char templatePath[]) {
 		if(status) return status;
 		installed = true;
 	}
+
+    if (shouldInstallContainerTemplate) {
+        NSString *newTemplatePath = [NSHomeDirectory() stringByAppendingPathComponent:
+                                     @"Library/Group Containers/UBF8T346G9.Office/User Content.localized/Startup.localized/Word/Zotero.dot"];
+        NSError *err = nil;
+        if([fm fileExistsAtPath:newTemplatePath]) {
+            if(![fm removeItemAtPath:newTemplatePath error:&err]) {
+                DIE([err localizedDescription]);
+            }
+        }
+        if(![fm copyItemAtPath:templatePathNS toPath:newTemplatePath error:&err]) {
+            DIE([err localizedDescription]);
+        }
+        statusCode status = setTemplateTypeCreator(newTemplatePath);
+        if(status) return status;
+    }
 	
 	if(!installed) {
 		if(wordXFound) {
@@ -181,8 +203,23 @@ statusCode install(const char templatePath[]) {
 	HANDLE_EXCEPTIONS_END
 }
 
+// Sets the type and creator code on the template
+statusCode setTemplateTypeCreator(NSString* templatePath) {
+    NSError *err = nil;
+    if(![[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObjectsAndKeys:
+                           [NSNumber numberWithUnsignedInt:'MSWD'],
+                           NSFileHFSCreatorCode,
+                           [NSNumber numberWithUnsignedInt:'W8TN'],
+                           NSFileHFSTypeCode, nil]
+             ofItemAtPath:templatePath error:&err]) {
+        DIE([err localizedDescription]);
+    }
+
+    return STATUS_OK;
+}
+
 // Installs a template to a given path
-statusCode installTemplate(NSString* templatePath, NSString* path) {
+statusCode installTemplateIntoStartupDirectory(NSString* templatePath, NSString* path) {
 	// Get path to startup folder
 	NSString* officeDirectory = [path stringByDeletingLastPathComponent];
 	NSString* startupDirectory = [officeDirectory stringByAppendingPathComponent:
@@ -220,15 +257,8 @@ statusCode installTemplate(NSString* templatePath, NSString* path) {
 	if(status) return status;
 	
 	// Fix template type and creator
-	NSError *err = nil;
-	if(![fm setAttributes:[NSDictionary dictionaryWithObjectsAndKeys:
-						   [NSNumber numberWithUnsignedInt:'MSWD'],
-						   NSFileHFSCreatorCode,
-						   [NSNumber numberWithUnsignedInt:'W8TN'],
-						   NSFileHFSTypeCode, nil]
-			 ofItemAtPath:newTemplatePath error:&err]) {
-		DIE([err localizedDescription]);
-	}
+    status = setTemplateTypeCreator(newTemplatePath);
+    if(status) return status;
 	
 	return STATUS_OK;
 }

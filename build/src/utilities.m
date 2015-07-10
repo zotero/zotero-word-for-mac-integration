@@ -103,12 +103,20 @@ char* tempFileString = NULL;
 NSString* tempFileStringNS = nil;
 
 // Gets a FILE for the temporary file, truncating it to zero length
-FILE* getTemporaryFile(void) {
+FILE* getTemporaryFile(document_t *doc) {
 	if(tempFile == NULL) {
-		const char *tempFileTemplate = [[NSTemporaryDirectory()
-										 stringByAppendingPathComponent:
-										 @"zotero.XXXXXX.rtf"]
-										fileSystemRepresentation];
+        const char *tempFileTemplate;
+        if(doc->wordVersion == 2016) {
+            tempFileTemplate = [[NSTemporaryDirectory()
+                                             stringByAppendingPathComponent:
+                                             @"com.microsoft.Word/zotero.XXXXXX.rtf"]
+                                            fileSystemRepresentation];
+        } else {
+            tempFileTemplate = [[NSTemporaryDirectory()
+                                             stringByAppendingPathComponent:
+                                             @"zotero.XXXXXX.rtf"]
+                                            fileSystemRepresentation];
+        }
 		size_t tempFileLength = strlen(tempFileTemplate)+1;
 		tempFileString = (char *)malloc(tempFileLength);
 		strlcpy(tempFileString, tempFileTemplate, tempFileLength);
@@ -182,7 +190,7 @@ NSString* generateRandomString(NSUInteger length) {
 // If (document_t*)x is a Word 2004 document, returns [y entryIndex]. Otherwise,
 // returns [y entry_index].
 NSInteger getEntryIndex(document_t* x, SBObject* y) {
-	if(x->isWord2004) {
+	if(x->wordVersion == 2004) {
 		return (NSInteger) [y performSelector:@selector(entryIndex)];
 	} else {
 		return (NSInteger) [y performSelector:@selector(entry_index)];

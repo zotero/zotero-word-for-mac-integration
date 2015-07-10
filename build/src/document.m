@@ -391,7 +391,7 @@ statusCode getFields(document_t *doc, const char fieldType[],
 		// Get numbers of fields and first fields
 		unsigned long fieldCollectionSizes[3];
 		for(unsigned short noteType=0; noteType<3; noteType++) {
-			if(noteType == 0 || doc->isWord2004) {
+			if(noteType == 0 || doc->wordVersion == 2004) {
 				fieldCollectionSizes[noteType] = [fieldCollections[noteType]
 												  count];
 			} else {
@@ -925,7 +925,7 @@ statusCode getFieldCollections(document_t *doc, NSArray** fieldCollections) {
 	fieldCollections[0] = [doc->sbDoc fields];
 	CHECK_STATUS;
 	
-	if(doc->isWord2004) {
+	if(doc->wordVersion == 2004) {
 		ENSURE_OK(extractFieldsFromNotes([doc->sbDoc footnotes],
 										 &fieldCollections[1]));
 		ENSURE_OK(extractFieldsFromNotes([doc->sbDoc endnotes],
@@ -970,7 +970,7 @@ statusCode extractFieldsFromNotes(SBElementArray* sbNotes,
 statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 					unsigned short noteType,
 					WordFootnote **returnValue) {
-	if(doc->isWord2004) {
+	if(doc->wordVersion == 2004) {
 		// footnote_convert() and endnote_convert() crash Word 2004
 		WordTextRange* sbReferenceRange = [[sbNote noteReference]
 							moveEndOfRangeBy:WordE129ACharacterItem count:0];
@@ -1110,7 +1110,7 @@ statusCode setProperty(document_t *doc, NSString* propertyName,
 		} else {
 			clearError();
 			
-			if(doc->isWord2004) {
+			if(doc->wordVersion == 2004) {
 				// In Word 2004, we need to insert the custom document property
 				// at the end of the active document. Otherwise, it doesn't
 				// work.
@@ -1292,7 +1292,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 			sbField = [[sbWhere fields] objectAtIndex:0];
 			
 			// Range might no longer work
-			rangeNoLongerWorks = errorHasOccurred() || doc->isWord2004
+			rangeNoLongerWorks = errorHasOccurred() || doc->wordVersion == 2004
 				|| [sbField isEqual:[NSNull null]];
 			if(!rangeNoLongerWorks) {
 				// It's possible the reference will fail if we try to use it

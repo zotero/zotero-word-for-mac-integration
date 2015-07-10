@@ -27,7 +27,7 @@
 // Cache for WordApplication objects, since initialization can take a while.
 NSMutableDictionary* wordApps = nil;
 
-statusCode getDocument(bool isWord2004, const char* wordPath,
+statusCode getDocument(int wordVersion, const char* wordPath,
 					   const char* documentName, document_t **returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
 	clearError();
@@ -72,7 +72,7 @@ statusCode getDocument(bool isWord2004, const char* wordPath,
 	[doc->sbApp setDelegate:myDelegate];
 	
 	// Set other parameters
-	doc->isWord2004 = isWord2004;
+	doc->wordVersion = wordVersion;
 	
 	WordDocument* sbActiveDocument = [doc->sbApp activeDocument];
 	CHECK_STATUS

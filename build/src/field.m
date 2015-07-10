@@ -398,7 +398,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		size_t newStringSize = strlen(string)-6;
 		char* newString = (char*) malloc(newStringSize);
 		strlcpy(newString, string+6, newStringSize);
-		FILE* temporaryFile = getTemporaryFile();
+		FILE* temporaryFile = getTemporaryFile(field->doc);
 		fprintf(temporaryFile, "{\\rtf {\\bkmkstart %s}%s{\\bkmkend %s}}",
 				bookmarkName, newString, bookmarkName);
 		fflush(temporaryFile);

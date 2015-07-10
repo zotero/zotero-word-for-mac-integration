@@ -127,7 +127,7 @@ typedef struct ListNode {
 
 typedef struct Document {
 	char* wordPath;
-	bool isWord2004;
+	int wordVersion;
 	WordApplication* sbApp;
 	WordDocument* sbDoc;
 	WordView* sbView;
@@ -211,7 +211,7 @@ statusCode flagOSError(OSStatus status, const char function[], NSString* file,
 void clearError(void);
 char* getError(void);
 
-FILE* getTemporaryFile(void);
+FILE* getTemporaryFile(document_t *doc);
 void deleteTemporaryFile(void);
 NSString* getTemporaryFilePath(void);
 NSString* posixPathToHFSPath(NSString *posixPath);
@@ -222,7 +222,7 @@ NSString* generateRandomString(NSUInteger length);
 NSInteger getEntryIndex(document_t* x, SBObject* y);
 
 // application.m
-statusCode getDocument(bool isWord2004, const char* wordPath,
+statusCode getDocument(int wordVersion, const char* wordPath,
 					   const char* documentName, document_t** returnValue);
 
 // document.m
