@@ -151,6 +151,7 @@ statusCode install(const char templatePath[]) {
         }
         statusCode status = setTemplateTypeCreator(newTemplatePath);
         if(status) return status;
+        installed = true;
     }
 	
 	if(!installed) {
