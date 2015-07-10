@@ -208,7 +208,7 @@ function checkStatus(status) {
 	if(!status) return;
 	
 	if(status === 1) {
-		throw(getLastError());
+		throw Components.Exception(getLastError());
 	} else {
 		throw "ExceptionAlreadyDisplayed";
 	}
