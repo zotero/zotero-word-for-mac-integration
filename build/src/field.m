@@ -319,7 +319,7 @@ statusCode removeCode(field_t* field) {
 // Selects this field
 statusCode selectField(field_t* field) {
 	HANDLE_EXCEPTIONS_BEGIN
-	[field->sbContentRange select];
+	[field->sbContentRange sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 	CHECK_STATUS
 	return STATUS_OK;
 	HANDLE_EXCEPTIONS_END

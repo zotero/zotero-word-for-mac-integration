@@ -160,7 +160,7 @@ statusCode install(const char templatePath[]) {
 				"Mac Integration requires Word 2004 or later. Please upgrade "
 				"Word to use Zotero Word Integration.");
 		} else {
-			DIE(@"Neither Word 2004 nor Word 2008 appear to be installed on "
+			DIE(@"Neither Word does not appear to be installed on "
 				"this computer. Please install Microsoft Word, then try again.");
 		}
 	}

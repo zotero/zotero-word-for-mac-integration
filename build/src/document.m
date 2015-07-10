@@ -1222,7 +1222,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		// place. If we could pass properties {text object:sbWhere} to 
 		// the make command, that would also take care of this, but alas,
 		// we can't construct them with Scripting Bridge.
-		[sbWhere select];
+		[sbWhere sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 		
 		// make new footnote/endnote at sbDoc
 		sbNote = [doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
