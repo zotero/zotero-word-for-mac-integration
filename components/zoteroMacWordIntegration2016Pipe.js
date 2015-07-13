@@ -31,66 +31,6 @@ ZoteroMacWordStartupListener.prototype = {
 
 const NSGetFactory = XPCOMUtils.generateNSGetFactory([ZoteroMacWordStartupListener]);
 
-/**
- * Runs an AppleScript on OS X
- *
- * @param script {String}
- * @param block {Boolean} Whether the script should block until the process is finished.
- */
-var _osascriptFile;
-function _executeAppleScript(script, block) {
-    if(_osascriptFile === undefined) {
-        _osascriptFile = Components.classes["@mozilla.org/file/local;1"].
-            createInstance(Components.interfaces.nsILocalFile);
-        _osascriptFile.initWithPath("/usr/bin/osascript");
-        if(!_osascriptFile.exists()) _osascriptFile = false;
-    }
-    if(_osascriptFile) {
-        var proc = Components.classes["@mozilla.org/process/util;1"].
-                createInstance(Components.interfaces.nsIProcess);
-        proc.init(_osascriptFile);
-        try {
-            proc.run(!!block, ['-e', script], 2);
-        } catch(e) {}
-    }
-}
-
-/**
- * Deletes a defunct pipe on OS X
- */
-function _deletePipe(pipe) {
-    try {
-        if(pipe.exists()) {
-            Zotero.IPC.safePipeWrite(pipe, "Zotero shutdown\n");
-            pipe.remove(false);
-        }
-        return true;
-    } catch (e) {
-        // if pipe can't be deleted, log an error
-        Zotero.debug("Error removing old integration pipe "+pipe.path, 1);
-        Zotero.logError(e);
-        Components.utils.reportError(
-            "Zotero word processor integration initialization failed. "
-                + "See http://forums.zotero.org/discussion/12054/#Item_10 "
-                + "for instructions on correcting this problem."
-        );
-        
-        // can attempt to delete on OS X
-        try {
-            var promptService = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
-                .getService(Components.interfaces.nsIPromptService);
-            var deletePipe = promptService.confirm(null, Zotero.getString("integration.error.title"), Zotero.getString("integration.error.deletePipe"));
-            if(!deletePipe) return false;
-            let escapedFifoFile = pipe.path.replace("'", "'\\''");
-            _executeAppleScript("do shell script \"rmdir '"+escapedFifoFile+"'; rm -f '"+escapedFifoFile+"'\" with administrator privileges", true);
-            if(pipe.exists()) return false;
-        } catch(e) {
-            Zotero.logError(e);
-            return false;
-        }
-    }
-}
-
 function initWord2016Pipe() {
     // We only use an integration pipe on OS X.
     // On Linux, we use the alternative communication method in the OOo plug-in
@@ -115,26 +55,9 @@ function initWord2016Pipe() {
     pipe.append(".zoteroIntegrationPipe");
 
     if(pipe.exists()) {
-        if(!_deletePipe(pipe)) return;
+        if(!Zotero.Integration.deletePipe(pipe)) return;
     }
     
     // try to initialize pipe
-    try {
-        Zotero.IPC.Pipe.initPipeListener(pipe, function(string) {                       
-            if(string != "") {
-                // exec command if possible
-                var parts = string.match(/^([^ \n]*) ([^ \n]*)(?: ([^\n]*))?\n?$/);
-                if(parts) {
-                    var agent = parts[1].toString();
-                    var cmd = parts[2].toString();
-                    var document = parts[3] ? parts[3].toString() : null;
-                    Zotero.Integration.execCommand(agent, cmd, document);
-                } else {
-                    Components.utils.reportError("Zotero: Invalid integration input received: "+string);
-                }
-            }
-        });
-    } catch(e) {
-        Zotero.logError(e);
-    }
+    Zotero.Integration.initPipe(pipe);
 }
