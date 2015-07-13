@@ -95,7 +95,7 @@ function initWord2016Pipe() {
     // On Linux, we use the alternative communication method in the OOo plug-in
     // On Windows, we use a command line handler for integration. See
     // components/zotero-integration-service.js for this implementation.
-    if(!Zotero.isMac) return;
+    if(!Zotero.isMac || Zotero.isConnector) return;
 
     // Determine where to put the pipe
     // on OS X, first try /Users/Shared for those who can't put pipes in their home
