@@ -20,12 +20,13 @@ function ZoteroMacWordStartupListener() {
     Services.obs.addObserver(loadObserver, "zotero-loaded", false);
 }
 ZoteroMacWordStartupListener.prototype = {
+    observe: function() {},
     contractID: "@zotero.org/Zotero/integration/startupListener?agent=MacWord2016;1",
     classDescription: "Zotero Mac Word 2016 Startup Listener",
     classID: Components.ID("{26522064-b955-4bb0-9ccb-37a5c8c96fa0}"),
     service: true,
     _xpcom_categories: [{category:"profile-after-change", entry:"ZoteroMacWordStartupListener"}],
-    QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports])
+    QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports, Components.interfaces.nsIObserver])
 };
 
 const NSGetFactory = XPCOMUtils.generateNSGetFactory([ZoteroMacWordStartupListener]);
@@ -108,15 +109,13 @@ function initWord2016Pipe() {
     office2016Container.append("com.microsoft.Word");
     office2016Container.append("Data");
     
-    if(office2016Container.exists() && office2016Container.isDirectory()) {
-        var pipe = office2016Container.clone();
-        pipe.append(".zoteroIntegrationPipe");
-        
-        if(pipe.exists()) {
-            if(!_deletePipe(pipe) || !office2016Container.isWritable()) return;
-        } else if(!office2016Container.isWritable()) {
-            return;
-        }
+    if(!office2016Container.exists() || !office2016Container.isDirectory() || !office2016Container.isWritable()) return;
+
+    var pipe = office2016Container.clone();
+    pipe.append(".zoteroIntegrationPipe");
+
+    if(pipe.exists()) {
+        if(!_deletePipe(pipe)) return;
     }
     
     // try to initialize pipe
