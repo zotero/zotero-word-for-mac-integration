@@ -85,7 +85,7 @@ if(errorHasOccurred()) {\
 #define ENSURE_OK(expr) \
 { \
 statusCode statusToEnsure = expr; \
-if(statusToEnsure) return statusToEnsure; \
+if(statusToEnsure != STATUS_OK) return statusToEnsure; \
 }
 
 // If y is non-zero, unlocks the lock on (document_t*)doc and then returns y.
@@ -286,7 +286,7 @@ statusCode ensureTextLocationSet(field_t* field);
 statusCode ensureNoteLocationSet(field_t* field);
 
 // install.m
-statusCode install(const char zoteroDotPath[]);
+statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]);
 statusCode getScriptItemsDirectory(char** scriptFolder);
 statusCode writeScript(char* scriptPath, char* scriptContent);
 
