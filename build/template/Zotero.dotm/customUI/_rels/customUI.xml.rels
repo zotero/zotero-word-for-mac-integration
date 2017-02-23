@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="removeZoteroCodes" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="images/removeZoteroCodes.png"/>
+  <Relationship Id="editZoteroBibliography" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="images/modifyZoteroBibliography.png"/>
+  <Relationship Id="insertZoteroBibliography" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="images/insertZoteroBibliography.png"/>
+  <Relationship Id="addEditZoteroCitation" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="images/addEditZoteroCitation.png"/>
+  <Relationship Id="setZoteroDocPrefs" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="images/setZoteroDocPrefs.png"/>
+</Relationships>

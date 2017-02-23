@@ -168,8 +168,9 @@ function init() {
 		"getNoteIndex":lib.declare("getNoteIndex", ctypes.default_abi, statusCode,
 			field_t.ptr, ctypes.unsigned_long.ptr),
 		
-		// statusCode install(const char templatePath[]);
-		"install":lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr),
+		// statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]);
+		"install":lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr,
+			ctypes.char.ptr),
 		
 		// statusCode getScriptItemsDirectory(char** scriptFolder);
 		"getScriptItemsDirectory":lib.declare("getScriptItemsDirectory", ctypes.default_abi,
@@ -237,10 +238,12 @@ Installer.prototype = {
 	"service":		true,
 	"run":function() {
 		init();
-		var template = libPath.parent.parent;
-		template.append("install");
-		template.append("Zotero.dot");
-		checkStatus(f.install(template.path));
+		var zoteroDot = libPath.parent.parent;
+		zoteroDot.append("install");
+		var zoteroDotm = zoteroDot.clone();
+		zoteroDot.append("Zotero.dot");
+		zoteroDotm.append("Zotero.dotm");
+		checkStatus(f.install(zoteroDot.path, zoteroDotm.path));
 	},
 	"getScriptItemsDirectory":function() {
 		var returnValue = new ctypes.char.ptr();

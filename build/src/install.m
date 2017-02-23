@@ -37,6 +37,7 @@
 statusCode installTemplateIntoStartupDirectory(NSString* templatePath, NSString* path);
 statusCode setTemplateTypeCreator(NSString* templatePath);
 statusCode installScripts(NSString* templatePath);
+statusCode installContainerTemplate(NSString*);
 statusCode parseAuthorizationStatus(OSStatus status, const char file[],
 									const char function[], unsigned int line);
 statusCode performAuthorizedAction(NSString* templatePath,
@@ -52,10 +53,11 @@ statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent);
 @end
 
 // Installs all scripts and templates, given the path to Zotero.dot
-statusCode install(const char templatePath[]) {
+statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 	HANDLE_EXCEPTIONS_BEGIN
 	NSFileManager *fm = [NSFileManager defaultManager];
-	NSString* templatePathNS = [NSString stringWithUTF8String:templatePath];
+	NSString* dotPathNS = [NSString stringWithUTF8String:zoteroDotPath];
+	NSString* dotmPathNS = [NSString stringWithUTF8String:zoteroDotmPath];
 	FinderApplication* finder = nil;
 	
 	// Get directories
@@ -119,58 +121,26 @@ statusCode install(const char templatePath[]) {
 		}
 		
 		// Install scripts for Word 2008 and 2011
+		// See https://www.zotero.org/support/kb/no_toolbar_in_word_2008_plugin
 		shouldInstallScripts = shouldInstallScripts || (intVersion >= 12 && intVersion < 15);
+		
+        // Install template into container directory for Word 2016
+		shouldInstallContainerTemplate = intVersion == 15;
+		
         if(intVersion == 11 || intVersion == 14) {
             // Install template into startup directory for Word 2004 or Word 2011
-			statusCode status = installTemplateIntoStartupDirectory(templatePathNS, path);
-			if(status) return status;
+			ENSURE_OK(installTemplateIntoStartupDirectory(dotPathNS, path))
 			installed = true;
-        } else if(intVersion == 15) {
-            // Install template into container directory for Word 2016
-            shouldInstallContainerTemplate = true;
         }
 	}
 	
 	if(shouldInstallScripts) {
-		statusCode status = installScripts(templatePathNS);
-		if(status) return status;
+		ENSURE_OK(installScripts(dotPathNS))
 		installed = true;
 	}
 
     if (shouldInstallContainerTemplate) {
-		NSString *startupDirectory = [NSHomeDirectory() stringByAppendingPathComponent:
-									  @"Library/Group Containers/UBF8T346G9.Office/User Content.localized/Startup.localized/Word"];
-		NSString *newTemplatePath = [startupDirectory stringByAppendingPathComponent:
-									 @"Zotero.dot"];
-		NSError *err = nil;
-		if(![fm fileExistsAtPath:startupDirectory]) {
-			// Word startup directory does not exist yet. Warn user they will have to
-			// restart Firefox/Zotero
-			if(![fm createDirectoryAtPath:startupDirectory withIntermediateDirectories:YES
-			     attributes:nil error:&err]) {
-				DIE([err localizedDescription]);
-			}
-
-			NSAlert *alert = [NSAlert alertWithMessageText:@"Zotero Word for Mac "
-							  "Integration has been successfully installed, but "
-							  "Zotero or Firefox must be restarted before it can be used."
-											 defaultButton:nil
-										   alternateButton:nil
-											   otherButton:nil
-								 informativeTextWithFormat:@"Please restart Zotero or Firefox "
-							                                "before continuing."];
-			[alert runModal];
-		}
-		if([fm fileExistsAtPath:newTemplatePath]) {
-			if(![fm removeItemAtPath:newTemplatePath error:&err]) {
-				DIE([err localizedDescription]);
-			}
-		}
-		if(![fm copyItemAtPath:templatePathNS toPath:newTemplatePath error:&err]) {
-			DIE([err localizedDescription]);
-        }
-        statusCode status = setTemplateTypeCreator(newTemplatePath);
-        if(status) return status;
+		ENSURE_OK(installContainerTemplate(dotmPathNS))
         installed = true;
     }
 	
@@ -237,6 +207,53 @@ statusCode setTemplateTypeCreator(NSString* templatePath) {
     }
 
     return STATUS_OK;
+}
+
+statusCode installContainerTemplate(NSString* dotmPathNS) {
+    NSString *startupDirectory = [NSHomeDirectory() stringByAppendingPathComponent:
+								  @"Library/Group Containers/UBF8T346G9.Office/User Content.localized/Startup.localized/Word"];
+	NSString *newTemplatePath = [startupDirectory stringByAppendingPathComponent:
+								 @"Zotero.dotm"];
+	NSString *oldTemplatePath = [startupDirectory stringByAppendingPathComponent:
+								 @"Zotero.dot"];
+	NSFileManager *fm = [NSFileManager defaultManager];
+	
+	NSError *err = nil;
+	if(![fm fileExistsAtPath:startupDirectory]) {
+		// Word startup directory does not exist yet. Warn user they will have to
+		// restart Firefox/Zotero
+		if(![fm createDirectoryAtPath:startupDirectory withIntermediateDirectories:YES
+		     attributes:nil error:&err]) {
+			DIE([err localizedDescription]);
+		}
+
+		NSAlert *alert = [NSAlert alertWithMessageText:@"Zotero Word for Mac "
+						  "Integration has been successfully installed, but "
+						  "Zotero must be restarted before it can be used."
+										 defaultButton:nil
+									   alternateButton:nil
+										   otherButton:nil
+							 informativeTextWithFormat:@"Please restart Zotero "
+						                                "before continuing."];
+		[alert runModal];
+	}
+	if([fm fileExistsAtPath:newTemplatePath]) {
+		if(![fm removeItemAtPath:newTemplatePath error:&err]) {
+			DIE([err localizedDescription]);
+		}
+	}
+	// Remove old template path
+	if([fm fileExistsAtPath:oldTemplatePath]) {
+		if(![fm removeItemAtPath:oldTemplatePath error:&err]) {
+			DIE([err localizedDescription]);
+		}
+	}
+	if(![fm copyItemAtPath:dotmPathNS toPath:newTemplatePath error:&err]) {
+		DIE([err localizedDescription]);
+    }
+    ENSURE_OK(setTemplateTypeCreator(newTemplatePath))
+	
+	return STATUS_OK;
 }
 
 // Installs a template to a given path
