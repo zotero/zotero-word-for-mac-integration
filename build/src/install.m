@@ -125,7 +125,7 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 		shouldInstallScripts = shouldInstallScripts || (intVersion >= 12 && intVersion < 15);
 		
         // Install template into container directory for Word 2016
-		shouldInstallContainerTemplate = intVersion == 15;
+		shouldInstallContainerTemplate = shouldInstallContainerTemplate || intVersion == 15;
 		
         if(intVersion == 11 || intVersion == 14) {
             // Install template into startup directory for Word 2004 or Word 2011
