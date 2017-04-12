@@ -33,12 +33,8 @@ Sub ZoteroAddEditCitation()
 CallZotero ("addEditCitation")
 End Sub
 
-Sub ZoteroEditBibliography()
-CallZotero ("editBibliography")
-End Sub
-
-Sub ZoteroInsertBibliography()
-CallZotero ("addBibliography")
+Sub ZoteroAddEditBibliography()
+CallZotero ("addEditBibliography")
 End Sub
 
 Sub ZoteroSetDocPrefs()
