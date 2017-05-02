@@ -6,9 +6,6 @@ overlay    chrome://zotero/content/preferences/preferences.xul#cite chrome://zot
 content		zotero-macword-integration chrome/
 resource	zotero-macword-integration resource/
 
-interfaces  components/zoteroIntegration.xpt
-interfaces  components/zoteroIntegrationInstaller.xpt
-
 component	{aa56c6c0-95f0-48c2-b223-b11b96b9c9e5}							components/zoteroMacWordIntegration.js
 contract	@zotero.org/Zotero/integration/installer?agent=MacWord;1	 	{aa56c6c0-95f0-48c2-b223-b11b96b9c9e5}
 component	{ea584d70-2797-4cd1-8015-1a5f5fb85af7}							components/zoteroMacWordIntegration.js

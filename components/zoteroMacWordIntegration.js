@@ -257,13 +257,14 @@ Installer.prototype = {
 	}
 };
 
-var Application2004 = function() {};
+var Application2004 = function() {
+	this.wrappedJSObject = this;
+};
 Application2004.prototype = {
 	classDescription: "Zotero Word 2004 for Mac Integration Application",
 	classID:		Components.ID("{b063dd87-5615-45c5-ac3d-4b0583034616}"),
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2004;1",
-	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
-		Components.interfaces.zoteroIntegrationApplication]),
+	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
 	"service":		true,
 	"getDocument":function(path) {
 		init();
@@ -278,13 +279,14 @@ Application2004.prototype = {
 	"secondaryFieldType":"Bookmark"
 };
 
-var Application2008 = function() {};
+var Application2008 = function() {
+	this.wrappedJSObject = this;
+};
 Application2008.prototype = {
 	classDescription: "Zotero Word 2008/2011 for Mac Integration Application",
 	classID:		Components.ID("{ea584d70-2797-4cd1-8015-1a5f5fb85af7}"),
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2008;1",
-	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
-		Components.interfaces.zoteroIntegrationApplication]),
+	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
 	"service":		true,
 	"getDocument":function(path) {
 		init();
@@ -299,13 +301,14 @@ Application2008.prototype = {
 	"secondaryFieldType":"Bookmark"
 };
 
-var Application2016 = function() {};
+var Application2016 = function() {
+	this.wrappedJSObject = this;
+};
 Application2016.prototype = {
 	classDescription: "Zotero Word 2016 for Mac Integration Application",
 	classID:		Components.ID("{9c6e787b-27d7-4567-98d4-b57d0afa3d8c}"),
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2016;1",
-	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
-		Components.interfaces.zoteroIntegrationApplication]),
+	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
 	"service":		true,
 	"getDocument":function(path) {
 		init();
@@ -321,17 +324,13 @@ Application2016.prototype = {
 };
 
 /**
- * See zoteroIntegration.idl
+ * See integrationTest.js
  */
 var Document = function(cDoc) {
 	this._document_t = cDoc;
 	this._documentStatus = {"active":true};
-	this.wrappedJSObject = this;
 };
 Document.prototype = {
-	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
-		Components.interfaces.zoteroIntegrationDocument]),
-	
 	"displayAlert":function(dialogText, icon, buttons) {
 		Zotero.debug("ZoteroMacWordIntegration: displayAlert", 4);
 		var buttonPressed = new ctypes.unsigned_short();
@@ -436,7 +435,7 @@ Document.prototype = {
 		checkIfFreed(this._documentStatus);
 		var fieldPointers = [];
 		while(fieldEnumerator.hasMoreElements()) {
-			fieldPointers.push(fieldEnumerator.getNext().wrappedJSObject._field_t);
+			fieldPointers.push(fieldEnumerator.getNext()._field_t);
 		}
 		checkStatus(f.convert(this._document_t, field_t.ptr.array()(fieldPointers),
 			fieldPointers.length, ctypes.char.array()(toFieldType),
@@ -489,18 +488,14 @@ FieldEnumerator.prototype = {
 };
 
 /**
- * See zoteroIntegration.idl
+ * See integrationTest.js
  */
 var Field = function(field_t, documentStatus) {
 	this._field_t = field_t;
 	this._isBookmark = field_t.contents.addressOfField("sbField").contents.isNull();
 	this._documentStatus = documentStatus;
-	this.wrappedJSObject = this;
 };
 Field.prototype = {
-	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
-		Components.interfaces.zoteroIntegrationField]),
-	
 	"delete":function() {
 		Zotero.debug("ZoteroMacWordIntegration: delete", 4);
 		checkIfFreed(this._documentStatus);
@@ -549,14 +544,14 @@ Field.prototype = {
 		Zotero.debug("ZoteroMacWordIntegration: equals", 4);
 		checkIfFreed(this._documentStatus);
 		// Obviously, a field cannot be equal to a bookmark
-		if(this._isBookmark !== field.wrappedJSObject._isBookmark) return false;
+		if(this._isBookmark !== field._isBookmark) return false;
 		
 		if(this._isBookmark) {
 			return this._field_t.contents.addressOfField("bookmarkName").contents.readString() ===
-				field.wrappedJSObject._field_t.contents.addressOfField("bookmarkName").contents.readString();
+				field._field_t.contents.addressOfField("bookmarkName").contents.readString();
 		} else {
 			var a = this._field_t.contents,
-				b = field.wrappedJSObject._field_t.contents;
+				b = field._field_t.contents;
 			// This is stupid.
 			return a.addressOfField("noteType").contents.toString()
 				=== b.addressOfField("noteType").contents.toString()
