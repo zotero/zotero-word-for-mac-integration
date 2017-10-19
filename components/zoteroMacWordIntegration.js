@@ -50,21 +50,21 @@ function init() {
 	document_t = new ctypes.StructType("document_t");
 	
 	field_t = new ctypes.StructType("field_t", [
-		{ "code":ctypes.char.ptr },
-		{ "text":ctypes.char.ptr },
-		{ "noteType":ctypes.unsigned_short },
-		{ "entryIndex":ctypes.long },
-		{ "bookmarkName":ctypes.char.ptr },
-		{ "sbField":ctypes.voidptr_t },
-		{ "sbBookmark":ctypes.voidptr_t }
+		{ code: ctypes.char.ptr },
+		{ text: ctypes.char.ptr },
+		{ noteType: ctypes.unsigned_short },
+		{ entryIndex: ctypes.long },
+		{ bookmarkName: ctypes.char.ptr },
+		{ sbField: ctypes.voidptr_t },
+		{ sbBookmark: ctypes.voidptr_t }
 		// There's more here, but we will never access it, and we do not create field_t objects
 		// from JavaScript
 	]);
 	
 	fieldListNode_t = new ctypes.StructType("fieldListNode_t");
 	fieldListNode_t.define([
-		{ "field":field_t.ptr },
-		{ "next":fieldListNode_t.ptr }
+		{ field: field_t.ptr },
+		{ next: fieldListNode_t.ptr }
 	]);
 	
 	progressFunction_t = new ctypes.FunctionType(ctypes.default_abi, ctypes.void_t,
@@ -73,115 +73,115 @@ function init() {
 	var statusCode = ctypes.unsigned_short;
 	f = {
 		// char* getError(void);
-		"getError":lib.declare("getError", ctypes.default_abi, ctypes.char.ptr),
+		getError: lib.declare("getError", ctypes.default_abi, ctypes.char.ptr),
 		
 		// void clearError(void);
-		"clearError":lib.declare("clearError", ctypes.default_abi, ctypes.void_t),
+		clearError: lib.declare("clearError", ctypes.default_abi, ctypes.void_t),
 		
 		// statusCode getDocument(int wordVersion, const char* wordPath,
 		//					   const char* documentName, Document** returnValue);
-		"getDocument":lib.declare("getDocument", ctypes.default_abi, statusCode, ctypes.int,
+		getDocument: lib.declare("getDocument", ctypes.default_abi, statusCode, ctypes.int,
 			ctypes.char.ptr, ctypes.char.ptr, document_t.ptr.ptr),
 		
 		// void freeDocument(Document *doc);
-		"freeDocument":lib.declare("freeDocument", ctypes.default_abi, statusCode, document_t.ptr),
+		freeDocument: lib.declare("freeDocument", ctypes.default_abi, statusCode, document_t.ptr),
 			
 		// statusCode activate(Document *doc);
-		"activate":lib.declare("activate", ctypes.default_abi, statusCode, document_t.ptr),
+		activate: lib.declare("activate", ctypes.default_abi, statusCode, document_t.ptr),
 		
 		// statusCode displayAlert(char const dialogText[], unsigned short icon,
 		//						   unsigned short buttons, unsigned short* returnValue);
-		"displayAlert":lib.declare("displayAlert", ctypes.default_abi, ctypes.unsigned_short,
+		displayAlert: lib.declare("displayAlert", ctypes.default_abi, ctypes.unsigned_short,
 			document_t.ptr, ctypes.char.ptr, ctypes.unsigned_short, ctypes.unsigned_short,
 			ctypes.unsigned_short.ptr),
 		
 		// statusCode canInsertField(Document *doc, const char fieldType[], bool* returnValue);
-		"canInsertField":lib.declare("canInsertField", ctypes.default_abi, statusCode,
+		canInsertField: lib.declare("canInsertField", ctypes.default_abi, statusCode,
 			document_t.ptr, ctypes.char.ptr, ctypes.bool.ptr),
 		
 		// statusCode cursorInField(Document *doc, const char fieldType[], Field** returnValue);
-		"cursorInField":lib.declare("cursorInField", ctypes.default_abi, statusCode, document_t.ptr,
+		cursorInField: lib.declare("cursorInField", ctypes.default_abi, statusCode, document_t.ptr,
 			ctypes.char.ptr, field_t.ptr.ptr),
 		
 		// statusCode getDocumentData(Document *doc, char **returnValue);
-		"getDocumentData":lib.declare("getDocumentData", ctypes.default_abi, statusCode,
+		getDocumentData: lib.declare("getDocumentData", ctypes.default_abi, statusCode,
 			document_t.ptr, ctypes.char.ptr.ptr),
 		
 		// statusCode setDocumentData(Document *doc, const char documentData[]);
-		"setDocumentData":lib.declare("setDocumentData", ctypes.default_abi, statusCode,
+		setDocumentData: lib.declare("setDocumentData", ctypes.default_abi, statusCode,
 			document_t.ptr, ctypes.char.ptr),
 		
 		// statusCode insertField(Document *doc, const char fieldType[],
 		//					      unsigned short noteType, Field **returnValue)
-		"insertField":lib.declare("insertField", ctypes.default_abi, statusCode, document_t.ptr,
+		insertField: lib.declare("insertField", ctypes.default_abi, statusCode, document_t.ptr,
 			ctypes.char.ptr, ctypes.unsigned_short, field_t.ptr.ptr),
 		
 		// statusCode getFields(document_t *doc, const char fieldType[],
 		//					    fieldListNode_t** returnNode);
-		"getFields":lib.declare("getFields", ctypes.default_abi, statusCode, document_t.ptr,
+		getFields: lib.declare("getFields", ctypes.default_abi, statusCode, document_t.ptr,
 			ctypes.char.ptr, fieldListNode_t.ptr.ptr),
 		
 		// statusCode getFieldsAsync(document_t *doc, const char fieldType[],
 		// 						     void (*onProgress)(int progress),
 		// 						     fieldListNode_t** returnNode);
-		"getFieldsAsync":lib.declare("getFieldsAsync", ctypes.default_abi, statusCode,
+		getFieldsAsync: lib.declare("getFieldsAsync", ctypes.default_abi, statusCode,
 			document_t.ptr, ctypes.char.ptr, fieldListNode_t.ptr.ptr, progressFunction_t),
 		
 		// statusCode setBibliographyStyle(Document *doc, long firstLineIndent, 
 		//								   long bodyIndent, unsigned long lineSpacing,
 		//								   unsigned long entrySpacing, long tabStops[],
 		//								   unsigned long tabStopCount);
-		"setBibliographyStyle":lib.declare("setBibliographyStyle", ctypes.default_abi,
+		setBibliographyStyle: lib.declare("setBibliographyStyle", ctypes.default_abi,
 			statusCode, document_t.ptr, ctypes.long, ctypes.long, ctypes.unsigned_long,
 			ctypes.unsigned_long, ctypes.long.array(), ctypes.unsigned_long),
 		
 		// statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 		//				      const char toFieldType[], unsigned short noteType[]);
-		"convert":lib.declare("convert", ctypes.default_abi, statusCode, document_t.ptr,
+		convert: lib.declare("convert", ctypes.default_abi, statusCode, document_t.ptr,
 			field_t.ptr.ptr, ctypes.unsigned_long, ctypes.char.ptr, ctypes.unsigned_short.ptr),
 		
 		// statusCode cleanup(Document *doc);
-		"cleanup":lib.declare("cleanup", ctypes.default_abi, statusCode, document_t.ptr),
+		cleanup: lib.declare("cleanup", ctypes.default_abi, statusCode, document_t.ptr),
 		
 		// statusCode deleteField(Field* field);
-		"deleteField":lib.declare("deleteField", ctypes.default_abi, statusCode, field_t.ptr),
+		deleteField: lib.declare("deleteField", ctypes.default_abi, statusCode, field_t.ptr),
 			
 		// statusCode removeCode(Field* field);
-		"removeCode":lib.declare("removeCode", ctypes.default_abi, statusCode, field_t.ptr),
+		removeCode: lib.declare("removeCode", ctypes.default_abi, statusCode, field_t.ptr),
 			
 		// statusCode selectField(Field* field);
-		"selectField":lib.declare("selectField", ctypes.default_abi, statusCode, field_t.ptr),
+		selectField: lib.declare("selectField", ctypes.default_abi, statusCode, field_t.ptr),
 			
 		// statusCode setText(Field* field, const char string[], bool isRich);
-		"setText":lib.declare("setText", ctypes.default_abi, statusCode, field_t.ptr,
+		setText: lib.declare("setText", ctypes.default_abi, statusCode, field_t.ptr,
 			ctypes.char.ptr, ctypes.bool),
 			
 		// statusCode getText(Field* field, char** returnValue);
-		"getText":lib.declare("getText", ctypes.default_abi, statusCode, field_t.ptr,
+		getText: lib.declare("getText", ctypes.default_abi, statusCode, field_t.ptr,
 			ctypes.char.ptr.ptr),
 			
 		// statusCode setCode(Field *field, const char code[]);
-		"setCode":lib.declare("setCode", ctypes.default_abi, statusCode, field_t.ptr,
+		setCode: lib.declare("setCode", ctypes.default_abi, statusCode, field_t.ptr,
 			ctypes.char.ptr),
 		
 		// statusCode getNoteIndex(Field* field, unsigned long *returnValue);
-		"getNoteIndex":lib.declare("getNoteIndex", ctypes.default_abi, statusCode,
+		getNoteIndex: lib.declare("getNoteIndex", ctypes.default_abi, statusCode,
 			field_t.ptr, ctypes.unsigned_long.ptr),
 		
 		// statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]);
-		"install":lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr,
+		install: lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr,
 			ctypes.char.ptr),
 		
 		// statusCode getScriptItemsDirectory(char** scriptFolder);
-		"getScriptItemsDirectory":lib.declare("getScriptItemsDirectory", ctypes.default_abi,
+		getScriptItemsDirectory: lib.declare("getScriptItemsDirectory", ctypes.default_abi,
 			statusCode, ctypes.char.ptr.ptr),
 		
 		// statusCode writeScript(char* scriptPath, char* scriptContent);
-		"writeScript":lib.declare("writeScript", ctypes.default_abi, statusCode, ctypes.char.ptr,
+		writeScript: lib.declare("writeScript", ctypes.default_abi, statusCode, ctypes.char.ptr,
 			ctypes.char.ptr),
 		
 		// statusCode freeData(void* ptr);
-		"freeData":lib.declare("freeData", ctypes.default_abi, statusCode, ctypes.void_t.ptr)
+		freeData: lib.declare("freeData", ctypes.default_abi, statusCode, ctypes.void_t.ptr)
 	};
 	
 	fieldPtr = new ctypes.PointerType(field_t);
@@ -235,8 +235,8 @@ Installer.prototype = {
 	contractID:		"@zotero.org/Zotero/integration/installer?agent=MacWord;1",
 	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
 		Components.interfaces.nsIRunnable]),
-	"service":		true,
-	"run":function() {
+	service: 		true,
+	run: function() {
 		init();
 		var zoteroDot = libPath.parent.parent;
 		zoteroDot.append("install");
@@ -245,14 +245,14 @@ Installer.prototype = {
 		zoteroDotm.append("Zotero.dotm");
 		checkStatus(f.install(zoteroDot.path, zoteroDotm.path));
 	},
-	"getScriptItemsDirectory":function() {
+	getScriptItemsDirectory: function() {
 		var returnValue = new ctypes.char.ptr();
 		checkStatus(f.getScriptItemsDirectory(returnValue.address()));
 		var outString = returnValue.readString();
 		f.freeData(returnValue);
 		return outString;
 	},
-	"writeScript":function(scriptPath, scriptContent) {
+	writeScript: function(scriptPath, scriptContent) {
 		checkStatus(f.writeScript(scriptPath, scriptContent));
 	}
 };
@@ -265,18 +265,18 @@ Application2004.prototype = {
 	classID:		Components.ID("{b063dd87-5615-45c5-ac3d-4b0583034616}"),
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2004;1",
 	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
-	"service":		true,
-	"getDocument":function(path) {
+	service: 		true,
+	getDocument: function(path) {
 		init();
 		var docPtr = new document_t.ptr();
 		checkStatus(f.getDocument(2004, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
-	"getActiveDocument":function(path) {
+	getActiveDocument: function(path) {
 		return this.getDocument(null);
 	},
-	"primaryFieldType":"Field",
-	"secondaryFieldType":"Bookmark"
+	primaryFieldType: "Field",
+	secondaryFieldType: "Bookmark"
 };
 
 var Application2008 = function() {
@@ -287,18 +287,18 @@ Application2008.prototype = {
 	classID:		Components.ID("{ea584d70-2797-4cd1-8015-1a5f5fb85af7}"),
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2008;1",
 	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
-	"service":		true,
-	"getDocument":function(path) {
+	service: 		true,
+	getDocument: function(path) {
 		init();
 		var docPtr = new document_t.ptr();
 		checkStatus(f.getDocument(2008, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
-	"getActiveDocument":function(path) {
+	getActiveDocument: function(path) {
 		return this.getDocument(null);
 	},
-	"primaryFieldType":"Field",
-	"secondaryFieldType":"Bookmark"
+	primaryFieldType: "Field",
+	secondaryFieldType: "Bookmark"
 };
 
 var Application2016 = function() {
@@ -309,18 +309,18 @@ Application2016.prototype = {
 	classID:		Components.ID("{9c6e787b-27d7-4567-98d4-b57d0afa3d8c}"),
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2016;1",
 	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
-	"service":		true,
-	"getDocument":function(path) {
+	service: 		true,
+	getDocument: function(path) {
 		init();
 		var docPtr = new document_t.ptr();
 		checkStatus(f.getDocument(2016, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
-	"getActiveDocument":function(path) {
+	getActiveDocument: function(path) {
 		return this.getDocument(null);
 	},
-	"primaryFieldType":"Field",
-	"secondaryFieldType":"Bookmark"
+	primaryFieldType: "Field",
+	secondaryFieldType: "Bookmark"
 };
 
 /**
@@ -328,10 +328,10 @@ Application2016.prototype = {
  */
 var Document = function(cDoc) {
 	this._document_t = cDoc;
-	this._documentStatus = {"active":true};
+	this._documentStatus = {active: true};
 };
 Document.prototype = {
-	"displayAlert":function(dialogText, icon, buttons) {
+	displayAlert: function(dialogText, icon, buttons) {
 		Zotero.debug("ZoteroMacWordIntegration: displayAlert", 4);
 		var buttonPressed = new ctypes.unsigned_short();
 		checkStatus(f.displayAlert(this._document_t, dialogText, icon, buttons,
@@ -339,13 +339,13 @@ Document.prototype = {
 		return buttonPressed.value;
 	},
 	
-	"activate":function() {
+	activate: function() {
 		Zotero.debug("ZoteroMacWordIntegration: activate", 4);
 		checkIfFreed(this._documentStatus);
 		checkStatus(f.activate(this._document_t));
 	},
 	
-	"canInsertField":function(fieldType) {
+	canInsertField: function(fieldType) {
 		Zotero.debug("ZoteroMacWordIntegration: canInsertField", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.bool();
@@ -353,7 +353,7 @@ Document.prototype = {
 		return returnValue.value;
 	},
 	
-	"cursorInField":function(fieldType) {
+	cursorInField: function(fieldType) {
 		Zotero.debug("ZoteroMacWordIntegration: cursorInField", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new field_t.ptr();
@@ -361,7 +361,7 @@ Document.prototype = {
 		return (returnValue.isNull() ? null : new Field(returnValue, this._documentStatus));
 	},
 	
-	"getDocumentData":function() {
+	getDocumentData: function() {
 		Zotero.debug("ZoteroMacWordIntegration: getDocumentData", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.char.ptr();
@@ -371,13 +371,13 @@ Document.prototype = {
 		return data;
 	},
 	
-	"setDocumentData":function(documentData) {
+	setDocumentData: function(documentData) {
 		Zotero.debug("ZoteroMacWordIntegration: setDocumentData", 4);
 		checkIfFreed(this._documentStatus);
 		checkStatus(f.setDocumentData(this._document_t, documentData));
 	},
 	
-	"insertField":function(fieldType, noteType) {
+	insertField: function(fieldType, noteType) {
 		Zotero.debug("ZoteroMacWordIntegration: insertField", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new field_t.ptr();
@@ -385,7 +385,7 @@ Document.prototype = {
 		return new Field(returnValue, this._documentStatus);
 	},
 	
-	"getFields":function(fieldType) {
+	getFields: function(fieldType) {
 		Zotero.debug("ZoteroMacWordIntegration: getFields", 4);
 		checkIfFreed(this._documentStatus);
 		var fieldListNode = new fieldListNode_t.ptr();
@@ -393,7 +393,7 @@ Document.prototype = {
 		return new FieldEnumerator(fieldListNode, this._documentStatus);
 	},
 	
-	"getFieldsAsync":function(fieldType, observer) {
+	getFieldsAsync: function(fieldType, observer) {
 		Zotero.debug("ZoteroMacWordIntegration: getFieldsAsync", 4);
 		checkIfFreed(this._documentStatus);
 		var documentStatus = this._documentStatus,
@@ -422,7 +422,7 @@ Document.prototype = {
 		}, 0);
 	},
 	
-	"setBibliographyStyle":function(firstLineIndent, bodyIndent, lineSpacing, entrySpacing,
+	setBibliographyStyle: function(firstLineIndent, bodyIndent, lineSpacing, entrySpacing,
 			tabStops) {
 		Zotero.debug("ZoteroMacWordIntegration: setBibliographyStyle", 4);
 		checkIfFreed(this._documentStatus);
@@ -430,7 +430,7 @@ Document.prototype = {
 			entrySpacing, ctypes.long.array(tabStops.length)(tabStops), tabStops.length));
 	},
 	
-	"convert":function(fieldEnumerator, toFieldType, toNoteTypes, nFields) {
+	convert: function(fieldEnumerator, toFieldType, toNoteTypes, nFields) {
 		Zotero.debug("ZoteroMacWordIntegration: convert", 4);
 		checkIfFreed(this._documentStatus);
 		var fieldPointers = [];
@@ -442,7 +442,7 @@ Document.prototype = {
 			ctypes.unsigned_short.array()(toNoteTypes)));
 	},
 	
-	"cleanup":function() {
+	cleanup: function() {
 		Zotero.debug("ZoteroMacWordIntegration: cleanup", 4);
 		if(this._documentStatus.active) {
 			checkStatus(f.cleanup(this._document_t));
@@ -451,7 +451,7 @@ Document.prototype = {
 		}
 	},
 	
-	"complete":function() {
+	complete: function() {
 		Zotero.debug("ZoteroMacWordIntegration: complete", 4);
 		if(this._documentStatus.active) {
 			f.freeDocument(this._document_t);
@@ -470,12 +470,12 @@ var FieldEnumerator = function(startNode, documentStatus) {
 	this._documentStatus = documentStatus;
 };
 FieldEnumerator.prototype = {
-	"hasMoreElements":function() {
+	hasMoreElements: function() {
 		checkIfFreed(this._documentStatus);
 		return !this._currentNode.isNull();
 	},
 	
-	"getNext":function() {
+	getNext: function() {
 		checkIfFreed(this._documentStatus);
 		var contents = this._currentNode.contents;
 		var fieldPtr = contents.addressOfField("field").contents;
@@ -483,7 +483,7 @@ FieldEnumerator.prototype = {
 		return new Field(fieldPtr, this._documentStatus);
 	},
 	
-	"QueryInterface": XPCOMUtils.generateQI([Components.interfaces.nsISupports,
+	QueryInterface:  XPCOMUtils.generateQI([Components.interfaces.nsISupports,
 		Components.interfaces.nsISimpleEnumerator])
 };
 
@@ -496,31 +496,31 @@ var Field = function(field_t, documentStatus) {
 	this._documentStatus = documentStatus;
 };
 Field.prototype = {
-	"delete":function() {
+	delete: function() {
 		Zotero.debug("ZoteroMacWordIntegration: delete", 4);
 		checkIfFreed(this._documentStatus);
 		checkStatus(f.deleteField(this._field_t));
 	},
 	
-	"removeCode":function() {
+	removeCode: function() {
 		Zotero.debug("ZoteroMacWordIntegration: removeCode", 4);
 		checkIfFreed(this._documentStatus);
 		checkStatus(f.removeCode(this._field_t));
 	},
 	
-	"select":function() {
+	select: function() {
 		Zotero.debug("ZoteroMacWordIntegration: select", 4);
 		checkIfFreed(this._documentStatus);
 		checkStatus(f.selectField(this._field_t));
 	},
 	
-	"setText":function(text, isRich) {
-		Zotero.debug("ZoteroMacWordIntegration: setText", 4);
+	setText: function(text, isRich) {
+		Zotero.debug(`ZoteroMacWordIntegration: setText rtf:${isRich} ${text}`, 4);
 		checkIfFreed(this._documentStatus);
 		checkStatus(f.setText(this._field_t, text, isRich));
 	},
 	
-	"getText":function(text) {
+	getText: function() {
 		Zotero.debug("ZoteroMacWordIntegration: getText", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.char.ptr();
@@ -528,19 +528,19 @@ Field.prototype = {
 		return returnValue.readString();
 	},
 	
-	"setCode":function(code) {
-		Zotero.debug("ZoteroMacWordIntegration: setCode", 4);
+	setCode: function(code) {
+		Zotero.debug(`ZoteroMacWordIntegration: setCode ${code}`, 4);
 		checkIfFreed(this._documentStatus);
 		checkStatus(f.setCode(this._field_t, code));
 	},
 	
-	"getCode":function(code) {
+	getCode: function() {
 		Zotero.debug("ZoteroMacWordIntegration: getCode", 4);
 		checkIfFreed(this._documentStatus);
 		return this._field_t.contents.addressOfField("code").contents.readString();
 	},
 	
-	"equals":function(field) {
+	equals: function(field) {
 		Zotero.debug("ZoteroMacWordIntegration: equals", 4);
 		checkIfFreed(this._documentStatus);
 		// Obviously, a field cannot be equal to a bookmark
@@ -560,12 +560,12 @@ Field.prototype = {
 		}
 	},
 	
-	"getNoteIndex":function(field) {
+	getNoteIndex: function(field) {
 		Zotero.debug("ZoteroMacWordIntegration: getNoteIndex", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.unsigned_long();
 		checkStatus(f.getNoteIndex(this._field_t, returnValue.address()));
-		return returnValue.value;
+		return parseInt(returnValue.value);
 	}
 }
 
