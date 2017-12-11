@@ -89,7 +89,7 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 		[wordLocations addObject:[(NSURL*)testURL path]];
 	}
 	
-	BOOL shouldInstallScripts = NO, shouldInstallContainerTemplate = NO, installed = NO, wordXFound = NO;
+	BOOL shouldInstallScripts = NO, shouldInstallContainerTemplate = NO, installed = NO, wordXFound = NO, shouldPromptAboutWordUpdate = NO;
 	for(NSString* path in wordLocations) {
 		BOOL isDirectory;
 		NSString* version;
@@ -111,23 +111,30 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 			version = [file version];
 		}
 		
-		if(!version) continue;
+		if (!version) continue;
 		NSUInteger dotIndex = [version rangeOfString:@"."].location;
-		if(dotIndex == NSNotFound) continue;
+		if (dotIndex == NSNotFound) continue;
+		NSUInteger secondDotIndex = [version rangeOfString:@"." options:NSLiteralSearch range:NSMakeRange(dotIndex, [version length] - dotIndex)].location;
 		
-		NSInteger intVersion = [[version substringToIndex:dotIndex] intValue];
-		if(intVersion == 10) {
+		NSInteger majorVersion = [[version substringToIndex:dotIndex] intValue];
+		NSInteger minorVersion = 0;
+		if (secondDotIndex != NSNotFound) {
+			 minorVersion = [[version substringWithRange:NSMakeRange(dotIndex, secondDotIndex-dotIndex)] intValue];
+		}
+		if(majorVersion == 10) {
 			wordXFound = YES;
 		}
 		
 		// Install scripts for Word 2008 and 2011
 		// See https://www.zotero.org/support/kb/no_toolbar_in_word_2008_plugin
-		shouldInstallScripts = shouldInstallScripts || (intVersion >= 12 && intVersion < 15);
+		shouldInstallScripts = shouldInstallScripts || (majorVersion >= 12 && majorVersion < 15);
 		
         // Install template into container directory for Word 2016
-		shouldInstallContainerTemplate = shouldInstallContainerTemplate || intVersion == 15;
+		shouldInstallContainerTemplate = shouldInstallContainerTemplate || majorVersion == 15;
 		
-        if(intVersion == 11 || intVersion == 14) {
+		shouldPromptAboutWordUpdate = shouldPromptAboutWordUpdate || (majorVersion == 15 && minorVersion < 38);
+		
+        if(majorVersion == 11 || majorVersion == 14) {
             // Install template into startup directory for Word 2004 or Word 2011
 			ENSURE_OK(installTemplateIntoStartupDirectory(dotPathNS, path))
 			installed = true;
@@ -180,13 +187,24 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 	
 	if(wordIsRunning) {
 		NSAlert *alert = [NSAlert alertWithMessageText:@"Zotero Word for Mac "
-						  "Integration has been successfully installed, but "
+						  "Plugin has been successfully installed, but "
 						  "Word must be restarted before it can be used."
 										 defaultButton:nil
 									   alternateButton:nil
 										   otherButton:nil
 							 informativeTextWithFormat:@"Please restart Word "
 						  "before continuing."];
+		[alert runModal];
+	}
+	if (shouldPromptAboutWordUpdate) {
+		NSAlert *alert = [NSAlert alertWithMessageText:@"Zotero Word for Mac "
+						  "Plugin has been successfully installed, but "
+						  "Word 2016 must be updated before using it with Zotero."
+										 defaultButton:nil
+									   alternateButton:nil
+										   otherButton:nil
+							 informativeTextWithFormat:@"Please update Word 2016 to "
+						  "version 15.38 or higher."];
 		[alert runModal];
 	}
 	
