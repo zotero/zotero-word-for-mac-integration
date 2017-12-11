@@ -167,7 +167,7 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 			}
 		}
 	} else {
-		NSArray* apps = [workspace launchedApplications];
+		NSArray* apps = [workspace runningApplications];
 		for(NSDictionary* app in apps) {
 			NSRange range = [[app objectForKey:@"NSApplicationName"] 
 							 rangeOfString:@"Microsoft Word"];
@@ -397,19 +397,9 @@ statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent) {
 	[task setStandardInput:inPipe];
 	NSFileHandle *inFile = [inPipe fileHandleForWriting];
 	
-	SInt32 versMaj, versMin;
-	Gestalt(gestaltSystemVersionMajor, &versMaj);
-	Gestalt(gestaltSystemVersionMinor, &versMin);
-	if(versMaj > 10 || versMin >= 7) {
-		// Lion doesn't add a type or creator by default
-		[task setArguments:[NSArray arrayWithObjects: @"-t", @"osas", @"-c",
-							@"ToyS", @"-o", scriptPath, nil]];
-	} else {
-		// Older versions of Mac OS X support the arguments above, but they
-		// somehow get reversed.
-		[task setArguments:[NSArray arrayWithObjects: @"-o", scriptPath,
-							nil]];
-	}
+	// Lion doesn't add a type or creator by default
+	[task setArguments:[NSArray arrayWithObjects: @"-t", @"osas", @"-c",
+						@"ToyS", @"-o", scriptPath, nil]];
 	
 	[task launch];
 	[inFile writeData:[scriptContent dataUsingEncoding:NSUTF8StringEncoding]];
@@ -453,7 +443,7 @@ statusCode installScripts(NSString* templatePath) {
 			NSString* scriptContent = [NSString stringWithFormat:@"try\n"
 									   "do shell script \"PIPE=\\\"/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\\\";  if [ ! -e \\\"$PIPE\\\" ]; then PIPE=~/.zoteroIntegrationPipe; fi; if [ -e \\\"$PIPE\\\" ]; then echo 'MacWord2008 %s '\" & quoted form of POSIX path of (path to current application) & \" > \\\"$PIPE\\\"; else exit 1; fi;\"\n"
 									   "on error\n"
-									   "display alert \"Word could not communicate with Zotero. Please ensure that Zotero Standalone or Firefox is open and try again.\" as critical\n"
+									   "display alert \"Word could not communicate with Zotero. Please ensure that Zotero is open and try again.\" as critical\n"
 									   "end try\n", W2008_SCRIPT_COMMANDS[i]];
 			ENSURE_OK(writeScriptNS(scriptPath, scriptContent))
 		}

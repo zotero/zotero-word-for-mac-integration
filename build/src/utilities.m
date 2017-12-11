@@ -66,8 +66,8 @@ statusCode flagOSError(OSStatus status, const char function[], NSString* file,
 		return STATUS_EXCEPTION_ALREADY_DISPLAYED;
 	}
 	
-	NSString* err = [NSError errorWithDomain:NSOSStatusErrorDomain code:status
-									userInfo:nil];
+	NSString* err = [[NSError errorWithDomain:NSOSStatusErrorDomain code:status
+									userInfo:nil] localizedDescription];
 	throwError(err, function, file, line);
 	return STATUS_EXCEPTION;
 }

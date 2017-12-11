@@ -42,5 +42,5 @@ pipeLocation$ = "PIPE=\""/Users/Shared/.zoteroIntegrationPipe_$LOGNAME\""; if [ 
 #Else
     wordVersion$ = "MacWord2004"
 #End If
-MacScript "try" & nl$ & "do shell script """ & pipeLocation$ & "; if [ -e \""$PIPE\"" ]; then echo '" & wordVersion$ & " " & func & " "" & quoted form of POSIX path of (path to current application) & ""' > \""$PIPE\""; else exit 1; fi;""" & nl$ & "on error" & nl$ & "display alert ""Word could not communicate with Zotero. Please ensure that Zotero or Firefox is open and try again.""  as critical" & nl$ & "end try"
+MacScript "try" & nl$ & "do shell script """ & pipeLocation$ & "; if [ -e \""$PIPE\"" ]; then echo '" & wordVersion$ & " " & func & " "" & quoted form of POSIX path of (path to current application) & ""' > \""$PIPE\""; else exit 1; fi;""" & nl$ & "on error" & nl$ & "display alert ""Word could not communicate with Zotero. Please ensure that Zotero is open and try again.""  as critical" & nl$ & "end try"
 End Sub
