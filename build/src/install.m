@@ -26,8 +26,8 @@
 #include "zoteroMacWordIntegration.h"
 #include "Finder.h"
 
-#define AUTH_PROMPT "Zotero Word for Mac Integration requires administator "\
-	"privileges to complete installation."
+#define AUTH_PROMPT "Zotero requires administrator "\
+	"privileges to complete installation of the Word plugin."
 #define PATH_MKDIR "/bin/mkdir"
 #define PATH_RM "/bin/rm"
 #define PATH_DITTO "/usr/bin/ditto"
@@ -153,12 +153,11 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 	
 	if(!installed) {
 		if(wordXFound) {
-			DIE(@"While an installation of Word X was found, Zotero Word for "
-				"Mac Integration requires Word 2004 or later. Please upgrade "
-				"Word to use Zotero Word Integration.");
+			DIE(@"While an installation of Word X was found, the Zotero Word plugin "
+				"requires Word 2004 or later. Please upgrade Word.");
 		} else {
 			DIE(@"Word does not appear to be installed on this computer. "
-				"Please install Microsoft Word, then try again.");
+				"Please install Microsoft Word and try again.");
 		}
 	}
 	
@@ -186,8 +185,8 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 	}
 	
 	if(wordIsRunning) {
-		NSAlert *alert = [NSAlert alertWithMessageText:@"Zotero Word for Mac "
-						  "Plugin has been successfully installed, but "
+		NSAlert *alert = [NSAlert alertWithMessageText:@"The Zotero Word "
+						  "plugin has been successfully installed, but "
 						  "Word must be restarted before it can be used."
 										 defaultButton:nil
 									   alternateButton:nil
@@ -197,9 +196,9 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 		[alert runModal];
 	}
 	if (shouldPromptAboutWordUpdate) {
-		NSAlert *alert = [NSAlert alertWithMessageText:@"Zotero Word for Mac "
-						  "Plugin has been successfully installed, but "
-						  "Word 2016 must be updated before using it with Zotero."
+		NSAlert *alert = [NSAlert alertWithMessageText:@"The Zotero Word "
+						  "plugin has been successfully installed, but "
+						  "Word 2016 must be updated before the plugin can be used."
 										 defaultButton:nil
 									   alternateButton:nil
 										   otherButton:nil
@@ -245,8 +244,8 @@ statusCode installContainerTemplate(NSString* dotmPathNS) {
 			DIE([err localizedDescription]);
 		}
 
-		NSAlert *alert = [NSAlert alertWithMessageText:@"Zotero Word for Mac "
-						  "Integration has been successfully installed, but "
+		NSAlert *alert = [NSAlert alertWithMessageText:@"The Zotero Word "
+						  "plugin has been successfully installed, but "
 						  "Zotero must be restarted before it can be used."
 										 defaultButton:nil
 									   alternateButton:nil
