@@ -119,7 +119,7 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 		NSInteger majorVersion = [[version substringToIndex:dotIndex] intValue];
 		NSInteger minorVersion = 0;
 		if (secondDotIndex != NSNotFound) {
-			 minorVersion = [[version substringWithRange:NSMakeRange(dotIndex, secondDotIndex-dotIndex)] intValue];
+			 minorVersion = [[version substringWithRange:NSMakeRange(dotIndex+1, secondDotIndex)] intValue];
 		}
 		if(majorVersion == 10) {
 			wordXFound = YES;
