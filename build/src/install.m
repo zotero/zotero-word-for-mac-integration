@@ -130,8 +130,9 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 		shouldInstallScripts = shouldInstallScripts || (majorVersion >= 12 && majorVersion < 15);
 		
         // Install template into container directory for Word 2016
-		shouldInstallContainerTemplate = shouldInstallContainerTemplate || majorVersion == 15;
+		shouldInstallContainerTemplate = shouldInstallContainerTemplate || majorVersion >= 15;
 		
+		// Prompt pre-15.38 users to updates
 		shouldPromptAboutWordUpdate = shouldPromptAboutWordUpdate || (majorVersion == 15 && minorVersion < 38);
 		
         if(majorVersion == 11 || majorVersion == 14) {

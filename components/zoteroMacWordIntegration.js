@@ -24,12 +24,15 @@
 
 Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
 Components.utils.import("resource://gre/modules/ctypes.jsm");
+Components.utils.import("resource://gre/modules/Services.jsm");
 
 var Zotero = Components.classes["@zotero.org/Zotero;1"]
 			.getService(Components.interfaces.nsISupports)
 			.wrappedJSObject;
 var field_t, document_t, fieldListNode_t, progressFunction_t, lib, libPath, f, fieldPtr;
 var dataInUse = [];
+
+var insidersWarned = false;
 
 /**
  * Loads libZoteroMacWordIntegration.dylib and initializes js-ctypes functions
@@ -323,6 +326,52 @@ Application2016.prototype = {
 	secondaryFieldType: "Bookmark"
 };
 
+
+// Word 16.0 and higher
+var Application16 = function() {
+	this.wrappedJSObject = this;
+	if (!insidersWarned) {
+		Application16.warnInsiderVersion();
+		insidersWarned = true;
+	}
+};
+Application16.warnInsiderVersion = function() {
+	let ps = Services.prompt;
+	let index = ps.confirmEx(
+		null,
+		Zotero.getString('general.warning'),
+		"You are running an \"Insider\" (preview/beta) version of Word which may prevent the Zotero plugin from working correctly. It is highly recommended to downgrade to the latest stable version of Word.",
+		(ps.BUTTON_POS_0 * ps.BUTTON_TITLE_OK)
+			+ (ps.BUTTON_POS_1 * ps.BUTTON_TITLE_IS_STRING),
+		null,
+		Zotero.getString('general.moreInformation'),
+		null,
+		null, {}
+	);
+	if (index == 1) {
+		Zotero.launchURL('https://www.zotero.org/support/word_processor_plugin_troubleshooting#plugin_not_working_with_word_insider_versions');
+	}
+};
+Application16.prototype = {
+	classDescription: "Zotero Word 16.xx for Mac Integration Application",
+	classID:		Components.ID("{0a5ec6de-f9eb-11e7-8c3f-9a214cf093ae}"),
+	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord16;1",
+	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
+	service: 		true,
+	getDocument: function(path) {
+		init();
+		var docPtr = new document_t.ptr();
+		checkStatus(f.getDocument(2016, path, null, docPtr.address()));
+		return new Document(docPtr);
+	},
+	getActiveDocument: function(path) {
+		return this.getDocument(null);
+	},
+	primaryFieldType: "Field",
+	secondaryFieldType: "Bookmark"
+};
+
+
 /**
  * See integrationTest.js
  */
@@ -573,5 +622,6 @@ const NSGetFactory = XPCOMUtils.generateNSGetFactory([
 	Installer,
 	Application2004,
 	Application2008,
-	Application2016
+	Application2016,
+	Application16
 ]);
