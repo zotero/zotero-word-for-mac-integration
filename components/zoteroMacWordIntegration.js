@@ -340,7 +340,7 @@ Application16.warnInsiderVersion = function() {
 	let index = ps.confirmEx(
 		null,
 		Zotero.getString('general.warning'),
-		"You are running an \"Insider\" (preview/beta) version of Word which may prevent the Zotero plugin from working correctly. It is highly recommended to downgrade to the latest stable version of Word.",
+		"You are running an “Insider” (preview/beta) version of Word, which may prevent the Zotero plugin from working correctly. It is highly recommended to downgrade to the latest stable version of Word.",
 		(ps.BUTTON_POS_0 * ps.BUTTON_TITLE_OK)
 			+ (ps.BUTTON_POS_1 * ps.BUTTON_TITLE_IS_STRING),
 		null,
