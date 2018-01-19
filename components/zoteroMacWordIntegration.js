@@ -32,8 +32,6 @@ var Zotero = Components.classes["@zotero.org/Zotero;1"]
 var field_t, document_t, fieldListNode_t, progressFunction_t, lib, libPath, f, fieldPtr;
 var dataInUse = [];
 
-var insidersWarned = false;
-
 /**
  * Loads libZoteroMacWordIntegration.dylib and initializes js-ctypes functions
  */
@@ -330,29 +328,6 @@ Application2016.prototype = {
 // Word 16.0 and higher
 var Application16 = function() {
 	this.wrappedJSObject = this;
-	if (!insidersWarned) {
-		Application16.warnInsiderVersion();
-		insidersWarned = true;
-	}
-};
-Application16.warnInsiderVersion = function() {
-	let ps = Services.prompt;
-	let index = ps.confirmEx(
-		null,
-		Zotero.getString('general.warning'),
-		//"You are running an \u201cInsider\u201d (preview/beta) version of Word, which may prevent the Zotero plugin from working correctly. It is highly recommended to downgrade to the latest stable version of Word.",
-		"The Zotero plugin is not yet compatible with Word 16.9 or later.\n\nWe are working to restore compatibility as soon as possible. Until then, we recommend downgrading to Word 15.41 or manually adding searchable placeholders (e.g., \u201c%%Smith 2017%%\u201d) to your document that you can replace once the updated plugin is available.",
-		(ps.BUTTON_POS_0 * ps.BUTTON_TITLE_OK)
-			+ (ps.BUTTON_POS_1 * ps.BUTTON_TITLE_IS_STRING),
-		null,
-		Zotero.getString('general.moreInformation'),
-		null,
-		null, {}
-	);
-	if (index == 1) {
-		//Zotero.launchURL('https://www.zotero.org/support/word_processor_plugin_troubleshooting#plugin_not_working_with_word_insider_versions');
-		Zotero.launchURL('https://forums.zotero.org/discussion/69942');
-	}
 };
 Application16.prototype = {
 	classDescription: "Zotero Word 16.xx for Mac Integration Application",
