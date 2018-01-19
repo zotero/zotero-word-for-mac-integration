@@ -725,8 +725,10 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				NSInteger fieldStart = [[field->sbField fieldCode]
 										startOfContent];
 				CHECK_STATUS_LOCKED(doc)
-				[field->sbField delete];
-				CHECK_STATUS_LOCKED(doc)
+				if (strcmp(toFieldType, "Bookmark") == 0) {
+					[field->sbField delete];
+					CHECK_STATUS_LOCKED(doc)
+				}
 				WordTextRange* sbWhere = [doc->sbDoc
 										  createRangeStart:fieldStart-1
 										  end:fieldStart-1];
@@ -734,6 +736,13 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				status = insertFieldRaw(doc, toFieldType, toNoteType, sbWhere,
 										nil, &newField);
 				ENSURE_OK_LOCKED(doc, status)
+				// Copy text for in-text to note conversions
+				if (strcmp(toFieldType, "Bookmark") != 0) {
+					[newField->sbContentRange setContent:[field->sbContentRange content]];
+					CHECK_STATUS_LOCKED(doc)
+					[field->sbField delete];
+					CHECK_STATUS_LOCKED(doc)
+				}
 			} else if(field->noteType == toNoteType || inlineNoteField) {
 				// Convert fields inside a note to bookmarks
 				status = insertFieldRaw(doc, toFieldType, 0,
@@ -752,6 +761,8 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 										 WordE132CollapseStart], nil,
 										&newField);
 				ENSURE_OK_LOCKED(doc, status)
+				[newField->sbContentRange setContent:[field->sbContentRange content]];
+				CHECK_STATUS_LOCKED(doc)
 				// Delete old note
 				[[sbNote noteReference] setContent:@""];
 			}
