@@ -106,7 +106,7 @@ NSString* tempFileStringNS = nil;
 FILE* getTemporaryFile(document_t *doc) {
 	if(tempFile == NULL) {
         const char *tempFileTemplate;
-        if(doc->wordVersion == 2016) {
+        if(doc->wordVersion == 2016 || doc->wordVersion == 16) {
             tempFileTemplate = [[NSTemporaryDirectory()
                                              stringByAppendingPathComponent:
                                              @"com.microsoft.Word/zotero.XXXXXX.rtf"]

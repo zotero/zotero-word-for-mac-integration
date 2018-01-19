@@ -363,7 +363,7 @@ Application16.prototype = {
 	getDocument: function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(2016, path, null, docPtr.address()));
+		checkStatus(f.getDocument(16, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
 	getActiveDocument: function(path) {

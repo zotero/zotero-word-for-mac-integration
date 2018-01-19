@@ -365,58 +365,118 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		WordBookmark* tempBookmark;
 		const char* bookmarkName;
 		WordTextRange* insertRange;
-		if(field->sbBookmark) {
-			// Check if cursor is at end of citation
+		
+		FILE* temporaryFile = getTemporaryFile(field->doc);
+		
+		// Word 16.9 and higher has changed the way [application insertFile]
+		// works. Instead of inserting text into specified range it inserts
+		// the text after the range, which requires some additional magic to
+		// get the inserted code back into the range.
+		if (field->doc->wordVersion == 16 && field->sbField) {
+			WordTextRange* insertedTextRange;
 			CHECK_STATUS_LOCKED(field->doc)
 			
-			// Rename bookmark to a temporary name
-			statusCode status = insertFieldRaw(field->doc, "Bookmark", 0,
-											   field->sbCodeRange,
-											   @ RTF_TEMP_BOOKMARK, NULL);
-			if(status) return status;
-			[field->sbBookmark delete];
-			CHECK_STATUS_LOCKED(field->doc)
-			tempBookmark = [[(field->doc)->sbDoc bookmarks]
-							objectWithName:@ RTF_TEMP_BOOKMARK];
-			CHECK_STATUS_LOCKED(field->doc)
-			
-			// We are going to insert bookmark with the proper name
-			bookmarkName = field->bookmarkName;
-			insertRange = [tempBookmark textObject];
-			CHECK_STATUS_LOCKED(field->doc)
-		} else {
-			// We are going to insert a temporary bookmark
 			bookmarkName = RTF_TEMP_BOOKMARK;
 			insertRange = field->sbContentRange;
-			
-			// Clear content range
-			[field->sbContentRange setContent:@""];
+			NSInteger selectionStart = [[field->doc->sbApp selection] selectionStart];
 			CHECK_STATUS_LOCKED(field->doc)
-		}
-		
-		// Write RTF to a file
-		size_t newStringSize = strlen(string)-6;
-		char* newString = (char*) malloc(newStringSize);
-		strlcpy(newString, string+6, newStringSize);
-		FILE* temporaryFile = getTemporaryFile(field->doc);
-		fprintf(temporaryFile, "{\\rtf {\\bkmkstart %s}%s{\\bkmkend %s}}",
-				bookmarkName, newString, bookmarkName);
-		fflush(temporaryFile);
-		free(newString);
-		
-		// Insert file
-		NSString* temporaryFilePath = getTemporaryFilePath();
-		[(field->doc)->sbApp insertFileAt:insertRange
-								 fileName:posixPathToHFSPath(temporaryFilePath)
-								fileRange:[NSString
-										   stringWithUTF8String:bookmarkName]
-					   confirmConversions:NO
-									 link:NO];
-		CHECK_STATUS_LOCKED(field->doc)
-		
-		if(field->sbBookmark) {
-			// Delete temporary bookmark text
-			[[tempBookmark textObject] setContent:@""];
+			NSInteger selectionEnd = [[field->doc->sbApp selection] selectionEnd];
+			CHECK_STATUS_LOCKED(field->doc)
+			
+			// Bibl fails to insert if insert range is not collapsed.
+			// Notes fail to insert with collapsed range. Sigh.
+			if (!field->noteType) {
+				insertRange = [insertRange collapseRangeDirection:WordE132CollapseEnd];
+			}
+			CHECK_STATUS_LOCKED(field->doc)
+			
+			// Write RTF to a file
+			size_t newStringSize = strlen(string)-6;
+			char* newString = (char*) malloc(newStringSize);
+			strlcpy(newString, string+6, newStringSize);
+			fprintf(temporaryFile, "{\\rtf {\\bkmkstart %s}%s{\\bkmkend %s}}",
+					bookmarkName, newString, bookmarkName);
+			fflush(temporaryFile);
+			free(newString);
+			
+			// Insert file
+			NSString* temporaryFilePath = getTemporaryFilePath();
+			[(field->doc)->sbApp insertFileAt:insertRange
+									 fileName:posixPathToHFSPath(temporaryFilePath)
+									fileRange:[NSString
+											   stringWithUTF8String:bookmarkName]
+						   confirmConversions:NO
+										 link:NO];
+			CHECK_STATUS_LOCKED(field->doc)
+			[[field->doc->sbApp selection] setSelectionStart:selectionStart];
+			CHECK_STATUS_LOCKED(field->doc)
+			[[field->doc->sbApp selection] setSelectionEnd:selectionEnd];
+			CHECK_STATUS_LOCKED(field->doc)
+			[[field->doc->sbApp selection] endKeyMove:WordE295UnitAColumn extend:WordE249ByMoving];
+			CHECK_STATUS_LOCKED(field->doc)
+			
+			tempBookmark = [[(field->doc)->sbDoc bookmarks]
+							objectWithName:@ RTF_TEMP_BOOKMARK];
+			insertedTextRange = [tempBookmark textObject];
+			[field->sbContentRange setFormattedText:insertedTextRange];
+			CHECK_STATUS_LOCKED(field->doc)
+			
+			// Remove inserted RTF
+			[insertedTextRange setContent:@""];
+			CHECK_STATUS_LOCKED(field->doc)
+		} else {
+			if(field->sbBookmark) {
+				// Check if cursor is at end of citation
+				CHECK_STATUS_LOCKED(field->doc)
+				
+				// Rename bookmark to a temporary name
+				statusCode status = insertFieldRaw(field->doc, "Bookmark", 0,
+												   field->sbCodeRange,
+												   @ RTF_TEMP_BOOKMARK, NULL);
+				if(status) return status;
+				[field->sbBookmark delete];
+				CHECK_STATUS_LOCKED(field->doc)
+				tempBookmark = [[(field->doc)->sbDoc bookmarks]
+								objectWithName:@ RTF_TEMP_BOOKMARK];
+				CHECK_STATUS_LOCKED(field->doc)
+				
+				// We are going to insert bookmark with the proper name
+				bookmarkName = field->bookmarkName;
+				insertRange = [tempBookmark textObject];
+				CHECK_STATUS_LOCKED(field->doc)
+			} else {
+				// We are going to insert a temporary bookmark
+				bookmarkName = RTF_TEMP_BOOKMARK;
+				insertRange = field->sbContentRange;
+				
+				// Clear content range
+				[field->sbContentRange setContent:@""];
+				CHECK_STATUS_LOCKED(field->doc)
+			}
+			
+			// Write RTF to a file
+			size_t newStringSize = strlen(string)-6;
+			char* newString = (char*) malloc(newStringSize);
+			strlcpy(newString, string+6, newStringSize);
+			fprintf(temporaryFile, "{\\rtf {\\bkmkstart %s}%s{\\bkmkend %s}}",
+					bookmarkName, newString, bookmarkName);
+			fflush(temporaryFile);
+			free(newString);
+			
+			// Insert file
+			NSString* temporaryFilePath = getTemporaryFilePath();
+			[(field->doc)->sbApp insertFileAt:insertRange
+									 fileName:posixPathToHFSPath(temporaryFilePath)
+									fileRange:[NSString
+											   stringWithUTF8String:bookmarkName]
+						   confirmConversions:NO
+										 link:NO];
+			CHECK_STATUS_LOCKED(field->doc)
+			
+			if(field->sbBookmark) {
+				// Delete temporary bookmark text
+				[[tempBookmark textObject] setContent:@""];
+			}
 		}
 		
 		if(deleteBM) {
