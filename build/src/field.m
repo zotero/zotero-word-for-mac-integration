@@ -374,10 +374,13 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		// get the inserted text back into the range.
 		if (field->doc->wordVersion == 16 && field->sbField) {
 			WordTextRange* insertedTextRange;
-			CHECK_STATUS_LOCKED(field->doc)
 			
 			bookmarkName = RTF_TEMP_BOOKMARK;
 			insertRange = field->sbContentRange;
+			
+			// Footnote text doesn't get properly replaced otherwise
+			[insertRange setContent:@" "];
+			CHECK_STATUS_LOCKED(field->doc)
 			
 			// insertFile also moves the cursor so we have to store the previous location
 			NSInteger selectionStart = [[field->doc->sbApp selection] selectionStart];

@@ -201,6 +201,31 @@ statusCode displayAlert(document_t *doc, char const dialogText[],
 statusCode prepareReadFieldCode(document_t *doc) {
 	[doc->lock lock];
 	
+	// Hmm. I thought I had seen this before somewhere
+	// https://github.com/zotero/zotero-word-for-windows-integration/blob/dc9e67fe7a3547def56b0efcb04544a1762ccbe5/build/zoteroWinWordIntegration/document.cpp#L285-L306
+	// Seems like the same codebase also means the same bugs https://twitter.com/Schwieb/status/954037656677072896
+	// (Cannot disable track changes while cursor in note)
+	Boolean inNote = false;
+	WordTextRange* oldSelection;
+	WordTextRange* noteSelection;
+	if (doc->wordVersion == 16) {
+		WordE160 storyType = [[doc->sbApp selection] storyType];
+		if (storyType == WordE160EndnotesStory || storyType == WordE160FootnotesStory) {
+			WordTextRange* noteSelection;
+			inNote = true;
+			if (storyType == WordE160FootnotesStory) {
+				oldSelection = [[[[doc->sbApp selection] footnotes] objectAtIndex:0] textObject];
+				noteSelection = [[[[doc->sbApp selection] footnotes] objectAtIndex:0] noteReference];
+			} else {
+				oldSelection = [[[[doc->sbApp selection] endnotes] objectAtIndex:0] textObject];
+				noteSelection = [[[[doc->sbApp selection] endnotes] objectAtIndex:0] noteReference];
+			}
+			// Absolutely clueless how Simon figured these out. Taken from selectField()
+			[noteSelection sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+			CHECK_STATUS_LOCKED(doc)
+		}
+	}
+	
 	if(doc->statusInsertionsAndDeletions) {
 		[doc->sbView setShowInsertionsAndDeletions:NO];
 		CHECK_STATUS_LOCKED(doc)
@@ -211,6 +236,11 @@ statusCode prepareReadFieldCode(document_t *doc) {
 		[doc->sbView setShowFormatChanges:NO];
 		CHECK_STATUS_LOCKED(doc)
 		doc->statusFormatChanges = NO;
+	}
+	
+	if (inNote) {
+		[oldSelection sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+		CHECK_STATUS_LOCKED(doc)
 	}
 	
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
