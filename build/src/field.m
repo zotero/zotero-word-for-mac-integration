@@ -371,13 +371,15 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		// Word 16.9 and higher has changed the way [application insertFile]
 		// works. Instead of inserting text into specified range it inserts
 		// the text after the range, which requires some additional magic to
-		// get the inserted code back into the range.
+		// get the inserted text back into the range.
 		if (field->doc->wordVersion == 16 && field->sbField) {
 			WordTextRange* insertedTextRange;
 			CHECK_STATUS_LOCKED(field->doc)
 			
 			bookmarkName = RTF_TEMP_BOOKMARK;
 			insertRange = field->sbContentRange;
+			
+			// insertFile also moves the cursor so we have to store the previous location
 			NSInteger selectionStart = [[field->doc->sbApp selection] selectionStart];
 			CHECK_STATUS_LOCKED(field->doc)
 			NSInteger selectionEnd = [[field->doc->sbApp selection] selectionEnd];
@@ -407,6 +409,8 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 											   stringWithUTF8String:bookmarkName]
 						   confirmConversions:NO
 										 link:NO];
+			
+			// Restoring cursor location
 			CHECK_STATUS_LOCKED(field->doc)
 			[[field->doc->sbApp selection] setSelectionStart:selectionStart];
 			CHECK_STATUS_LOCKED(field->doc)
@@ -415,6 +419,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 			[[field->doc->sbApp selection] endKeyMove:WordE295UnitAColumn extend:WordE249ByMoving];
 			CHECK_STATUS_LOCKED(field->doc)
 			
+			// Copy out the rich text from the inserted bookmark into the field range
 			tempBookmark = [[(field->doc)->sbDoc bookmarks]
 							objectWithName:@ RTF_TEMP_BOOKMARK];
 			insertedTextRange = [tempBookmark textObject];
