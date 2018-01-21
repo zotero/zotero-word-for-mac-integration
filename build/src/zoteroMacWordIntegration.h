@@ -211,6 +211,9 @@ statusCode flagOSError(OSStatus status, const char function[], NSString* file,
 void clearError(void);
 char* getError(void);
 
+statusCode moveCursorOutOfNote(document_t* doc, WordTextRange** returnValue);
+statusCode restoreCursor(document_t* doc, WordTextRange* oldSelection);
+
 FILE* getTemporaryFile(document_t *doc);
 void deleteTemporaryFile(void);
 NSString* getTemporaryFilePath(void);
