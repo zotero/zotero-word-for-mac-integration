@@ -141,6 +141,8 @@ typedef struct Document {
 	BOOL restoreFormatChanges;
 	BOOL statusFormatChanges;
 	
+	WordTextRange* restoreSelection;
+	
 	listNode_t* allocatedFieldsStart;
 	listNode_t* allocatedFieldsEnd;
 	listNode_t* allocatedFieldListsStart;
@@ -211,8 +213,8 @@ statusCode flagOSError(OSStatus status, const char function[], NSString* file,
 void clearError(void);
 char* getError(void);
 
-statusCode moveCursorOutOfNote(document_t* doc, WordTextRange** returnValue);
-statusCode restoreCursor(document_t* doc, WordTextRange* oldSelection);
+statusCode moveCursorOutOfNote(document_t* doc);
+statusCode restoreCursor(document_t* doc);
 
 FILE* getTemporaryFile(document_t *doc);
 void deleteTemporaryFile(void);

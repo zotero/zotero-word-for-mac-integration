@@ -173,32 +173,33 @@ void freeData(void* ptr) {
 	free(ptr);
 }
 
-statusCode moveCursorOutOfNote(document_t* doc, WordTextRange** returnValue) {
+statusCode moveCursorOutOfNote(document_t* doc) {
 	if (doc->wordVersion == 16) {
 		WordE160 storyType = [[doc->sbApp selection] storyType];
 		if (storyType == WordE160EndnotesStory || storyType == WordE160FootnotesStory) {
 			WordTextRange* noteSelection;
 			if (storyType == WordE160FootnotesStory) {
-				*returnValue = [[[[doc->sbApp selection] footnotes] objectAtIndex:0] textObject];
+				doc->restoreSelection = [[[[doc->sbApp selection] footnotes] objectAtIndex:0] textObject];
 				noteSelection = [[[[doc->sbApp selection] footnotes] objectAtIndex:0] noteReference];
 			} else {
-				*returnValue = [[[[doc->sbApp selection] endnotes] objectAtIndex:0] textObject];
+				doc->restoreSelection = [[[[doc->sbApp selection] endnotes] objectAtIndex:0] textObject];
 				noteSelection = [[[[doc->sbApp selection] endnotes] objectAtIndex:0] noteReference];
 			}
 			// Absolutely clueless how Simon figured these out. Taken from selectField()
 			[noteSelection sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 			CHECK_STATUS;
-			[*returnValue retain];
+			[doc->restoreSelection retain];
 		}
 	}
 	return STATUS_OK;
 }
 
-statusCode restoreCursor(document_t* doc, WordTextRange* oldSelection) {
-	if (oldSelection != nil) {
-		[oldSelection sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+statusCode restoreCursor(document_t* doc) {
+	if (doc->restoreSelection != nil) {
+		[doc->restoreSelection sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 		CHECK_STATUS;
-		[oldSelection release];
+		[doc->restoreSelection release];
+		doc->restoreSelection = nil;
 	}
 	return STATUS_OK;
 }

@@ -36,6 +36,7 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	doc->allocatedFieldsEnd = NULL;
 	doc->allocatedFieldListsStart = NULL;
 	doc->allocatedFieldListsEnd = NULL;
+	doc->restoreSelection = NULL;
 	
 	// Get application by path if a path has been specified
 	NSString* wordPathNS;

@@ -33,6 +33,7 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 					 NSInteger entryIndex, BOOL ignoreCode,
 					 field_t **returnValue) {
 	WordTextRange* sbCodeRange = [sbField fieldCode];
+	NSString* content;
 	CHECK_STATUS
 	
 	field_t *field = nil;
@@ -44,6 +45,11 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 		// Read code
 		statusCode readCodeStatus = prepareReadFieldCode(doc);
 		if(readCodeStatus) return readCodeStatus;
+		
+		// Initing from selection, so we need to restore the cursor
+		if (entryIndex == -1) {
+			ENSURE_OK(restoreCursor(doc))
+		}
 		NSString* rawCode = [sbCodeRange content];
 		CHECK_STATUS
 		
@@ -114,6 +120,21 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 			}
 		} else {
 			field->noteType = noteType;
+		}
+		
+		// Loading from cursor from a note
+		if (entryIndex == -1 && (noteType != 0)) {
+			// And also get the text now, since reading the text will need to
+			// move the cursor out of the note.
+			NSString* content = [field->sbContentRange content];
+			// If a field is empty, Word for Mac will return missing value instead
+			// of an empty string
+			if(content == nil) {
+				content = [NSString string];
+			}
+			
+			field->text = copyNSString(content);
+			CHECK_STATUS
 		}
 		
 		if(entryIndex == -1) {

@@ -205,8 +205,7 @@ statusCode prepareReadFieldCode(document_t *doc) {
 	// https://github.com/zotero/zotero-word-for-windows-integration/blob/dc9e67fe7a3547def56b0efcb04544a1762ccbe5/build/zoteroWinWordIntegration/document.cpp#L285-L306
 	// Seems like the same codebase also means the same bugs https://twitter.com/Schwieb/status/954037656677072896
 	// (Cannot disable track changes while cursor in note)
-	WordTextRange* oldSelection = nil;
-	ENSURE_OK_LOCKED(doc, moveCursorOutOfNote(doc, &oldSelection));
+	ENSURE_OK_LOCKED(doc, moveCursorOutOfNote(doc));
 	
 	if(doc->statusInsertionsAndDeletions) {
 		[doc->sbView setShowInsertionsAndDeletions:NO];
@@ -219,9 +218,7 @@ statusCode prepareReadFieldCode(document_t *doc) {
 		CHECK_STATUS_LOCKED(doc)
 		doc->statusFormatChanges = NO;
 	}
-	
-	ENSURE_OK_LOCKED(doc, restoreCursor(doc, oldSelection))
-	
+
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
 }
 
@@ -231,7 +228,7 @@ statusCode canInsertField(document_t *doc, const char fieldType[],
 						  bool* returnCode) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
-	
+
 	if([doc->sbView viewType] == WordE202WordNoteView) {
 		displayAlert(doc,
 					 "Zotero cannot insert a citation here because Word does "
@@ -924,8 +921,7 @@ statusCode cleanup(document_t *doc) {
 	[doc->lock lock];
 	
 	// See comment in prepareReadFieldCode() for explanation
-	WordTextRange* oldSelection = nil;
-	ENSURE_OK_LOCKED(doc, moveCursorOutOfNote(doc, &oldSelection));
+	ENSURE_OK_LOCKED(doc, moveCursorOutOfNote(doc));
 	
 	if(doc->restoreInsertionsAndDeletions
 	   && !doc->statusInsertionsAndDeletions) {
@@ -938,11 +934,10 @@ statusCode cleanup(document_t *doc) {
 		CHECK_STATUS_LOCKED(doc)
 		doc->statusFormatChanges = YES;
 	}
-	ENSURE_OK_LOCKED(doc, restoreCursor(doc, oldSelection))
 	
 	deleteTemporaryFile();
 	
-	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	RETURN_STATUS_LOCKED(doc, restoreCursor(doc))
 	HANDLE_EXCEPTIONS_END
 }
 
