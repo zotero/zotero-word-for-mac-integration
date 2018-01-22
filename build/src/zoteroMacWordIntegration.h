@@ -141,7 +141,8 @@ typedef struct Document {
 	BOOL restoreFormatChanges;
 	BOOL statusFormatChanges;
 	
-	WordTextRange* restoreSelection;
+	NSInteger restoreNote;
+	WordE160 restoreNoteType;
 	
 	listNode_t* allocatedFieldsStart;
 	listNode_t* allocatedFieldsEnd;

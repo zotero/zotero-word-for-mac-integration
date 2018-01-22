@@ -178,28 +178,34 @@ statusCode moveCursorOutOfNote(document_t* doc) {
 		WordE160 storyType = [[doc->sbApp selection] storyType];
 		if (storyType == WordE160EndnotesStory || storyType == WordE160FootnotesStory) {
 			WordTextRange* noteSelection;
+			doc->restoreNoteType = storyType;
 			if (storyType == WordE160FootnotesStory) {
-				doc->restoreSelection = [[[[doc->sbApp selection] footnotes] objectAtIndex:0] textObject];
+				doc->restoreNote = getEntryIndex(doc, [[[doc->sbApp selection] footnotes] objectAtIndex:0])-1;
 				noteSelection = [[[[doc->sbApp selection] footnotes] objectAtIndex:0] noteReference];
 			} else {
-				doc->restoreSelection = [[[[doc->sbApp selection] endnotes] objectAtIndex:0] textObject];
+				doc->restoreNote = getEntryIndex(doc, [[[doc->sbApp selection] endnotes] objectAtIndex:0])-1;
 				noteSelection = [[[[doc->sbApp selection] endnotes] objectAtIndex:0] noteReference];
 			}
 			// Absolutely clueless how Simon figured these out. Taken from selectField()
 			[noteSelection sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 			CHECK_STATUS;
-			[doc->restoreSelection retain];
 		}
 	}
 	return STATUS_OK;
 }
 
 statusCode restoreCursor(document_t* doc) {
-	if (doc->restoreSelection != nil) {
-		[doc->restoreSelection sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
-		CHECK_STATUS;
-		[doc->restoreSelection release];
-		doc->restoreSelection = nil;
+	if (doc->restoreNote != -1) {
+		if (doc->restoreNoteType == WordE160FootnotesStory) {
+			[[[[doc->sbDoc footnotes] objectAtIndex:doc->restoreNote] textObject]
+			 	sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+			CHECK_STATUS;
+		} else {
+			[[[[doc->sbDoc endnotes] objectAtIndex:doc->restoreNote] textObject]
+			 	sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+			CHECK_STATUS;
+		}
+		doc->restoreNote = -1;
 	}
 	return STATUS_OK;
 }
