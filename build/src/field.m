@@ -32,8 +32,29 @@ NSString* BOOKMARK_PREFIXES[] = {@"ZOTERO_", @"CSL_", NULL};
 statusCode initField(document_t *doc, WordField* sbField, short noteType,
 					 NSInteger entryIndex, BOOL ignoreCode,
 					 field_t **returnValue) {
+	
+	// sbFields initiated from cursor have their textObjects tied to the selection
+	// so reusing this code tends to go haywire if you move the cursor somewhere
+	// Thus we get the sbField from the document fields collection here
+	if(noteType == -1) {
+		WordE160 storyType = [[sbField resultRange] storyType];
+		CHECK_STATUS
+		entryIndex = getEntryIndex(doc, sbField);
+		CHECK_STATUS
+		if(storyType == WordE160FootnotesStory) {
+			noteType = NOTE_FOOTNOTE;
+			sbField = [[[doc->sbDoc getStoryRangeStoryType:WordE160FootnotesStory] fields]
+					   objectAtIndex:(entryIndex-1)];
+		} else if(storyType == WordE160EndnotesStory) {
+			noteType = NOTE_ENDNOTE;
+			sbField = [[[doc->sbDoc getStoryRangeStoryType:WordE160EndnotesStory] fields]
+					   objectAtIndex:(entryIndex-1)];
+		} else {
+			noteType = 0;
+			sbField = [[doc->sbDoc fields] objectAtIndex:(entryIndex-1)];
+		}
+	}
 	WordTextRange* sbCodeRange = [sbField fieldCode];
-	NSString* content;
 	CHECK_STATUS
 	
 	field_t *field = nil;
@@ -46,10 +67,6 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 		statusCode readCodeStatus = prepareReadFieldCode(doc);
 		if(readCodeStatus) return readCodeStatus;
 		
-		// Initing from selection, so we need to restore the cursor
-		if (entryIndex == -1) {
-			ENSURE_OK(restoreCursor(doc))
-		}
 		NSString* rawCode = [sbCodeRange content];
 		CHECK_STATUS
 		
@@ -101,26 +118,14 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 		field->sbBookmark = nil;
 		field->textLocation = -1;
 		field->noteLocation = -1;
+		field->entryIndex = entryIndex;
+		field->noteType = noteType;
 		
 		field->doc = doc;
 		field->sbField = sbField;
 		field->sbCodeRange = sbCodeRange;
 		field->sbContentRange = [sbField resultRange];
 		CHECK_STATUS;
-		
-		if(noteType == -1) {
-			WordE160 storyType = [field->sbContentRange storyType];
-			CHECK_STATUS
-			if(storyType == WordE160FootnotesStory) {
-				field->noteType = NOTE_FOOTNOTE;
-			} else if(storyType == WordE160EndnotesStory) {
-				field->noteType = NOTE_ENDNOTE;
-			} else {
-				field->noteType = 0;
-			}
-		} else {
-			field->noteType = noteType;
-		}
 		
 		// Loading from cursor from a note
 		if (entryIndex == -1 && (noteType != 0)) {
@@ -135,13 +140,6 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 			
 			field->text = copyNSString(content);
 			CHECK_STATUS
-		}
-		
-		if(entryIndex == -1) {
-			field->entryIndex = getEntryIndex(doc, field->sbField);
-			CHECK_STATUS
-		} else {
-			field->entryIndex = entryIndex;
 		}
 		
 		[field->sbField retain];
@@ -404,10 +402,8 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 			CHECK_STATUS_LOCKED(field->doc)
 			
 			// insertFile also moves the cursor so we have to store the previous location
-			NSInteger selectionStart = [[field->doc->sbApp selection] selectionStart];
-			CHECK_STATUS_LOCKED(field->doc)
-			NSInteger selectionEnd = [[field->doc->sbApp selection] selectionEnd];
-			CHECK_STATUS_LOCKED(field->doc)
+			storeCursorLocation(field->doc);
+			CHECK_STATUS_LOCKED(field->doc);
 			
 			// Bibl fails to insert if insert range is not collapsed.
 			// Notes fail to insert with collapsed range. Sigh.
@@ -433,15 +429,6 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 											   stringWithUTF8String:bookmarkName]
 						   confirmConversions:NO
 										 link:NO];
-			
-			// Restoring cursor location
-			CHECK_STATUS_LOCKED(field->doc)
-			[[field->doc->sbApp selection] setSelectionStart:selectionStart];
-			CHECK_STATUS_LOCKED(field->doc)
-			[[field->doc->sbApp selection] setSelectionEnd:selectionEnd];
-			CHECK_STATUS_LOCKED(field->doc)
-			[[field->doc->sbApp selection] endKeyMove:WordE295UnitAColumn extend:WordE249ByMoving];
-			CHECK_STATUS_LOCKED(field->doc)
 			
 			// Copy out the rich text from the inserted bookmark into the field range
 			tempBookmark = [[(field->doc)->sbDoc bookmarks]
@@ -634,7 +621,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 // Gets text inside this field
 statusCode getText(field_t* field, char** returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
-	if(!field->text) {
+	if(true || !field->text) {
 		[(field->doc)->lock lock];
 		statusCode status = prepareReadFieldCode(field->doc);
 		[(field->doc)->lock unlock];

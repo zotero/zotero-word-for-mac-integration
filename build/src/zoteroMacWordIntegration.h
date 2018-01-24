@@ -143,6 +143,7 @@ typedef struct Document {
 	
 	NSInteger restoreNote;
 	WordE160 restoreNoteType;
+	NSInteger restoreCursorEnd;
 	
 	listNode_t* allocatedFieldsStart;
 	listNode_t* allocatedFieldsEnd;
@@ -214,6 +215,7 @@ statusCode flagOSError(OSStatus status, const char function[], NSString* file,
 void clearError(void);
 char* getError(void);
 
+void storeCursorLocation(document_t* doc);
 statusCode moveCursorOutOfNote(document_t* doc);
 statusCode restoreCursor(document_t* doc);
 

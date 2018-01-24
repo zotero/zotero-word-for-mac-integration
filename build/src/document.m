@@ -205,15 +205,15 @@ statusCode prepareReadFieldCode(document_t *doc) {
 	// https://github.com/zotero/zotero-word-for-windows-integration/blob/dc9e67fe7a3547def56b0efcb04544a1762ccbe5/build/zoteroWinWordIntegration/document.cpp#L285-L306
 	// Seems like the same codebase also means the same bugs https://twitter.com/Schwieb/status/954037656677072896
 	// (Cannot disable track changes while cursor in note)
-	ENSURE_OK_LOCKED(doc, moveCursorOutOfNote(doc));
-	
 	if(doc->statusInsertionsAndDeletions) {
+		ENSURE_OK_LOCKED(doc, moveCursorOutOfNote(doc));
 		[doc->sbView setShowInsertionsAndDeletions:NO];
 		CHECK_STATUS_LOCKED(doc)
 		doc->statusInsertionsAndDeletions = NO;
 	}
 	
 	if(doc->statusFormatChanges) {
+		ENSURE_OK_LOCKED(doc, moveCursorOutOfNote(doc));
 		[doc->sbView setShowFormatChanges:NO];
 		CHECK_STATUS_LOCKED(doc)
 		doc->statusFormatChanges = NO;
@@ -228,6 +228,8 @@ statusCode canInsertField(document_t *doc, const char fieldType[],
 						  bool* returnCode) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
+	
+	ENSURE_OK_LOCKED(doc, restoreCursor(doc))
 
 	if([doc->sbView viewType] == WordE202WordNoteView) {
 		displayAlert(doc,
@@ -257,6 +259,8 @@ statusCode cursorInField(document_t *doc, const char fieldType[],
 	
 	WordSelectionObject* sbSelection = [doc->sbApp selection];
 	CHECK_STATUS_LOCKED(doc)
+	
+	ENSURE_OK_LOCKED(doc, restoreCursor(doc))
 	
 	if(strcmp(fieldType, "Field") == 0) {
 		NSInteger fieldCount;

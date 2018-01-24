@@ -173,6 +173,26 @@ void freeData(void* ptr) {
 	free(ptr);
 }
 
+void storeCursorLocation(document_t* doc) {
+	// If no stored location - store.
+	if (doc->wordVersion == 16 && doc->restoreNote == -1 && doc->restoreCursorEnd == -1) {
+		WordE160 storyType = [[doc->sbApp selection] storyType];
+		if (storyType == WordE160EndnotesStory || storyType == WordE160FootnotesStory) {
+			WordTextRange* noteSelection;
+			doc->restoreNoteType = storyType;
+			if (storyType == WordE160FootnotesStory) {
+				doc->restoreNote = getEntryIndex(doc, [[[doc->sbApp selection] footnotes] objectAtIndex:0])-1;
+				noteSelection = [[[[doc->sbApp selection] footnotes] objectAtIndex:0] noteReference];
+			} else {
+				doc->restoreNote = getEntryIndex(doc, [[[doc->sbApp selection] endnotes] objectAtIndex:0])-1;
+				noteSelection = [[[[doc->sbApp selection] endnotes] objectAtIndex:0] noteReference];
+			}
+		} else {
+			doc->restoreCursorEnd = [[doc->sbApp selection] selectionEnd];
+		}
+	}
+}
+
 statusCode moveCursorOutOfNote(document_t* doc) {
 	if (doc->wordVersion == 16) {
 		WordE160 storyType = [[doc->sbApp selection] storyType];
@@ -206,6 +226,9 @@ statusCode restoreCursor(document_t* doc) {
 			CHECK_STATUS;
 		}
 		doc->restoreNote = -1;
+	} else if (doc->restoreCursorEnd != -1) {
+		[[doc->sbDoc createRangeStart:doc->restoreCursorEnd end:doc->restoreCursorEnd]
+						   sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 	}
 	return STATUS_OK;
 }

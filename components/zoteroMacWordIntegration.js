@@ -547,11 +547,12 @@ Field.prototype = {
 	},
 	
 	getText: function() {
-		Zotero.debug("ZoteroMacWordIntegration: getText", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.char.ptr();
 		checkStatus(f.getText(this._field_t, returnValue.address()));
-		return returnValue.readString();
+		var val = returnValue.readString();
+		Zotero.debug(`ZoteroMacWordIntegration: getText ${val}`, 4);
+		return val;
 	},
 	
 	setCode: function(code) {
@@ -561,9 +562,10 @@ Field.prototype = {
 	},
 	
 	getCode: function() {
-		Zotero.debug("ZoteroMacWordIntegration: getCode", 4);
 		checkIfFreed(this._documentStatus);
-		return this._field_t.contents.addressOfField("code").contents.readString();
+		var val = this._field_t.contents.addressOfField("code").contents.readString();
+		Zotero.debug(`ZoteroMacWordIntegration: getCode ${val}`, 4);
+		return val;
 	},
 	
 	equals: function(field) {

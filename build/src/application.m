@@ -37,6 +37,7 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	doc->allocatedFieldListsStart = NULL;
 	doc->allocatedFieldListsEnd = NULL;
 	doc->restoreNote = -1;
+	doc->restoreCursorEnd = -1;
 	
 	// Get application by path if a path has been specified
 	NSString* wordPathNS;
@@ -177,6 +178,9 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	
 	// Put path into structure
 	doc->wordPath = copyNSString(wordPathNS);
+	
+	storeCursorLocation(doc);
+	CHECK_STATUS
 	
 	*returnValue = doc;
 	return STATUS_OK;
