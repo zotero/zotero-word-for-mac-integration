@@ -144,6 +144,7 @@ typedef struct Document {
 	NSInteger restoreNote;
 	WordE160 restoreNoteType;
 	NSInteger restoreCursorEnd;
+	BOOL cursorMoved;
 	
 	listNode_t* allocatedFieldsStart;
 	listNode_t* allocatedFieldsEnd;

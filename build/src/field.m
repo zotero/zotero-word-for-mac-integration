@@ -430,6 +430,9 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 						   confirmConversions:NO
 										 link:NO];
 			
+			// This moves the cursor so we mark it for restoration
+			field->doc->cursorMoved = YES;
+			
 			// Copy out the rich text from the inserted bookmark into the field range
 			tempBookmark = [[(field->doc)->sbDoc bookmarks]
 							objectWithName:@ RTF_TEMP_BOOKMARK];
