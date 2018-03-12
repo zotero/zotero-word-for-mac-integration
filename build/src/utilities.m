@@ -174,8 +174,8 @@ void freeData(void* ptr) {
 }
 
 void storeCursorLocation(document_t* doc) {
-	// If no stored location - store.
-	if (doc->wordVersion == 16 && doc->restoreNote == -1 && doc->restoreCursorEnd == -1) {
+	if (doc->wordVersion == 16) {
+		doc->restoreCursorEnd = doc->restoreNote = -1;
 		WordE160 storyType = [[doc->sbApp selection] storyType];
 		if (storyType == WordE160EndnotesStory || storyType == WordE160FootnotesStory) {
 			doc->restoreNoteType = storyType;

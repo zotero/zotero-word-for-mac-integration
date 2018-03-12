@@ -924,16 +924,16 @@ statusCode cleanup(document_t *doc) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
-	// See comment in prepareReadFieldCode() for explanation
-	ENSURE_OK_LOCKED(doc, moveCursorOutOfNote(doc));
-	
 	if(doc->restoreInsertionsAndDeletions
 	   && !doc->statusInsertionsAndDeletions) {
+		// See comment in prepareReadFieldCode() for explanation
+		ENSURE_OK_LOCKED(doc, moveCursorOutOfNote(doc));
 		[doc->sbView setShowInsertionsAndDeletions:YES];
 		CHECK_STATUS_LOCKED(doc)
 		doc->statusInsertionsAndDeletions = YES;
 	}
 	if(doc->restoreFormatChanges && !doc->statusFormatChanges) {
+		ENSURE_OK_LOCKED(doc, moveCursorOutOfNote(doc));
 		[doc->sbView setShowFormatChanges:YES];
 		CHECK_STATUS_LOCKED(doc)
 		doc->statusFormatChanges = YES;
@@ -1264,13 +1264,11 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		CHECK_STATUS
 		WordTextRange *sbNoteReference = [sbNote noteReference];
 		CHECK_STATUS
-		if([sbSelection selectionEnd] == [sbNoteReference startOfContent]) {
-			[sbSelection setSelectionStart:[sbNoteReference endOfContent]];
-			CHECK_STATUS
-			[sbSelection setSelectionEnd:[sbNoteReference endOfContent]];
-			CHECK_STATUS
-		}
+		[sbSelection setSelectionStart:[sbNoteReference endOfContent]];
 		CHECK_STATUS
+		[sbSelection setSelectionEnd:[sbNoteReference endOfContent]];
+		CHECK_STATUS
+		storeCursorLocation(doc);
 		
 		sbWhere = [sbNote textObject];
 	} else if(storyType == WordE160FootnotesStory) {
@@ -1286,23 +1284,32 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 	if(sbNote) fieldStart = [sbWhere startOfContent];
 	
 	if(strcmp(fieldType, "Field") == 0) {
-		// field
-		NSAppleEventDescriptor* w170 = [NSAppleEventDescriptor
-										descriptorWithTypeCode:'w170'];
-		// field type:field print date
-		NSAppleEventDescriptor* wFtP = [NSAppleEventDescriptor
-										recordDescriptor];
-		[wFtP setDescriptor:[NSAppleEventDescriptor
-							 descriptorWithEnumCode:WordE183FieldPrintDate]
-				 forKeyword:'wFtP'];
-		
-		// Create as a print date field, since otherwise there is no way to
-		// add any content to the result range.
-		// make new field at sbWhere with properties {field type:field print
-		// date}
-		WordField* sbField = [doc->sbApp sendEvent:'core' id:'crel'
-										parameters:'kocl',
-							  w170, 'insh', sbWhere, 'prdt', wFtP, nil];
+		WordField* sbField;
+		if (doc->wordVersion != 16) {
+			// field
+			NSAppleEventDescriptor* w170 = [NSAppleEventDescriptor
+											descriptorWithTypeCode:'w170'];
+			// field type:field print date
+			NSAppleEventDescriptor* wFtP = [NSAppleEventDescriptor
+											recordDescriptor];
+			[wFtP setDescriptor:[NSAppleEventDescriptor
+								 descriptorWithEnumCode:WordE183FieldPrintDate]
+					 forKeyword:'wFtP'];
+			
+			// Create as a print date field, since otherwise there is no way to
+			// add any content to the result range.
+			// make new field at sbWhere with properties {field type:field print
+			// date}
+			sbField = [doc->sbApp sendEvent:'core' id:'crel'
+											parameters:'kocl',
+								  w170, 'insh', sbWhere, 'prdt', wFtP, nil];
+		} else {
+			// The above version works for most users of 16.9+, but some report
+			// the field being inserted at selection and not at the textRange,
+			// which then breaks further actions so we use an alternative method from new API
+
+			[doc->sbApp createNewFieldTextRange:sbWhere fieldType:WordE183FieldPrintDate fieldText:nil preserveFormatting:NO];
+		}
 		CHECK_STATUS
 		
 		// We have to figure out where the field got put, because Word returns

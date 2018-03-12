@@ -401,10 +401,6 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 			[insertRange setContent:@" "];
 			CHECK_STATUS_LOCKED(field->doc)
 			
-			// insertFile also moves the cursor so we have to store the previous location
-			storeCursorLocation(field->doc);
-			CHECK_STATUS_LOCKED(field->doc);
-			
 			// Bibl fails to insert if insert range is not collapsed.
 			// Notes fail to insert with collapsed range. Sigh.
 			if (!field->noteType) {
