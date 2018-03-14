@@ -1285,31 +1285,32 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 	
 	if(strcmp(fieldType, "Field") == 0) {
 		WordField* sbField;
-		if (doc->wordVersion != 16) {
-			// field
-			NSAppleEventDescriptor* w170 = [NSAppleEventDescriptor
-											descriptorWithTypeCode:'w170'];
-			// field type:field print date
-			NSAppleEventDescriptor* wFtP = [NSAppleEventDescriptor
-											recordDescriptor];
-			[wFtP setDescriptor:[NSAppleEventDescriptor
-								 descriptorWithEnumCode:WordE183FieldPrintDate]
-					 forKeyword:'wFtP'];
-			
-			// Create as a print date field, since otherwise there is no way to
-			// add any content to the result range.
-			// make new field at sbWhere with properties {field type:field print
-			// date}
-			sbField = [doc->sbApp sendEvent:'core' id:'crel'
-											parameters:'kocl',
-								  w170, 'insh', sbWhere, 'prdt', wFtP, nil];
-		} else {
-			// The above version works for most users of 16.9+, but some report
-			// the field being inserted at selection and not at the textRange,
-			// which then breaks further actions so we use an alternative method from new API
-
-			[doc->sbApp createNewFieldTextRange:sbWhere fieldType:WordE183FieldPrintDate fieldText:nil preserveFormatting:NO];
+		// field
+		NSAppleEventDescriptor* w170 = [NSAppleEventDescriptor
+										descriptorWithTypeCode:'w170'];
+		// field type:field print date
+		NSAppleEventDescriptor* wFtP = [NSAppleEventDescriptor
+										recordDescriptor];
+		[wFtP setDescriptor:[NSAppleEventDescriptor
+							 descriptorWithEnumCode:WordE183FieldPrintDate]
+				 forKeyword:'wFtP'];
+		
+		// The above version works for most users of 16.9+, but some report
+		// the field being inserted at cursor and not at the textRange,
+		// which then breaks further actions so we move the cursor to the insertion point
+		if (doc->wordVersion == 16) {
+			[sbWhere sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+			doc->cursorMoved = true;
+			CHECK_STATUS
 		}
+		
+		// Create as a print date field, since otherwise there is no way to
+		// add any content to the result range.
+		// make new field at sbWhere with properties {field type:field print
+		// date}
+		sbField = [doc->sbApp sendEvent:'core' id:'crel'
+										parameters:'kocl',
+							  w170, 'insh', sbWhere, 'prdt', wFtP, nil];
 		CHECK_STATUS
 		
 		// We have to figure out where the field got put, because Word returns
