@@ -5,7 +5,7 @@
   <Pages>1</Pages>
   <Words>0</Words>
   <Characters>0</Characters>
-  <Application>Microsoft Macintosh Word</Application>
+  <Application>Microsoft Office Word</Application>
   <DocSecurity>0</DocSecurity>
   <Lines>0</Lines>
   <Paragraphs>0</Paragraphs>
@@ -30,5 +30,5 @@
   <CharactersWithSpaces>0</CharactersWithSpaces>
   <SharedDoc>false</SharedDoc>
   <HyperlinksChanged>false</HyperlinksChanged>
-  <AppVersion>15.0000</AppVersion>
+  <AppVersion>16.0000</AppVersion>
 </Properties>

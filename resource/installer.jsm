@@ -49,7 +49,7 @@ var Plugin = new function() {
 		minVersion: "3.5b2.SOURCE",
 		required: false
 	}];
-	this.LAST_INSTALLED_FILE_UPDATE = "5.0.7pre";
+	this.LAST_INSTALLED_FILE_UPDATE = "5.0.15pre";
 	
 	var zoteroPluginInstaller;
 	
