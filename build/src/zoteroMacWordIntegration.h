@@ -29,7 +29,8 @@
 enum STATUS {
 	STATUS_OK = 0,
 	STATUS_EXCEPTION = 1,
-	STATUS_EXCEPTION_ALREADY_DISPLAYED = 2
+	STATUS_EXCEPTION_ALREADY_DISPLAYED = 2,
+	STATUS_EXCEPTION_SB_DENIED = 3
 };
 
 enum DIALOG_ICON {
@@ -62,6 +63,9 @@ enum NOTE_TYPE {
 #define CHECK_STATUS \
 if(errorHasOccurred()) {\
 	flagError(__FUNCTION__, [@__FILE__ lastPathComponent], __LINE__-1);\
+	if (	getErrorCode() == -1743) {\
+		return STATUS_EXCEPTION_SB_DENIED;\
+	}\
 	return STATUS_EXCEPTION;\
 }
 
@@ -78,6 +82,9 @@ return flagOSError(statusToEnsure, __FUNCTION__, [@__FILE__ lastPathComponent], 
 if(errorHasOccurred()) {\
 	[(doc)->lock unlock];\
 	flagError(__FUNCTION__, [@__FILE__ lastPathComponent], __LINE__-1);\
+	if (	getErrorCode() == -1743) {\
+		return STATUS_EXCEPTION_SB_DENIED;\
+	}\
 	return STATUS_EXCEPTION;\
 }
 
@@ -215,6 +222,7 @@ statusCode flagOSError(OSStatus status, const char function[], NSString* file,
 					   unsigned int line);
 void clearError(void);
 char* getError(void);
+NSInteger getErrorCode(void);
 
 void storeCursorLocation(document_t* doc);
 statusCode moveCursorOutOfNote(document_t* doc);

@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 50;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -136,7 +136,7 @@
 				LastUpgradeCheck = 0920;
 			};
 			buildConfigurationList = F42F45CA14B2ADC600F945DB /* Build configuration list for PBXProject "libZoteroMacWordIntegration" */;
-			compatibilityVersion = "Xcode 3.2";
+			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (

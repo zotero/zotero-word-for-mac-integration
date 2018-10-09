@@ -98,6 +98,10 @@ char* getError(void) {
 	return lastErrorString;
 }
 
+NSInteger getErrorCode(void) {
+	return [lastError code];
+}
+
 FILE* tempFile = NULL;
 char* tempFileString = NULL;
 NSString* tempFileStringNS = nil;

@@ -32,6 +32,10 @@ var Zotero = Components.classes["@zotero.org/Zotero;1"]
 var field_t, document_t, fieldListNode_t, progressFunction_t, lib, libPath, f, fieldPtr;
 var dataInUse = [];
 
+const STATUS_EXCEPTION = 1,
+	STATUS_EXCEPTION_ALREADY_DISPLAYED = 2,
+	STATUS_EXCEPTION_SB_DENIED = 3;
+
 /**
  * Loads libZoteroMacWordIntegration.dylib and initializes js-ctypes functions
  */
@@ -209,9 +213,27 @@ function getLastError() {
 function checkStatus(status) {
 	if(!status) return;
 	
-	if(status === 1) {
+	if (status === STATUS_EXCEPTION) {
 		throw Components.Exception(getLastError());
 	} else {
+		if (status === STATUS_EXCEPTION_SB_DENIED) {
+			let ps = Services.prompt;
+			let buttonFlags = ps.BUTTON_POS_0 * ps.BUTTON_TITLE_OK
+				+ ps.BUTTON_POS_1 * ps.BUTTON_TITLE_IS_STRING;
+			let index = ps.confirmEx(
+				null,
+				Zotero.getString('integration.error.macWordSBPermissionsMissing.title'),
+				Zotero.getString('integration.error.macWordSBPermissionsMissing'),
+				buttonFlags,
+				null,
+				Zotero.getString('general.moreInformation'),
+				null,
+				null, {}
+			);
+			if (index === 1) {
+				Zotero.launchURL('https://www.zotero.org/support/kb/mac_word_permissions_missing')
+			}
+		}
 		throw "ExceptionAlreadyDisplayed";
 	}
 }
