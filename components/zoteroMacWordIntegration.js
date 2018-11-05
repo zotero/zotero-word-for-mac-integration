@@ -210,20 +210,24 @@ function getLastError() {
  * Checks the return status of a function to verify that no error occurred.
  * @param {Integer} status The return status code of a C function
  */
-function checkStatus(status) {
+function checkStatus(status, pre2016=false) {
 	if(!status) return;
 	
 	if (status === STATUS_EXCEPTION) {
 		throw Components.Exception(getLastError());
 	} else {
 		if (status === STATUS_EXCEPTION_SB_DENIED) {
+			let message = Zotero.getString('integration.error.macWordSBPermissionsMissing');
+			if (pre2016) {
+				message += '\n\n' + Zotero.getString('integration.error.macWordSBPermissionsMissing.pre2016')
+			}
 			let ps = Services.prompt;
 			let buttonFlags = ps.BUTTON_POS_0 * ps.BUTTON_TITLE_OK
 				+ ps.BUTTON_POS_1 * ps.BUTTON_TITLE_IS_STRING;
 			let index = ps.confirmEx(
 				null,
 				Zotero.getString('integration.error.macWordSBPermissionsMissing.title'),
-				Zotero.getString('integration.error.macWordSBPermissionsMissing'),
+				message,
 				buttonFlags,
 				null,
 				Zotero.getString('general.moreInformation'),
@@ -314,7 +318,7 @@ Application2008.prototype = {
 	getDocument: function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(2008, path, null, docPtr.address()));
+		checkStatus(f.getDocument(2008, path, null, docPtr.address()), true);
 		return new Document(docPtr);
 	},
 	getActiveDocument: function(path) {
