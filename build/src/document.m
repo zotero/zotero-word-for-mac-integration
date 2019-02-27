@@ -1300,7 +1300,11 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		// which then breaks further actions so we move the cursor to the insertion point
 		if (doc->wordVersion == 16) {
 			[sbWhere sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
-			doc->cursorMoved = true;
+			if (sbNote) {
+				doc->cursorMoved = true;
+			} else {
+				storeCursorLocation(doc);
+			}
 			CHECK_STATUS
 		}
 		

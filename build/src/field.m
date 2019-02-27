@@ -600,7 +600,8 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 	}
 	
 	// If selection was at end of mark, put it there again
-	if(restoreSelectionToEnd) {
+	if (restoreSelectionToEnd) {
+		ENSURE_OK_LOCKED(field->doc, restoreCursor(field->doc));
 		[[(field->doc)->sbApp selection] setSelectionStart:
 		 [field->sbCodeRange endOfContent]];
 		CHECK_STATUS_LOCKED(field->doc)
