@@ -140,6 +140,16 @@ function init() {
 			statusCode, document_t.ptr, ctypes.long, ctypes.long, ctypes.unsigned_long,
 			ctypes.unsigned_long, ctypes.long.array(), ctypes.unsigned_long),
 		
+		// statusCode exportDocument(Document *doc, const jschar fieldType[],
+		// 							const jschar importInstructions[]);
+		exportDocument: lib.declare("exportDocument", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, ctypes.char.ptr),
+
+		// statusCode importDocument(Document *doc, const jschar fieldType[],
+		// 							bool *returnValue);
+		importDocument: lib.declare("importDocument", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, ctypes.bool.ptr),
+		
 		// statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 		//				      const char toFieldType[], unsigned short noteType[]);
 		convert: lib.declare("convert", ctypes.default_abi, statusCode, document_t.ptr,
@@ -479,6 +489,20 @@ Document.prototype = {
 		checkIfFreed(this._documentStatus);
 		checkStatus(f.setBibliographyStyle(this._document_t, firstLineIndent, bodyIndent, lineSpacing,
 			entrySpacing, ctypes.long.array(tabStops.length)(tabStops), tabStops.length));
+	},
+
+	importDocument: function(fieldType) {
+		Zotero.debug(`ZoteroWinMacIntegration: importDocument`, 4);
+		checkIfFreed(this._documentStatus);
+		var returnValue = new ctypes.bool();
+		checkStatus(f.importDocument(this._document_t, fieldType, returnValue.address()));
+		return returnValue.value;
+	},
+
+	exportDocument: function(fieldType, importInstructions) {
+		Zotero.debug(`ZoteroWinMacIntegration: exportDocument`, 4);
+		checkIfFreed(this._documentStatus);
+		checkStatus(f.exportDocument(this._document_t, fieldType, importInstructions));
 	},
 	
 	convert: function(fields, toFieldType, toNoteTypes) {

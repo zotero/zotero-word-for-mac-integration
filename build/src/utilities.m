@@ -248,7 +248,9 @@ NSString* generateRandomString(NSUInteger length) {
 	}
 	randomString[length] = 0;
 	
-	return [NSString stringWithUTF8String:randomString];
+	NSString *returnValue = [NSString stringWithUTF8String:randomString];
+	free(randomString);
+	return returnValue;
 }
 
 // If (document_t*)x is a Word 2004 document, returns [y entryIndex]. Otherwise,

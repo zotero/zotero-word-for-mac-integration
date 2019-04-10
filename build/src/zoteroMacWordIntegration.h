@@ -57,6 +57,11 @@ enum NOTE_TYPE {
 #define RTF_TEMP_BOOKMARK "ZOTERO_TEMP_BOOKMARK"
 #define PREFS_PROPERTY @"ZOTERO_PREF"
 #define BOOKMARK_PREFIX = "ZOTERO_"
+#define EXPORTED_DOCUMENT_MARKER @"ZOTERO_EXPORTED_DOCUMENT"
+#define IMPORT_LINK_URL @"https://www.zotero.org/"
+#define IMPORT_ITEM_PREFIX @"ITEM CSL_CITATION "
+#define IMPORT_BIBL_PREFIX @"BIBL "
+#define IMPORT_DOC_PREFS_PREFIX @"DOCUMENT_PREFERENCES "
 
 // Checks to see that the last Scripting Bridge call succeeded. If not, returns
 // STATUS_EXCEPTION.
@@ -267,6 +272,9 @@ statusCode setBibliographyStyle(document_t *doc, long firstLineIndent,
 								long bodyIndent, unsigned long lineSpacing,
 								unsigned long entrySpacing, long tabStops[],
 								unsigned long tabStopCount);
+statusCode exportDocument(document_t *doc, const char fieldType[],
+						const char importInstructions[]);
+statusCode importDocument(document_t *doc, const char fieldType[], bool *returnValue);
 statusCode cleanup(document_t *doc);
 
 statusCode getProperty(document_t *doc, NSString* propertyName,

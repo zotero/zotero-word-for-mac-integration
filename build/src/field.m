@@ -391,7 +391,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		// works. Instead of inserting text into specified range it inserts
 		// the text after the range, which requires some additional magic to
 		// get the inserted text back into the range.
-		if (field->doc->wordVersion == 16 && field->sbField) {
+		if (field->doc->wordVersion >= 16 && field->sbField) {
 			WordTextRange* insertedTextRange;
 			
 			bookmarkName = RTF_TEMP_BOOKMARK;
@@ -595,7 +595,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		} else {
 			[field->sbContentRange
 			 setContent:[NSString stringWithUTF8String:string]];
-			CHECK_STATUS
+			CHECK_STATUS_LOCKED(field->doc)
 		}
 	}
 	

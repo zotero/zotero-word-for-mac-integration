@@ -338,6 +338,16 @@ statusCode getDocumentData(document_t *doc, char **returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
+	WordTextRange *range = [doc->sbDoc textObject];
+	range = [range collapseRangeDirection:WordE132CollapseStart];
+	range = [range moveEndOfRangeBy:WordE129AParagraphItem count:1];
+	NSString *text = [range content];
+	CHECK_STATUS_LOCKED(doc);
+	if ([text rangeOfString:EXPORTED_DOCUMENT_MARKER].location == 0) {
+		*returnValue = copyNSString(EXPORTED_DOCUMENT_MARKER);
+		RETURN_STATUS_LOCKED(doc, STATUS_OK);
+	}
+	
 	NSString* returnString;
 	statusCode status = getProperty(doc, PREFS_PROPERTY, &returnString);
 	ENSURE_OK_LOCKED(doc, status)
@@ -916,6 +926,146 @@ statusCode setBibliographyStyle(document_t* doc, long firstLineIndent,
 	}
 	
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	HANDLE_EXCEPTIONS_END
+}
+
+statusCode exportDocument(document_t *doc,
+						  const char fieldType[],
+						  const char importInstructions[]) {
+	HANDLE_EXCEPTIONS_BEGIN
+	[doc->lock lock];
+	
+	// Export fields
+	listNode_t *fields;
+	ENSURE_OK(getFields(doc, fieldType, &fields));
+	while (fields != NULL) {
+		field_t *field = (field_t *)fields->value;
+		// If you insert in sbField.resultRange it doesn't remove the field code
+		// and upon unlinking removes the hyperlink too.
+		// sbField.resultRange depends on the existance of sbField, so if we in any way unlink
+		// the field the resultRange stops working too.
+		// Inserting at char 1 replaces the field. This is the only way to make this code work.
+		WordTextRange *insertRange = [[[field->sbField resultRange] characters] objectAtIndex:0];
+		CHECK_STATUS_LOCKED(doc);
+		[doc->sbApp createNewFieldTextRange:insertRange fieldType:WordE183FieldHyperlink fieldText:IMPORT_LINK_URL preserveFormatting:NO];
+		CHECK_STATUS_LOCKED(doc);
+		[[field->sbField resultRange] setContent:[NSString stringWithUTF8String:field->code]];
+		CHECK_STATUS_LOCKED(doc);
+		fields = fields->next;
+	}
+
+	// Document data
+	char *docData;
+	ENSURE_OK_LOCKED(doc, getDocumentData(doc, &docData));
+	NSString *importDocData = IMPORT_DOC_PREFS_PREFIX;
+	importDocData = [importDocData stringByAppendingString:[NSString stringWithUTF8String:docData]];
+	free(docData);
+	WordTextRange *range = [doc->sbDoc textObject];
+	range = [range collapseRangeDirection:WordE132CollapseEnd];
+	[doc->sbApp insertParagraphAt:range];
+	range = [range collapseRangeDirection:WordE132CollapseEnd];
+	[doc->sbApp insertParagraphAt:range];
+	range = [[doc->sbDoc textObject] collapseRangeDirection:WordE132CollapseEnd];
+	[doc->sbApp createNewFieldTextRange:range fieldType:WordE183FieldHyperlink fieldText:IMPORT_LINK_URL preserveFormatting:NO];
+	WordField *insertedHyperlink = [[doc->sbDoc fields] lastObject];
+	[[insertedHyperlink resultRange] setContent:importDocData];
+	CHECK_STATUS_LOCKED(doc)
+
+	// Import instructions
+	range = [doc->sbDoc textObject];
+	range = [range collapseRangeDirection:WordE132CollapseStart];
+	[doc->sbApp insertParagraphAt:range];
+	range = [range collapseRangeDirection:WordE132CollapseStart];
+	[doc->sbApp insertParagraphAt:range];
+	[doc->sbApp insertText:[NSString stringWithUTF8String:importInstructions] at:range];
+	range = [range collapseRangeDirection:WordE132CollapseStart];
+	[doc->sbApp insertParagraphAt:range];
+	[doc->sbApp insertText:EXPORTED_DOCUMENT_MARKER at:range];
+	CHECK_STATUS_LOCKED(doc)
+	
+	RETURN_STATUS_LOCKED(doc, STATUS_OK);
+	HANDLE_EXCEPTIONS_END
+}
+
+statusCode importDocument(document_t *doc, const char fieldType[], bool *returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
+	[doc->lock lock];
+	*returnValue = false;
+	
+	NSArray* fieldCollections[3];
+	statusCode status = getFieldCollections(doc, fieldCollections);
+	ENSURE_OK_LOCKED(doc, status)
+	
+	// Get numbers of links
+	for (unsigned short noteType = 0; noteType < 3; noteType++) {
+		unsigned long fieldCollectionSize;
+		if (noteType == 0) {
+			fieldCollectionSize = [fieldCollections[noteType]
+											  count];
+		} else {
+			// This is necessary because the count selector always returns
+			// 0 for Word 2008
+			SBElementArray* sbfieldCollection = (SBElementArray *)	fieldCollections[noteType];
+			fieldCollectionSize =
+				getEntryIndex(doc, [sbfieldCollection objectAtLocation:
+								[NSNumber numberWithInt:-1]]);
+		}
+		
+		if (errorHasOccurred()) {
+			// There aren't any links
+			clearError();
+			fieldCollectionSize = 0;
+			continue;
+		}
+		
+		for (long i = fieldCollectionSize-1; i >= 0; i--) {
+			WordField *link = [fieldCollections[noteType] objectAtIndex:(i)];
+			CHECK_STATUS_LOCKED(doc);
+			WordE183 sbFieldType = [link fieldType];
+			if (sbFieldType != WordE183FieldHyperlink) {
+				continue;
+			}
+			CHECK_STATUS_LOCKED(doc);
+			WordTextRange *linkRange = [link resultRange];
+			CHECK_STATUS_LOCKED(doc);
+			NSString *linkText = [linkRange content];
+			CHECK_STATUS_LOCKED(doc);
+			if ([linkText rangeOfString:IMPORT_ITEM_PREFIX].location == 0
+					|| [linkText rangeOfString:IMPORT_BIBL_PREFIX].location == 0) {
+				field_t *field;
+				// See note in exportDocument() about inserting at character 0 of field/hyperlink
+				WordTextRange *insertRange = [[linkRange characters] objectAtIndex:0];
+				ENSURE_OK_LOCKED(doc, insertFieldRaw(doc, fieldType, noteType, insertRange, nil, &field));
+				IGNORING_SB_ERRORS_BEGIN
+				WordFont* font = [field->sbContentRange fontObject];
+				[font setUnderline:NO];
+				[font setColorIndex:WordE110Auto];
+				IGNORING_SB_ERRORS_END
+				ENSURE_OK_LOCKED(doc, setCode(field, [linkText UTF8String]));
+			}
+			else if ([linkText rangeOfString:IMPORT_DOC_PREFS_PREFIX].location == 0) {
+				*returnValue = true;
+				const char* docPrefs = [[linkText substringFromIndex:
+										 [IMPORT_DOC_PREFS_PREFIX length]] UTF8String];
+				ENSURE_OK_LOCKED(doc, setDocumentData(doc, docPrefs));
+				[linkRange setContent:@""];
+				CHECK_STATUS_LOCKED(doc);
+			}
+		}
+	}
+	
+	// Remove 3 paragraphs: export marker, import instructions and an empty paragraph
+	WordTextRange *range = [doc->sbDoc textObject];
+	range = [range collapseRangeDirection:WordE132CollapseStart];
+	range = [range moveEndOfRangeBy:WordE129AParagraphItem count:3];
+	[range setContent:@""];
+	CHECK_STATUS_LOCKED(doc);
+	
+	// Don't attempt to restore cursor location. It doesn't work since the document size changes
+	// and it doesn't make sense either.
+	doc->cursorMoved = NO;
+	
+	RETURN_STATUS_LOCKED(doc, STATUS_OK);
 	HANDLE_EXCEPTIONS_END
 }
 
