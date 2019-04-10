@@ -361,17 +361,21 @@ Application16.prototype = {
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord16;1",
 	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
 	service: 		true,
-	getDocument: function(path) {
+	getDocument: async function(path) {
 		init();
 		var docPtr = new document_t.ptr();
 		checkStatus(f.getDocument(16, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
-	getActiveDocument: function(path) {
+	getActiveDocument: async function(path) {
 		return this.getDocument(null);
 	},
 	primaryFieldType: "Field",
-	secondaryFieldType: "Bookmark"
+	secondaryFieldType: "Bookmark",
+	supportedNotes: ['footnotes', 'endnotes'],
+	supportsImportExport: true,
+	outputFormat: "rtf",
+	processorName: "Word"
 };
 
 
@@ -437,41 +441,36 @@ Document.prototype = {
 		return new Field(returnValue, this._documentStatus);
 	},
 	
-	getFields: function(fieldType) {
-		Zotero.debug("ZoteroMacWordIntegration: getFields", 4);
-		checkIfFreed(this._documentStatus);
-		var fieldListNode = new fieldListNode_t.ptr();
-		checkStatus(f.getFields(this._document_t, fieldType, fieldListNode.address()));
-		return new FieldEnumerator(fieldListNode, this._documentStatus);
-	},
-	
-	getFieldsAsync: function(fieldType, observer) {
+	getFields: async function(fieldType, observer) {
 		Zotero.debug("ZoteroMacWordIntegration: getFieldsAsync", 4);
 		checkIfFreed(this._documentStatus);
-		var documentStatus = this._documentStatus,
-			callback = progressFunction_t(function(progress) {
-			// Remove global reference that prevents GC
-			dataInUse.splice(dataInUse.indexOf(callback), 2);
-			
-			if(progress == -1) {
-				observer.observe(getLastError(), "fields-error", null);
-			} else if(progress == 100) {
-				observer.observe(new FieldEnumerator(fieldListNode, documentStatus),
-					"fields-available", null);
-			} else {
-				observer.observe(progress, "fields-progress", null);
-			}
-		});
+		var callback;
 		var fieldListNode = new fieldListNode_t.ptr();
 		
+		var promise = new Promise(function(resolve, reject) {
+			callback = progressFunction_t(function(progress) {
+				// Remove global reference that prevents GC
+				dataInUse.splice(dataInUse.indexOf(callback), 2);
+
+				if (progress == -1) {
+					reject(getLastError());
+				}
+				else if (progress == 100) {
+					var fnum = new FieldEnumerator(fieldListNode, this._documentStatus);
+					var fields = [];
+					while (fnum.hasMoreElements()) {
+						fields.push(fnum.getNext());
+					}
+					resolve(fields);
+				}
+			}.bind(this));
+		}.bind(this));
+
 		// Prevent GC
 		dataInUse = dataInUse.concat([callback, fieldListNode]);
-		
-		var me = this;
-		Zotero.setTimeout(function() {
-			checkStatus(f.getFieldsAsync(me._document_t, fieldType, fieldListNode.address(),
-				callback));
-		}, 0);
+		await Zotero.Promise.delay();
+		checkStatus(f.getFieldsAsync(this._document_t, fieldType, fieldListNode.address(), callback));
+		return promise;
 	},
 	
 	setBibliographyStyle: function(firstLineIndent, bodyIndent, lineSpacing, entrySpacing,
@@ -482,15 +481,12 @@ Document.prototype = {
 			entrySpacing, ctypes.long.array(tabStops.length)(tabStops), tabStops.length));
 	},
 	
-	convert: function(fieldEnumerator, toFieldType, toNoteTypes, nFields) {
+	convert: function(fields, toFieldType, toNoteTypes) {
 		Zotero.debug("ZoteroMacWordIntegration: convert", 4);
 		checkIfFreed(this._documentStatus);
-		var fieldPointers = [];
-		while(fieldEnumerator.hasMoreElements()) {
-			fieldPointers.push(fieldEnumerator.getNext()._field_t);
-		}
-		checkStatus(f.convert(this._document_t, field_t.ptr.array()(fieldPointers),
-			fieldPointers.length, ctypes.char.array()(toFieldType),
+		fields = fields.map(field => field._field_t);
+		checkStatus(f.convert(this._document_t, field_t.ptr.array()(fields),
+			fields.length, ctypes.char.array()(toFieldType),
 			ctypes.unsigned_short.array()(toNoteTypes)));
 	},
 	
@@ -620,6 +616,17 @@ Field.prototype = {
 		var returnValue = new ctypes.unsigned_long();
 		checkStatus(f.getNoteIndex(this._field_t, returnValue.address()));
 		return parseInt(returnValue.value);
+	}
+}
+
+for (let cls of [Document, Field]) {
+	for (let method in cls.prototype) {
+		if (typeof cls.prototype[method] == 'function') {
+			let syncMethod = cls.prototype[method];
+			cls.prototype[method] = async function() {
+				return syncMethod.apply(this, arguments);
+			}
+		}
 	}
 }
 
