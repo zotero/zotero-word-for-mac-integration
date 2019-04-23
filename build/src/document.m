@@ -1032,16 +1032,12 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 			CHECK_STATUS_LOCKED(doc);
 			if ([linkText rangeOfString:IMPORT_ITEM_PREFIX].location == 0
 					|| [linkText rangeOfString:IMPORT_BIBL_PREFIX].location == 0) {
-				field_t *field;
-				// See note in exportDocument() about inserting at character 0 of field/hyperlink
-				WordTextRange *insertRange = [[linkRange characters] objectAtIndex:0];
-				ENSURE_OK_LOCKED(doc, insertFieldRaw(doc, fieldType, noteType, insertRange, nil, &field));
+				[[link fieldCode] setContent:linkText];
 				IGNORING_SB_ERRORS_BEGIN
-				WordFont* font = [field->sbContentRange fontObject];
+				WordFont* font = [[link resultRange] fontObject];
 				[font setUnderline:NO];
 				[font setColorIndex:WordE110Auto];
 				IGNORING_SB_ERRORS_END
-				ENSURE_OK_LOCKED(doc, setCode(field, [linkText UTF8String]));
 			}
 			else if ([linkText rangeOfString:IMPORT_DOC_PREFS_PREFIX].location == 0) {
 				*returnValue = true;
