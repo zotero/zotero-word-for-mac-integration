@@ -338,12 +338,12 @@ statusCode getDocumentData(document_t *doc, char **returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
-	WordTextRange *range = [doc->sbDoc textObject];
-	range = [range collapseRangeDirection:WordE132CollapseStart];
-	range = [range moveEndOfRangeBy:WordE129AParagraphItem count:1];
+	WordTextRange *range = [doc->sbDoc createRangeStart:0 end:[EXPORTED_DOCUMENT_MARKER length]];
 	NSString *text = [range content];
-	CHECK_STATUS_LOCKED(doc);
-	if ([text rangeOfString:EXPORTED_DOCUMENT_MARKER].location == 0) {
+	if (errorHasOccurred()) {
+		clearError();
+	}
+	else if (text != nil && [text rangeOfString:EXPORTED_DOCUMENT_MARKER].location == 0) {
 		*returnValue = copyNSString(EXPORTED_DOCUMENT_MARKER);
 		RETURN_STATUS_LOCKED(doc, STATUS_OK);
 	}
