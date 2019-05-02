@@ -110,7 +110,7 @@ NSString* tempFileStringNS = nil;
 FILE* getTemporaryFile(document_t *doc) {
 	if(tempFile == NULL) {
         const char *tempFileTemplate;
-        if(doc->wordVersion == 2016 || doc->wordVersion == 16) {
+        if(doc->wordVersion == 2016 || doc->wordVersion >= 16 && doc->wordVersion < 2000) {
             tempFileTemplate = [[NSTemporaryDirectory()
                                              stringByAppendingPathComponent:
                                              @"com.microsoft.Word/zotero.XXXXXX.rtf"]
@@ -178,7 +178,7 @@ void freeData(void* ptr) {
 }
 
 void storeCursorLocation(document_t* doc) {
-	if (doc->wordVersion == 16) {
+	if (doc->wordVersion >= 16 && doc->wordVersion < 2000) {
 		doc->restoreCursorEnd = doc->restoreNote = -1;
 		WordE160 storyType = [[doc->sbApp selection] storyType];
 		if (storyType == WordE160EndnotesStory || storyType == WordE160FootnotesStory) {
@@ -189,13 +189,17 @@ void storeCursorLocation(document_t* doc) {
 				doc->restoreNote = getEntryIndex(doc, [[[doc->sbApp selection] endnotes] objectAtIndex:0])-1;
 			}
 		} else {
-			doc->restoreCursorEnd = [[doc->sbApp selection] selectionEnd];
+			if ([[[doc->sbApp selection] fields] count]) {
+				doc->restoreFieldIdx = getEntryIndex(doc, [[[doc->sbApp selection] fields] objectAtIndex:1]);
+			} else {
+				doc->restoreCursorEnd = [[doc->sbApp selection] selectionEnd];
+			}
 		}
 	}
 }
 
 statusCode moveCursorOutOfNote(document_t* doc) {
-	if (doc->wordVersion == 16) {
+	if (doc->wordVersion >= 16 && doc->wordVersion < 2000) {
 		WordE160 storyType = [[doc->sbApp selection] storyType];
 		if (storyType == WordE160EndnotesStory || storyType == WordE160FootnotesStory) {
 			WordTextRange* noteSelection;
@@ -228,9 +232,13 @@ statusCode restoreCursor(document_t* doc) {
 			CHECK_STATUS;
 		}
 		doc->restoreNote = -1;
+	} else if (doc->restoreFieldIdx != -1) {
+		long position = [[[[doc->sbDoc fields] objectAtIndex:doc->restoreFieldIdx-1] resultRange] endOfContent]+1;
+		[[doc->sbDoc createRangeStart:position end:position]
+		 sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 	} else if (doc->restoreCursorEnd != -1) {
 		[[doc->sbDoc createRangeStart:doc->restoreCursorEnd end:doc->restoreCursorEnd]
-						   sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+		 sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 		CHECK_STATUS;
 	}
 	doc->cursorMoved = NO;

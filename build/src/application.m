@@ -36,7 +36,7 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	doc->allocatedFieldsEnd = NULL;
 	doc->allocatedFieldListsStart = NULL;
 	doc->allocatedFieldListsEnd = NULL;
-	doc->restoreNote = doc->restoreCursorEnd = -1;
+	doc->restoreNote = doc->restoreCursorEnd = doc->restoreFieldIdx = -1;
 	doc->cursorMoved = NO;
 	
 	// Get application by path if a path has been specified

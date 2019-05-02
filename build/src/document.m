@@ -1414,7 +1414,6 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		CHECK_STATUS
 		[sbSelection setSelectionEnd:[sbNoteReference endOfContent]];
 		CHECK_STATUS
-		storeCursorLocation(doc);
 		
 		sbWhere = [sbNote textObject];
 	} else if(storyType == WordE160FootnotesStory) {
@@ -1444,13 +1443,9 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		// The above version works for most users of 16.9+, but some report
 		// the field being inserted at cursor and not at the textRange,
 		// which then breaks further actions so we move the cursor to the insertion point
-		if (doc->wordVersion == 16) {
+		if (doc->wordVersion >= 16 && doc->wordVersion < 2000) {
 			[sbWhere sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
-			if (sbNote) {
-				doc->cursorMoved = true;
-			} else {
-				storeCursorLocation(doc);
-			}
+			doc->cursorMoved = YES;
 			CHECK_STATUS
 		}
 		
@@ -1539,8 +1534,11 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		}
 		
 		if(returnValue) {
-			return initField(doc, sbField, noteType, entryIndex, YES,
-							 returnValue);
+			ENSURE_OK(initField(doc, sbField, noteType, entryIndex, YES,
+							 returnValue));
+			doc->restoreFieldIdx = getEntryIndex(doc, (*returnValue)->sbField);
+			CHECK_STATUS
+			return STATUS_OK;
 		}
 		
 		return STATUS_OK;
