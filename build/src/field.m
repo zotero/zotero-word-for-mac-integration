@@ -24,7 +24,7 @@
 
 #include "zoteroMacWordIntegration.h"
 
-NSString* FIELD_PREFIXES[] = {@" ADDIN ZOTERO_", @" CSL_", NULL};
+NSString* FIELD_PREFIXES[] = {MAIN_FIELD_PREFIX, @" CSL_", NULL};
 NSString* BOOKMARK_PREFIXES[] = {@"ZOTERO_", @"CSL_", NULL};
 
 // Allocates a field structure based on a WordField, optionally checking to make

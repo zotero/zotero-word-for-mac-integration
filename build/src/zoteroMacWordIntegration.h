@@ -62,6 +62,8 @@ enum NOTE_TYPE {
 #define IMPORT_ITEM_PREFIX @"ITEM CSL_CITATION "
 #define IMPORT_BIBL_PREFIX @"BIBL "
 #define IMPORT_DOC_PREFS_PREFIX @"DOCUMENT_PREFERENCES "
+#define MAIN_FIELD_PREFIX @" ADDIN ZOTERO_"
+
 
 // Checks to see that the last Scripting Bridge call succeeded. If not, returns
 // STATUS_EXCEPTION.

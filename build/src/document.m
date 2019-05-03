@@ -1032,7 +1032,10 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 			CHECK_STATUS_LOCKED(doc);
 			if ([linkText rangeOfString:IMPORT_ITEM_PREFIX].location == 0
 					|| [linkText rangeOfString:IMPORT_BIBL_PREFIX].location == 0) {
-				[[link fieldCode] setContent:linkText];
+				NSString* rawCode = [NSString stringWithFormat:@"%@%@ ",
+									 MAIN_FIELD_PREFIX,
+									 linkText];
+				[[link fieldCode] setContent:rawCode];
 				IGNORING_SB_ERRORS_BEGIN
 				WordFont* font = [[link resultRange] fontObject];
 				[font setUnderline:NO];
@@ -1044,7 +1047,7 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 				const char* docPrefs = [[linkText substringFromIndex:
 										 [IMPORT_DOC_PREFS_PREFIX length]] UTF8String];
 				ENSURE_OK_LOCKED(doc, setDocumentData(doc, docPrefs));
-				[linkRange setContent:@""];
+				[link delete];
 				CHECK_STATUS_LOCKED(doc);
 			}
 		}
