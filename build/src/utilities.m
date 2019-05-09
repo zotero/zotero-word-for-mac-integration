@@ -236,6 +236,7 @@ statusCode restoreCursor(document_t* doc) {
 		long position = [[[[doc->sbDoc fields] objectAtIndex:doc->restoreFieldIdx-1] resultRange] endOfContent]+1;
 		[[doc->sbDoc createRangeStart:position end:position]
 		 sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+		CHECK_STATUS;
 	} else if (doc->restoreCursorEnd != -1) {
 		[[doc->sbDoc createRangeStart:doc->restoreCursorEnd end:doc->restoreCursorEnd]
 		 sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];

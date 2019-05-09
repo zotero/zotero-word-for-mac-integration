@@ -1539,7 +1539,9 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		if(returnValue) {
 			ENSURE_OK(initField(doc, sbField, noteType, entryIndex, YES,
 							 returnValue));
-			doc->restoreFieldIdx = getEntryIndex(doc, (*returnValue)->sbField);
+			if (noteType == 0) {
+				doc->restoreFieldIdx = getEntryIndex(doc, (*returnValue)->sbField);
+			}
 			CHECK_STATUS
 			return STATUS_OK;
 		}
