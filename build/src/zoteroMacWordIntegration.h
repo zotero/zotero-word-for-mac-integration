@@ -155,11 +155,9 @@ typedef struct Document {
 	BOOL restoreFormatChanges;
 	BOOL statusFormatChanges;
 	
-	NSInteger restoreNote;
 	WordE160 restoreNoteType;
-	NSInteger restoreCursorEnd;
-	NSInteger restoreFieldIdx;
-	BOOL cursorMoved;
+	NSInteger restoreNote, restoreCursorEnd, restoreFieldIdx;
+	BOOL cursorMoved, shouldRestoreCursor;
 	
 	listNode_t* allocatedFieldsStart;
 	listNode_t* allocatedFieldsEnd;

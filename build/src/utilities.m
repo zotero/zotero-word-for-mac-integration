@@ -218,7 +218,7 @@ statusCode moveCursorOutOfNote(document_t* doc) {
 }
 
 statusCode restoreCursor(document_t* doc) {
-	if (!doc->cursorMoved) {
+	if (!doc->cursorMoved || !doc->shouldRestoreCursor) {
 		return STATUS_OK;
 	}
 	if (doc->restoreNote != -1) {

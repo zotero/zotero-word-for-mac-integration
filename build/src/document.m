@@ -983,6 +983,10 @@ statusCode exportDocument(document_t *doc,
 	[doc->sbApp insertText:EXPORTED_DOCUMENT_MARKER at:range];
 	CHECK_STATUS_LOCKED(doc)
 	
+	// Don't attempt to restore cursor location. It doesn't work since the document size changes
+	// and it doesn't make sense either.
+	doc->shouldRestoreCursor = NO;
+	
 	RETURN_STATUS_LOCKED(doc, STATUS_OK);
 	HANDLE_EXCEPTIONS_END
 }
@@ -1062,7 +1066,7 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 	
 	// Don't attempt to restore cursor location. It doesn't work since the document size changes
 	// and it doesn't make sense either.
-	doc->cursorMoved = NO;
+	doc->shouldRestoreCursor = NO;
 	
 	RETURN_STATUS_LOCKED(doc, STATUS_OK);
 	HANDLE_EXCEPTIONS_END
