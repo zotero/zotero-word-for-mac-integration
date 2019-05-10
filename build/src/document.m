@@ -1044,11 +1044,15 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 				WordFont* font = [[link resultRange] fontObject];
 				[font setUnderline:NO];
 				[font setColorIndex:WordE110Auto];
-				if (noteType > 0) {
+				IGNORING_SB_ERRORS_END
+				if (noteType == 1) {
 					[linkRange setStyle:WordE184StyleFootnoteText];
 					CHECK_STATUS_LOCKED(doc);
 				}
-				IGNORING_SB_ERRORS_END
+				else if (noteType == 2) {
+					[linkRange setStyle:WordE184StyleEndnoteText];
+					CHECK_STATUS_LOCKED(doc);
+				}
 			}
 			else if ([linkText rangeOfString:IMPORT_DOC_PREFS_PREFIX].location == 0) {
 				*returnValue = true;
