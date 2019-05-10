@@ -1040,11 +1040,8 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 									 MAIN_FIELD_PREFIX,
 									 linkText];
 				[[link fieldCode] setContent:rawCode];
-				IGNORING_SB_ERRORS_BEGIN
-				WordFont* font = [[link resultRange] fontObject];
-				[font setUnderline:NO];
-				[font setColorIndex:WordE110Auto];
-				IGNORING_SB_ERRORS_END
+				[linkRange setStyle:WordE184StyleDefaultParagraphFont];
+				CHECK_STATUS_LOCKED(doc);
 				if (noteType == 1) {
 					[linkRange setStyle:WordE184StyleFootnoteText];
 					CHECK_STATUS_LOCKED(doc);
