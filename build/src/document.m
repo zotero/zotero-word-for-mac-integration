@@ -963,8 +963,6 @@ statusCode exportDocument(document_t *doc,
 	WordTextRange *range = [doc->sbDoc textObject];
 	range = [range collapseRangeDirection:WordE132CollapseEnd];
 	[doc->sbApp insertParagraphAt:range];
-	range = [range collapseRangeDirection:WordE132CollapseEnd];
-	[doc->sbApp insertParagraphAt:range];
 	range = [[doc->sbDoc textObject] collapseRangeDirection:WordE132CollapseEnd];
 	[doc->sbApp createNewFieldTextRange:range fieldType:WordE183FieldHyperlink fieldText:IMPORT_LINK_URL preserveFormatting:NO];
 	WordField *insertedHyperlink = [[doc->sbDoc fields] lastObject];
@@ -978,6 +976,9 @@ statusCode exportDocument(document_t *doc,
 	range = [range collapseRangeDirection:WordE132CollapseStart];
 	[doc->sbApp insertParagraphAt:range];
 	[doc->sbApp insertText:[NSString stringWithUTF8String:importInstructions] at:range];
+	// Export marker
+	range = [range collapseRangeDirection:WordE132CollapseStart];
+	[doc->sbApp insertParagraphAt:range];
 	range = [range collapseRangeDirection:WordE132CollapseStart];
 	[doc->sbApp insertParagraphAt:range];
 	[doc->sbApp insertText:EXPORTED_DOCUMENT_MARKER at:range];
@@ -1062,10 +1063,10 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 		}
 	}
 	
-	// Remove 3 paragraphs: export marker, import instructions and an empty paragraph
+	// Remove 3 paragraphs: export marker, empty paragraph, import instructions and another empty paragraph
 	WordTextRange *range = [doc->sbDoc textObject];
 	range = [range collapseRangeDirection:WordE132CollapseStart];
-	range = [range moveEndOfRangeBy:WordE129AParagraphItem count:3];
+	range = [range moveEndOfRangeBy:WordE129AParagraphItem count:4];
 	[range setContent:@""];
 	CHECK_STATUS_LOCKED(doc);
 	
