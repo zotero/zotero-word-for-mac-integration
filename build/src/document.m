@@ -343,8 +343,7 @@ statusCode getDocumentData(document_t *doc, char **returnValue) {
 	if (errorHasOccurred()) {
 		clearError();
 	}
-	else if (text != nil && [text rangeOfString:EXPORTED_DOCUMENT_MARKER].location == 0
-			 && doc->wordVersion >= 16 && doc->wordVersion < 2000) {
+	else if (text != nil && [text rangeOfString:EXPORTED_DOCUMENT_MARKER].location == 0) {
 		*returnValue = copyNSString(EXPORTED_DOCUMENT_MARKER);
 		RETURN_STATUS_LOCKED(doc, STATUS_OK);
 	}
