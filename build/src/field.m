@@ -391,7 +391,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		// works. Instead of inserting text into specified range it inserts
 		// the text after the range, which requires some additional magic to
 		// get the inserted text back into the range.
-		if (field->doc->wordVersion >= 16 && field->sbField) {
+		if (field->doc->wordVersion >= 16 && field->doc->wordVersion < 2000 && field->sbField) {
 			WordTextRange* insertedTextRange;
 			
 			bookmarkName = RTF_TEMP_BOOKMARK;
