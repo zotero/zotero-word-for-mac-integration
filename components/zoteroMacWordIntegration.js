@@ -303,17 +303,21 @@ Application2004.prototype = {
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2004;1",
 	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
 	service: 		true,
-	getDocument: function(path) {
+	getDocument: async function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(2004, path, null, docPtr.address()));
+		checkStatus(f.getDocument(16, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
-	getActiveDocument: function(path) {
+	getActiveDocument: async function(path) {
 		return this.getDocument(null);
 	},
 	primaryFieldType: "Field",
-	secondaryFieldType: "Bookmark"
+	secondaryFieldType: "Bookmark",
+	supportedNotes: ['footnotes', 'endnotes'],
+	supportsImportExport: true,
+	outputFormat: "rtf",
+	processorName: "Word"
 };
 
 var Application2008 = function() {
@@ -325,17 +329,21 @@ Application2008.prototype = {
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2008;1",
 	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
 	service: 		true,
-	getDocument: function(path) {
+	getDocument: async function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(2008, path, null, docPtr.address()), true);
+		checkStatus(f.getDocument(16, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
-	getActiveDocument: function(path) {
+	getActiveDocument: async function(path) {
 		return this.getDocument(null);
 	},
 	primaryFieldType: "Field",
-	secondaryFieldType: "Bookmark"
+	secondaryFieldType: "Bookmark",
+	supportedNotes: ['footnotes', 'endnotes'],
+	supportsImportExport: true,
+	outputFormat: "rtf",
+	processorName: "Word"
 };
 
 var Application2016 = function() {
@@ -347,17 +355,21 @@ Application2016.prototype = {
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2016;1",
 	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
 	service: 		true,
-	getDocument: function(path) {
+	getDocument: async function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(2016, path, null, docPtr.address()));
+		checkStatus(f.getDocument(16, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
-	getActiveDocument: function(path) {
+	getActiveDocument: async function(path) {
 		return this.getDocument(null);
 	},
 	primaryFieldType: "Field",
-	secondaryFieldType: "Bookmark"
+	secondaryFieldType: "Bookmark",
+	supportedNotes: ['footnotes', 'endnotes'],
+	supportsImportExport: true,
+	outputFormat: "rtf",
+	processorName: "Word"
 };
 
 
