@@ -190,7 +190,7 @@ void storeCursorLocation(document_t* doc) {
 			}
 		} else {
 			if ([[[doc->sbApp selection] fields] count]) {
-				doc->restoreFieldIdx = getEntryIndex(doc, [[[doc->sbApp selection] fields] objectAtIndex:1]);
+				doc->restoreFieldIdx = getEntryIndex(doc, [[[doc->sbApp selection] fields] objectAtIndex:0]);
 			} else {
 				doc->restoreCursorEnd = [[doc->sbApp selection] selectionEnd];
 			}
