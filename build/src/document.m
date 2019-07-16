@@ -24,6 +24,8 @@
 
 #include "zoteroMacWordIntegration.h"
 
+NSString* EXPORTED_DOCUMENT_MARKER[] = {@"ZOTERO_TRANSFER_DOCUMENT", @"ZOTERO_EXPORTED_DOCUMENT", NULL};
+
 // Prototypes for file-local objects and functions
 void freeFieldList(listNode_t* fieldList, bool freeFields);
 statusCode getFieldCollections(document_t *doc, NSArray** fieldCollections);
@@ -338,14 +340,18 @@ statusCode getDocumentData(document_t *doc, char **returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
-	WordTextRange *range = [doc->sbDoc createRangeStart:0 end:[EXPORTED_DOCUMENT_MARKER length]];
+	WordTextRange *range = [doc->sbDoc createRangeStart:0 end:[EXPORTED_DOCUMENT_MARKER[0] length]];
 	NSString *text = [range content];
 	if (errorHasOccurred()) {
 		clearError();
 	}
-	else if (text != nil && [text rangeOfString:EXPORTED_DOCUMENT_MARKER].location == 0) {
-		*returnValue = copyNSString(EXPORTED_DOCUMENT_MARKER);
-		RETURN_STATUS_LOCKED(doc, STATUS_OK);
+	else if (text != nil) {
+		for (unsigned short i = 0; EXPORTED_DOCUMENT_MARKER[i] != NULL; i++) {
+			if ([text rangeOfString:EXPORTED_DOCUMENT_MARKER[i]].location == 0) {
+				*returnValue = copyNSString(EXPORTED_DOCUMENT_MARKER[0]);
+				RETURN_STATUS_LOCKED(doc, STATUS_OK);
+			}
+		}
 	}
 	
 	NSString* returnString;
@@ -981,7 +987,7 @@ statusCode exportDocument(document_t *doc,
 	[doc->sbApp insertParagraphAt:range];
 	range = [range collapseRangeDirection:WordE132CollapseStart];
 	[doc->sbApp insertParagraphAt:range];
-	[doc->sbApp insertText:EXPORTED_DOCUMENT_MARKER at:range];
+	[doc->sbApp insertText:EXPORTED_DOCUMENT_MARKER[0] at:range];
 	CHECK_STATUS_LOCKED(doc)
 	
 	// Don't attempt to restore cursor location. It doesn't work since the document size changes
