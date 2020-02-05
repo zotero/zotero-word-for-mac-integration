@@ -3,7 +3,10 @@
     <script type="application/x-javascript" src="chrome://zotero/content/include.js"/>
     <script type="application/x-javascript"><![CDATA[
     	window.addEventListener("load", function() {
-    		if(Zotero && Zotero.macWordPluginInstallerRun) return;
+            // initialize pipe
+            Components.classes["@zotero.org/Zotero/integration/installer?agent=MacWord;1"].
+            getService(Components.interfaces.nsISupports);
+            
     		window.setTimeout(function() {
     			if(Zotero) Zotero.macWordPluginInstallerRun = true;
 				var Installer = Components.utils.import("resource://zotero-macword-integration/installer.jsm").Installer;

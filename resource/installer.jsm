@@ -36,19 +36,7 @@ var Plugin = new function() {
 	this.EXTENSION_DIR = "zotero-macword-integration";
 	this.APP = 'Microsoft Word';
 	
-	this.REQUIRED_ADDONS = [{
-		name: "Zotero",
-		url: "zotero.org",
-		id: "zotero@chnm.gmu.edu",
-		minVersion: "4.0.27.5.SOURCE",
-		required: true
-	}, {
-		name: "Zotero LibreOffice Integration",
-		url: "zotero.org/support/word_processor_plugin_installation",
-		id: "zoteroOpenOfficeIntegration@zotero.org",
-		minVersion: "3.5b2.SOURCE",
-		required: false
-	}];
+	this.REQUIRED_ADDONS = [];
 	this.LAST_INSTALLED_FILE_UPDATE = "5.0.15pre";
 	
 	var zoteroPluginInstaller;

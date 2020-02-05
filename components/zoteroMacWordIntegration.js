@@ -252,6 +252,79 @@ function checkStatus(status, pre2016=false) {
 	}
 }
 
+async function initializePipes() {
+	// If library had been initialized then so have the pipes
+	if (lib) return;
+	await Zotero.initializationPromise;
+	Zotero.debug("ZoteroMacWordIntegration: Initializing integration pipes");
+	initLegacyPipe();
+	init2016Pipe();
+}
+
+function initLegacyPipe() {
+	// Used by Word 2011 and earlier (which are not supported in x64)
+	var pipe = null;
+	var sharedDir = Zotero.File.pathToFile('/Users/Shared');
+	
+	if (sharedDir.exists() && sharedDir.isDirectory()) {
+		var logname = Components.classes["@mozilla.org/process/environment;1"].
+			getService(Components.interfaces.nsIEnvironment).
+			get("LOGNAME");
+		var sharedPipe = sharedDir.clone();
+		sharedPipe.append(".zoteroIntegrationPipe_"+logname);
+		
+		if(sharedPipe.exists()) {
+			if(Zotero.Integration.deletePipe(sharedPipe) && sharedDir.isWritable()) {
+				pipe = sharedPipe;
+			}
+		} else if(sharedDir.isWritable()) {
+			pipe = sharedPipe;
+		}
+	}
+	
+	if(!pipe) {
+		// as a fallback, use home directory
+		pipe = Components.classes["@mozilla.org/file/directory_service;1"].
+			getService(Components.interfaces.nsIProperties).
+			get("Home", Components.interfaces.nsIFile);
+		pipe.append(".zoteroIntegrationPipe");
+	
+	}
+	
+	if(pipe.exists()) {
+		if(!Zotero.Integration.deletePipe(pipe)) return;
+	}
+	
+	// try to initialize pipe
+	try {
+		Zotero.Integration.initPipe(pipe);
+	} catch(e) {
+		Zotero.logError(e);
+	}	
+}
+
+async function init2016Pipe() {
+    var office2016Container = Components.classes["@mozilla.org/file/directory_service;1"].
+        getService(Components.interfaces.nsIProperties).
+        get("Home", Components.interfaces.nsIFile);
+    office2016Container.append("Library");
+    office2016Container.append("Containers");
+    office2016Container.append("com.microsoft.Word");
+    office2016Container.append("Data");
+    
+    if(!office2016Container.exists() || !office2016Container.isDirectory() || !office2016Container.isWritable()) return;
+
+    var pipe = office2016Container.clone();
+    pipe.append(".zoteroIntegrationPipe");
+
+    if(pipe.exists()) {
+        if(!Zotero.Integration.deletePipe(pipe)) return;
+    }
+    
+    // try to initialize pipe
+    Zotero.Integration.initPipe(pipe);
+}
+
 /**
  * Ensures that the document associated with this object has not been garbage collected
  */
@@ -263,6 +336,7 @@ function checkIfFreed(documentStatus) {
  * Handles installation of Zotero Word for Mac Integration scripts and template file.
  */
 var Installer = function() {
+	initializePipes();
 	init();
 	this.wrappedJSObject = this;
 };
