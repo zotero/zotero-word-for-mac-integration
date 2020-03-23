@@ -248,7 +248,7 @@ function checkStatus(status, pre2016=false) {
 				Zotero.launchURL('https://www.zotero.org/support/kb/mac_word_permissions_missing')
 			}
 		}
-		throw "ExceptionAlreadyDisplayed";
+		throw new Error("Exception already displayed");
 	}
 }
 
@@ -329,7 +329,7 @@ async function init2016Pipe() {
  * Ensures that the document associated with this object has not been garbage collected
  */
 function checkIfFreed(documentStatus) {
-	if(!documentStatus.active) throw "complete() method already called on document";
+	if(!documentStatus.active) throw new Error("complete() method already called on document");
 }
 
 /**
