@@ -165,6 +165,11 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	} else {
 		doc->restoreFormatChanges = false;
 	}
+	
+	if ([doc->sbView respondsToSelector:@selector(showFieldCodes)]) {
+		[doc->sbView setShowFieldCodes:NO];
+	}
+	
 	IGNORING_SB_ERRORS_END
 	
 	// Get out of full screen mode
