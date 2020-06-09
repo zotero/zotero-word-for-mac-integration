@@ -154,6 +154,9 @@ typedef struct Document {
 	BOOL restoreFormatChanges;
 	BOOL statusFormatChanges;
 	
+	BOOL restoreTrackRevisions;
+	BOOL statusTrackRevisions;
+	
 	WordE160 restoreNoteType;
 	NSInteger restoreNote, restoreCursorEnd, restoreFieldIdx;
 	BOOL cursorMoved, shouldRestoreCursor;
@@ -276,6 +279,7 @@ statusCode exportDocument(document_t *doc, const char fieldType[],
 						const char importInstructions[]);
 statusCode importDocument(document_t *doc, const char fieldType[], bool *returnValue);
 statusCode cleanup(document_t *doc);
+statusCode complete(document_t *doc);
 
 statusCode getProperty(document_t *doc, NSString* propertyName,
 					   NSString** returnValue);

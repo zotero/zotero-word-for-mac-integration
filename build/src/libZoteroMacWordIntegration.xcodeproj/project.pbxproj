@@ -137,11 +137,11 @@
 			};
 			buildConfigurationList = F42F45CA14B2ADC600F945DB /* Build configuration list for PBXProject "libZoteroMacWordIntegration" */;
 			compatibilityVersion = "Xcode 9.3";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				English,
 				en,
+				Base,
 			);
 			mainGroup = F42F45C514B2ADC600F945DB;
 			productRefGroup = F42F45D114B2ADC600F945DB /* Products */;
@@ -213,7 +213,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx10.7;
+				SDKROOT = macosx10.9;
 				VALID_ARCHS = x86_64;
 			};
 			name = Debug;
@@ -254,7 +254,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
-				SDKROOT = macosx10.7;
+				SDKROOT = macosx10.9;
 				VALID_ARCHS = x86_64;
 			};
 			name = Release;

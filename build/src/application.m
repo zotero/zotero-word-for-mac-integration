@@ -166,6 +166,15 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 		doc->restoreFormatChanges = false;
 	}
 	
+	if ([doc->sbDoc respondsToSelector:@selector(trackRevisions)]) {
+		doc->restoreTrackRevisions = [doc->sbDoc trackRevisions];
+		if (doc->restoreTrackRevisions) {
+			[doc->sbDoc setTrackRevisions:NO];
+		}
+	} else {
+		doc->restoreTrackRevisions = false;
+	}
+	
 	if ([doc->sbView respondsToSelector:@selector(showFieldCodes)]) {
 		[doc->sbView setShowFieldCodes:NO];
 	}
@@ -181,6 +190,7 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	// Set statuses
 	doc->statusInsertionsAndDeletions = doc->restoreInsertionsAndDeletions;
 	doc->statusFormatChanges = doc->restoreFormatChanges;
+	doc->statusTrackRevisions = doc->restoreTrackRevisions;
 	
 	// Put path into structure
 	doc->wordPath = copyNSString(wordPathNS);

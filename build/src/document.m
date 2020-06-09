@@ -1084,7 +1084,7 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 	HANDLE_EXCEPTIONS_END
 }
 
-// Run on exit to clean up anything we played with
+// Run on exit/dialog display in Zotero to restore document to previous state
 statusCode cleanup(document_t *doc) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
@@ -1107,6 +1107,18 @@ statusCode cleanup(document_t *doc) {
 	deleteTemporaryFile();
 	
 	RETURN_STATUS_LOCKED(doc, restoreCursor(doc))
+	HANDLE_EXCEPTIONS_END
+}
+
+// Run on exit to clean up anything we played with
+statusCode complete(document_t *doc) {
+	HANDLE_EXCEPTIONS_BEGIN
+	[doc->lock lock];
+	
+	if (doc->restoreTrackRevisions) {
+		[doc->sbDoc setTrackRevisions:YES];
+		CHECK_STATUS_LOCKED(doc);
+	}
 	HANDLE_EXCEPTIONS_END
 }
 

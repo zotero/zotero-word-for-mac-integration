@@ -158,6 +158,9 @@ function init() {
 		// statusCode cleanup(Document *doc);
 		cleanup: lib.declare("cleanup", ctypes.default_abi, statusCode, document_t.ptr),
 		
+		// statusCode cleanup(Document *doc);
+		complete: lib.declare("complete", ctypes.default_abi, statusCode, document_t.ptr),
+		
 		// statusCode deleteField(Field* field);
 		deleteField: lib.declare("deleteField", ctypes.default_abi, statusCode, field_t.ptr),
 			
@@ -602,20 +605,23 @@ Document.prototype = {
 	
 	cleanup: function() {
 		Zotero.debug("ZoteroMacWordIntegration: cleanup", 4);
-		if(this._documentStatus.active) {
+		if (this._documentStatus.active) {
 			checkStatus(f.cleanup(this._document_t));
-		} else {
-			Zotero.debug("complete() already called on document; ignoring");
+		}
+		else {
+			Zotero.debug("complete() already called on document; ignoring", 4);
 		}
 	},
 	
 	complete: function() {
 		Zotero.debug("ZoteroMacWordIntegration: complete", 4);
-		if(this._documentStatus.active) {
+		if (this._documentStatus.active) {
+			checkStatus(f.complete(this._document_t));
 			f.freeDocument(this._document_t);
 			this._documentStatus.active = false;
-		} else {
-			Zotero.debug("complete() already called on document; ignoring");
+		}
+		else {
+			Zotero.debug("complete() already called on document; ignoring", 4);
 		}
 	}
 };
