@@ -35,7 +35,7 @@
 #define PATH_CHMOD "/bin/chmod"
 
 statusCode installTemplateIntoStartupDirectory(NSString* templatePath, NSString* path);
-statusCode setTemplateTypeCreator(NSString* templatePath);
+statusCode setTemplateTypeCreator(NSString* templatePath, bool);
 statusCode installScripts(NSString* templatePath);
 statusCode installContainerTemplate(NSString*);
 statusCode parseAuthorizationStatus(OSStatus status, const char file[],
@@ -213,7 +213,7 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 }
 
 // Sets the type and creator code on the template
-statusCode setTemplateTypeCreator(NSString* templatePath) {
+statusCode setTemplateTypeCreator(NSString* templatePath, bool dieOnError) {
     NSError *err = nil;
     if(![[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObjectsAndKeys:
                            [NSNumber numberWithUnsignedInt:'MSWD'],
@@ -221,7 +221,9 @@ statusCode setTemplateTypeCreator(NSString* templatePath) {
                            [NSNumber numberWithUnsignedInt:'W8TN'],
                            NSFileHFSTypeCode, nil]
              ofItemAtPath:templatePath error:&err]) {
-        DIE([err localizedDescription]);
+		if (dieOnError) {
+			DIE([err localizedDescription]);
+		}
     }
 
     return STATUS_OK;
@@ -269,7 +271,7 @@ statusCode installContainerTemplate(NSString* dotmPathNS) {
 	if(![fm copyItemAtPath:dotmPathNS toPath:newTemplatePath error:&err]) {
 		DIE([err localizedDescription]);
     }
-    ENSURE_OK(setTemplateTypeCreator(newTemplatePath))
+    ENSURE_OK(setTemplateTypeCreator(newTemplatePath, true))
 	
 	return STATUS_OK;
 }
@@ -313,7 +315,7 @@ statusCode installTemplateIntoStartupDirectory(NSString* templatePath, NSString*
 	if(status) return status;
 	
 	// Fix template type and creator
-    status = setTemplateTypeCreator(newTemplatePath);
+    status = setTemplateTypeCreator(newTemplatePath, false);
     if(status) return status;
 	
 	return STATUS_OK;
