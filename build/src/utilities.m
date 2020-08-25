@@ -231,7 +231,6 @@ statusCode restoreCursor(document_t* doc) {
 			 	sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 			CHECK_STATUS;
 		}
-		doc->restoreNote = -1;
 	} else if (doc->restoreFieldIdx != -1) {
 		long position = [[[[doc->sbDoc fields] objectAtIndex:doc->restoreFieldIdx-1] resultRange] endOfContent]+1;
 		[[doc->sbDoc createRangeStart:position end:position]
