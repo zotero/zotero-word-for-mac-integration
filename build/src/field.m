@@ -127,21 +127,6 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 		field->sbContentRange = [sbField resultRange];
 		CHECK_STATUS;
 		
-		// Loading from cursor from a note
-		if (entryIndex == -1 && (noteType != 0)) {
-			// And also get the text now, since reading the text will need to
-			// move the cursor out of the note.
-			NSString* content = [field->sbContentRange content];
-			// If a field is empty, Word for Mac will return missing value instead
-			// of an empty string
-			if(content == nil) {
-				content = [NSString string];
-			}
-			
-			field->text = copyNSString(content);
-			CHECK_STATUS
-		}
-		
 		[field->sbField retain];
 		[field->sbCodeRange retain];
 		[field->sbContentRange retain];
@@ -156,6 +141,41 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 	
 	*returnValue = NULL;
 	return STATUS_OK;
+}
+
+// Unfortunately after starting to update fields in reverse order in
+// https://github.com/zotero/zotero/commit/419953f478eb6181717216dcb0dcfc27c303c953
+// citations in footnotes started breaking when any in-text fields need updating
+// (such as bibliography). We'll be re-initializing the sb objects here if such breakage
+// occurs. Sigh.
+statusCode checkFieldIntegrity(field_t *field) {
+	HANDLE_EXCEPTIONS_BEGIN
+	if (field->sbBookmark || field->noteType == 0) return STATUS_OK;
+	// Field order upset. Sometimes SB returns 0 for entry index, which is invalid since
+	// all those indices are 1-indexed, indicating.. something?.. that the field is no longer in the doc?
+	NSInteger entryIndex = getEntryIndex(field->doc, field->sbField);
+	CHECK_STATUS
+	if (field->entryIndex == entryIndex) return STATUS_OK;
+	
+	[field->sbField release];
+	[field->sbCodeRange release];
+	[field->sbContentRange release];
+
+	if (field->noteType == NOTE_FOOTNOTE) {
+		field->sbField = [[[field->doc->sbDoc getStoryRangeStoryType:WordE160FootnotesStory] fields]
+						  objectAtIndex:(field->entryIndex-1)];
+	} else {
+		field->sbField = [[[field->doc->sbDoc getStoryRangeStoryType:WordE160EndnotesStory] fields]
+				   objectAtIndex:(field->entryIndex-1)];
+	}
+	field->sbCodeRange = [field->sbField fieldCode];
+	field->sbContentRange = [field->sbField resultRange];
+	[field->sbField retain];
+	[field->sbCodeRange retain];
+	[field->sbContentRange retain];
+	CHECK_STATUS
+	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
 }
 
 // Allocates a field structure based on a WordBookmark
@@ -282,6 +302,7 @@ void freeField(field_t* field) {
 // Deletes this field from the document
 statusCode deleteField(field_t* field) {
 	HANDLE_EXCEPTIONS_BEGIN
+	ENSURE_OK(checkFieldIntegrity(field));
 	short offset = field->sbField ? 1 : 0;
 	if(field->noteType == NOTE_FOOTNOTE) {
 		WordFootnote* note = [[field->sbContentRange footnotes]
@@ -324,6 +345,7 @@ statusCode deleteField(field_t* field) {
 // Removes a field code
 statusCode removeCode(field_t* field) {
 	HANDLE_EXCEPTIONS_BEGIN
+	ENSURE_OK(checkFieldIntegrity(field));
 	if(field->sbBookmark) {
 		[field->sbBookmark delete];
 	} else {
@@ -338,6 +360,7 @@ statusCode removeCode(field_t* field) {
 // Selects this field
 statusCode selectField(field_t* field) {
 	HANDLE_EXCEPTIONS_BEGIN
+	ENSURE_OK(checkFieldIntegrity(field));
 	[field->sbContentRange sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 	CHECK_STATUS
 	return STATUS_OK;
@@ -347,6 +370,7 @@ statusCode selectField(field_t* field) {
 // Sets text of this field
 statusCode setText(field_t* field, const char string[], bool isRich) {
 	HANDLE_EXCEPTIONS_BEGIN
+	ENSURE_OK(checkFieldIntegrity(field));
 	return setTextRaw(field, string, isRich, YES);
 	HANDLE_EXCEPTIONS_END
 }
@@ -646,6 +670,7 @@ statusCode getText(field_t* field, char** returnValue) {
 // Sets the field code
 statusCode setCode(field_t *field, const char code[]) {
 	HANDLE_EXCEPTIONS_BEGIN
+	ENSURE_OK(checkFieldIntegrity(field));
 	if(field->sbBookmark) {
 		[(field->doc)->lock lock];
 		NSString* rawCode = [NSString stringWithFormat:@"%@%@ ",
@@ -688,6 +713,7 @@ statusCode setCode(field_t *field, const char code[]) {
 // Returns the index of the note in which this field resides
 statusCode getNoteIndex(field_t* field, unsigned long *returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
+	ENSURE_OK(checkFieldIntegrity(field));
 	if(field->noteType == NOTE_FOOTNOTE) {
 		WordFootnote* note = [[field->sbContentRange footnotes]
 							  objectAtIndex:0];
@@ -707,6 +733,8 @@ statusCode getNoteIndex(field_t* field, unsigned long *returnValue) {
 // Compares two fields to determine which comes before which
 statusCode compareFields(field_t* a, field_t* b, short *returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
+	ENSURE_OK(checkFieldIntegrity(a));
+	ENSURE_OK(checkFieldIntegrity(b));
 	statusCode status;
 	status = ensureTextLocationSet(a);
 	if(status) return status;

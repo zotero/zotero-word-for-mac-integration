@@ -304,6 +304,7 @@ statusCode getNoteIndex(field_t* field, unsigned long *returnValue);
 statusCode initField(document_t *doc, WordField* sbField, short noteType,
 					 NSInteger entryIndex, BOOL ignoreCode,
 					 field_t **returnValue);
+statusCode checkFieldIntegrity(field_t *field);
 statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark, short noteType,
 						NSString* bookmarkName, BOOL ignoreCode,
 						field_t **returnValue);
