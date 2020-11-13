@@ -133,17 +133,27 @@ function init() {
 			statusCode, document_t.ptr, ctypes.long, ctypes.long, ctypes.unsigned_long,
 			ctypes.unsigned_long, ctypes.long.array(), ctypes.unsigned_long),
 		
-		// statusCode exportDocument(Document *doc, const jschar fieldType[],
-		// 							const jschar importInstructions[]);
+		// statusCode exportDocument(Document *doc, const char fieldType[],
+		// 							const char importInstructions[]);
 		exportDocument: lib.declare("exportDocument", ctypes.default_abi, statusCode, document_t.ptr,
 			ctypes.char.ptr, ctypes.char.ptr),
 
-		// statusCode importDocument(Document *doc, const jschar fieldType[],
+		// statusCode importDocument(Document *doc, const char fieldType[],
 		// 							bool *returnValue);
 		importDocument: lib.declare("importDocument", ctypes.default_abi, statusCode, document_t.ptr,
 			ctypes.char.ptr, ctypes.bool.ptr),
 		
-		// statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
+		// statusCode insertText(Document *doc, const char htmlString[]);
+		insertText: lib.declare("insertText", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr),
+
+		// statusCode convertPlaceholdersToFields(Document *doc, char* placeholders[],
+		//		unsigned long nPlaceholders, unsigned short noteType, char fieldType[], listNode_t** returnNode);
+		convertPlaceholdersToFields: lib.declare("convertPlaceholdersToFields", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr.ptr, ctypes.unsigned_long, ctypes.unsigned_short,
+			ctypes.char.ptr, fieldListNode_t.ptr.ptr),
+		
+		// statusCode convert(Document *doc, field_t* fields[], unsigned long nFields,
 		//				      const char toFieldType[], unsigned short noteType[]);
 		convert: lib.declare("convert", ctypes.default_abi, statusCode, document_t.ptr,
 			field_t.ptr, ctypes.unsigned_long, ctypes.char.ptr, ctypes.unsigned_short.ptr),
@@ -634,6 +644,7 @@ Application2016.prototype = {
 	secondaryFieldType: "Bookmark",
 	supportedNotes: ['footnotes', 'endnotes'],
 	supportsImportExport: true,
+	supportsTextInsertion: true,
 	outputFormat: "rtf",
 	processorName: "Word"
 };
@@ -706,6 +717,7 @@ Application16.prototype = {
 	secondaryFieldType: "Bookmark",
 	supportedNotes: ['footnotes', 'endnotes'],
 	supportsImportExport: true,
+	supportsTextInsertion: true,
 	outputFormat: "rtf",
 	processorName: "Word"
 };
@@ -825,6 +837,36 @@ Document.prototype = {
 		Zotero.debug(`ZoteroWinMacIntegration: exportDocument`, 4);
 		checkIfFreed(this._documentStatus);
 		checkStatus(fn.exportDocument(this._document_t, fieldType, importInstructions));
+	},
+	
+	insertText: function(text) {
+		Zotero.debug(`ZoteroMacWordIntegration: insertText`, 4);
+		checkIfFreed(this._documentStatus);
+		checkStatus(f.insertText(this._document_t, text));
+	},
+
+	convertPlaceholdersToFields: async function(placeholderIDs, noteType, fieldType) {
+		Zotero.debug("ZoteroMacWordIntegration: convertPlaceholdersToFields", 4);
+		checkIfFreed(this._documentStatus);
+		var cPlaceholderIDs = placeholderIDs.map(placeholderID => ctypes.char.array()(placeholderID));
+		var fieldListNode = new fieldListNode_t.ptr();
+		checkStatus(
+			f.convertPlaceholdersToFields(
+				this._document_t,
+				ctypes.char.ptr.array()(cPlaceholderIDs),
+				placeholderIDs.length,
+				noteType,
+				fieldType,
+				fieldListNode.address()
+			)
+		);
+		var fnum = new FieldEnumerator(fieldListNode, this._documentStatus);
+		var fields = [];
+		while (fnum.hasMoreElements()) {
+			fields.push(fnum.getNext());
+			await Zotero.Promise.delay();
+		}
+		return fields;
 	},
 	
 	convert: function(fields, toFieldType, toNoteTypes) {
