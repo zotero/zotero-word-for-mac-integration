@@ -146,6 +146,7 @@ typedef struct Document {
 	WordE160 restoreNoteType;
 	NSInteger restoreNote, restoreCursorEnd, restoreFieldIdx;
 	BOOL cursorMoved, shouldRestoreCursor;
+	NSInteger insertTextIntoNote;
 	
 	listNode_t* allocatedFieldsStart;
 	listNode_t* allocatedFieldsEnd;
@@ -248,6 +249,10 @@ statusCode setBibliographyStyle(document_t *doc, long firstLineIndent,
 statusCode exportDocument(document_t *doc, const char fieldType[],
 						const char importInstructions[]);
 statusCode importDocument(document_t *doc, const char fieldType[], bool *returnValue);
+statusCode insertText(document_t *doc, const char htmlString[]);
+statusCode convertPlaceholdersToFields(document_t *doc, const char* placeholders[],
+									   const unsigned long nPlaceholders ,const unsigned short noteType,
+									   const char fieldType[], listNode_t** returnNode);
 statusCode cleanup(document_t *doc);
 statusCode complete(document_t *doc);
 

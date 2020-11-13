@@ -382,6 +382,14 @@ statusCode insertField(document_t *doc, const char fieldType[],
 	WordTextRange* sbWhere = [[doc->sbApp selection] textObject];
 	CHECK_STATUS_LOCKED(doc)
 	
+	WordE160 storyType = [sbWhere storyType];
+	if (storyType == WordE160FootnotesStory) {
+		doc->insertTextIntoNote = NOTE_FOOTNOTE;
+	}
+	else if (storyType == WordE160EndnotesStory) {
+		doc->insertTextIntoNote = NOTE_ENDNOTE;
+	}
+	
 	if(strcmp(fieldType, "Bookmark") == 0 && !noteType) {
 		[[doc->sbApp selection] setContent:@ FIELD_PLACEHOLDER];
 		CHECK_STATUS_LOCKED(doc)
@@ -390,8 +398,9 @@ statusCode insertField(document_t *doc, const char fieldType[],
 	statusCode status = insertFieldRaw(doc, fieldType, noteType, sbWhere,
 									   nil, returnValue);
 	if(!status && strcmp(fieldType, "Bookmark") != 0) {
-		setText(*returnValue, FIELD_PLACEHOLDER, false);
+		ENSURE_OK_LOCKED(doc, setText(*returnValue, FIELD_PLACEHOLDER, false));
 	}
+	storeCursorLocation(doc);
 	RETURN_STATUS_LOCKED(doc, status)
 	HANDLE_EXCEPTIONS_END
 }
@@ -1081,6 +1090,218 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 	doc->shouldRestoreCursor = NO;
 	
 	RETURN_STATUS_LOCKED(doc, STATUS_OK);
+	HANDLE_EXCEPTIONS_END
+}
+
+statusCode insertText(document_t *doc, const char htmlString[]) {
+	HANDLE_EXCEPTIONS_BEGIN
+	[doc->lock lock];
+	
+	if (doc->insertTextIntoNote != 0) {
+		// Create new note
+		NSAppleEventDescriptor* noteTypeCode;
+		if (doc->insertTextIntoNote == NOTE_FOOTNOTE) {
+			noteTypeCode = [NSAppleEventDescriptor
+							descriptorWithTypeCode:'w156'];
+		} else {
+			noteTypeCode = [NSAppleEventDescriptor
+							descriptorWithTypeCode:'w157'];
+		}
+		// make new footnote/endnote at sbDoc
+		WordFootnote *sbNote = [doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
+				  noteTypeCode, 'insh', doc->sbDoc, nil];
+		CHECK_STATUS_LOCKED(doc)
+		[[sbNote textObject] sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+		CHECK_STATUS_LOCKED(doc)
+	}
+	
+	// Insert empty paragraph before rich text since inserting it messes up footnote formatting
+	WordTextRange* selectionRange = [[doc->sbApp selection] textObject];
+	CHECK_STATUS_LOCKED(doc)
+	[[doc->sbApp selection] setContent:@"\n "];
+	CHECK_STATUS_LOCKED(doc)
+	
+	IGNORING_SB_ERRORS_BEGIN
+	// Make sure temp bookmark is gone
+	[[[doc->sbDoc bookmarks] objectWithName:@ RTF_TEMP_BOOKMARK]
+	 delete];
+	IGNORING_SB_ERRORS_END
+	IGNORING_SB_ERRORS_BEGIN
+	// Save properties
+	WordFont* font = [selectionRange fontObject];
+	double oldFontSize = [font fontSize];
+	NSString* oldFontName = [font name];
+	NSString* oldFontOtherName = [font otherName];
+	WordE110 oldColorIndex = [font colorIndex];
+	WordE113 oldUnderline = [font underline];
+	IGNORING_SB_ERRORS_END
+	
+	// Insert a temp bookmark into which we'll insert the HTML
+	// We need to insert into a bookmark so that we have a text range
+	// which corresponds to the inserted HTML so we can change fonts, etc.
+	ENSURE_OK_LOCKED(doc, insertFieldRaw(doc, "Bookmark", 0,
+									   selectionRange,
+									   @ RTF_TEMP_BOOKMARK, nil))
+	WordBookmark *tempBookmark = [[doc->sbDoc bookmarks]
+								  objectWithName:@ RTF_TEMP_BOOKMARK];
+	CHECK_STATUS_LOCKED(doc)
+	WordTextRange *bookmarkRange = [tempBookmark textObject];
+	CHECK_STATUS_LOCKED(doc)
+	[[doc->sbApp selection] setSelectionEnd: [[doc->sbApp selection] selectionEnd]-1];
+	CHECK_STATUS_LOCKED(doc)
+	
+	FILE* temporaryFile = getTemporaryFile(doc);
+	
+	// Write HTML to a file
+	fprintf(temporaryFile, "%s", htmlString);
+	fflush(temporaryFile);
+	
+	// Insert file
+	NSString* temporaryFilePath = getTemporaryFilePath();
+	[doc->sbApp insertFileAt:selectionRange
+							 fileName:posixPathToHFSPath(temporaryFilePath)
+							fileRange:nil
+				   confirmConversions:NO
+								 link:NO];
+	// Set style
+	IGNORING_SB_ERRORS_BEGIN
+	// Set properties back to saved
+	font = [bookmarkRange fontObject];
+	[font setFontSize:oldFontSize];
+	[font setName:oldFontName];
+	[font setOtherName:oldFontOtherName];
+	[font setColorIndex:oldColorIndex];
+	[font setUnderline:oldUnderline];
+	IGNORING_SB_ERRORS_END
+	
+	// Remove the previously added empty paragraph
+	[bookmarkRange sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+	[[doc->sbApp selection] setSelectionEnd: [[doc->sbApp selection] selectionStart]+1];
+	[[doc->sbApp selection] setContent:@""];
+	CHECK_STATUS_LOCKED(doc)
+	
+	// Put the cursor at the end of inserted text
+	[bookmarkRange sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+	[[doc->sbApp selection] setSelectionStart: [[doc->sbApp selection] selectionEnd]-1];
+	[[doc->sbApp selection] setContent:@""];
+	CHECK_STATUS_LOCKED(doc)
+	storeCursorLocation(doc);
+	doc->cursorMoved = NO;
+	
+	// Remove the temp bookmark
+	[[[doc->sbDoc bookmarks] objectWithName:@ RTF_TEMP_BOOKMARK]
+	 delete];
+	CHECK_STATUS_LOCKED(doc)
+	
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	HANDLE_EXCEPTIONS_END
+}
+
+statusCode convertPlaceholdersToFields(document_t *doc, const char* placeholders[],
+									   const unsigned long nPlaceholders, const unsigned short noteType,
+									   const char fieldType[], listNode_t** returnNode) {
+	HANDLE_EXCEPTIONS_BEGIN
+	[doc->lock lock];
+	
+	listNode_t* fieldListStart = NULL;
+	listNode_t* fieldListEnd = NULL;
+	
+	NSArray* fieldCollections[3];
+	statusCode status = getFieldCollections(doc, fieldCollections);
+	ENSURE_OK_LOCKED(doc, status)
+	NSMutableArray *links = [NSMutableArray array];
+	
+	// Get numbers of links
+	for (unsigned short noteType = 0; noteType < 3; noteType++) {
+		unsigned long fieldCollectionSize;
+		if (noteType == 0) {
+			fieldCollectionSize = [fieldCollections[noteType]
+								   count];
+		} else {
+			// This is necessary because the count selector always returns
+			// 0 for Word 2008
+			SBElementArray* sbfieldCollection = (SBElementArray *)	fieldCollections[noteType];
+			fieldCollectionSize =
+			getEntryIndex(doc, [sbfieldCollection objectAtLocation:
+								[NSNumber numberWithInt:-1]]);
+		}
+		
+		if (errorHasOccurred()) {
+			// There aren't any links
+			clearError();
+			fieldCollectionSize = 0;
+			continue;
+		}
+		
+		for (long i = fieldCollectionSize-1; i >= 0; i--) {
+			WordField *link = [fieldCollections[noteType] objectAtIndex:(i)];
+			CHECK_STATUS_LOCKED(doc);
+			WordE183 sbFieldType = [link fieldType];
+			if (sbFieldType != WordE183FieldHyperlink) {
+				continue;
+			}
+			CHECK_STATUS_LOCKED(doc);
+			WordTextRange *linkRange = [link resultRange];
+			CHECK_STATUS_LOCKED(doc);
+			NSString *linkUrl = [[[linkRange hyperlinkObjects] objectAtIndex:0] hyperlinkAddress];
+			CHECK_STATUS_LOCKED(doc);
+			NSString *placeholder = [linkUrl substringFromIndex:[IMPORT_LINK_URL length]+1];
+			for (long j = 0; j < nPlaceholders; j++) {
+				if ([placeholder rangeOfString:[NSString stringWithUTF8String:placeholders[j]]].location != 0) {
+					continue;
+				}
+				[links addObject:link];
+				break;
+			}
+		}
+	}
+	NSArray *sortedLinks = [links sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
+		NSString *aLinkUrl = [[[[(WordField *)a resultRange] hyperlinkObjects] objectAtIndex:0] hyperlinkAddress];
+		NSString *bLinkUrl = [[[[(WordField *)a resultRange] hyperlinkObjects] objectAtIndex:0] hyperlinkAddress];
+		NSString *aPlaceholder = [aLinkUrl substringFromIndex:[IMPORT_LINK_URL length]+1];
+		NSString *bPlaceholder = [bLinkUrl substringFromIndex:[IMPORT_LINK_URL length]+1];
+		for (long i = 0; i < nPlaceholders; i++) {
+			NSString *placeholder = [NSString stringWithUTF8String:placeholders[i]];
+			if ([aPlaceholder rangeOfString:placeholder].location == 0) return -1;
+			else if ([bPlaceholder rangeOfString:placeholder].location == 0) return 1;
+		}
+		return 0;
+	}];
+	
+	for (id object in sortedLinks) {
+		WordField *link = object;
+		field_t *newField;
+		WordTextRange *linkRange = [link resultRange];
+		CHECK_STATUS_LOCKED(doc)
+		WordE160 storyType = [linkRange storyType];
+		CHECK_STATUS_LOCKED(doc)
+		
+		if ((noteType == 0 || storyType != WordE160MainTextStory) && strcmp(fieldType, "Field") == 0) {
+			NSString* rawCode = [NSString stringWithFormat:@"%@%@ ",
+								 MAIN_FIELD_PREFIX,
+								 @"TEMP"];
+			[[link fieldCode] setContent:rawCode];
+			CHECK_STATUS_LOCKED(doc)
+			ENSURE_OK_LOCKED(doc, initField(doc, link, -1, -1, false, &newField))
+		}
+		else {
+			// The field code in MacWord is stored sequentially as `fieldCode` range followed by `resultRange` range
+			// and we want a cursor just preceding the field here.
+			WordTextRange *codeRange = [link fieldCode];
+			CHECK_STATUS_LOCKED(doc)
+			WordTextRange *insertRange = [doc->sbDoc createRangeStart:[codeRange startOfContent]-1 end:[codeRange startOfContent]-1];
+			CHECK_STATUS_LOCKED(doc)
+			[link delete];
+			CHECK_STATUS_LOCKED(doc)
+			ENSURE_OK_LOCKED(doc, insertFieldRaw(doc, fieldType, noteType, insertRange, nil, &newField));
+			ENSURE_OK_LOCKED(doc, setCode(newField, "TEMP"))
+		}
+		addValueToList(newField, &fieldListStart, &fieldListEnd);
+	}
+	
+	*returnNode = fieldListStart;
+	
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
 	HANDLE_EXCEPTIONS_END
 }
 

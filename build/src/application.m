@@ -40,6 +40,7 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	doc->restoreNote = doc->restoreCursorEnd = doc->restoreFieldIdx = -1;
 	doc->cursorMoved = NO;
 	doc->shouldRestoreCursor = YES;
+	doc->insertTextIntoNote = 0;
 	
 	// Get application by path if a path has been specified
 	NSString* wordPathNS;

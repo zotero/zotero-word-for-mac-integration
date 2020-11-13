@@ -94,6 +94,7 @@ void allowAppNap(void) {
 }
 
 void storeCursorLocation(document_t* doc) {
+	IGNORING_SB_ERRORS_BEGIN
 	if (doc->wordVersion >= 16 && doc->wordVersion < 2000) {
 		doc->restoreCursorEnd = doc->restoreNote = -1;
 		WordE160 storyType = [[doc->sbApp selection] storyType];
@@ -104,6 +105,7 @@ void storeCursorLocation(document_t* doc) {
 			} else {
 				doc->restoreNote = getEntryIndex(doc, [[[doc->sbApp selection] endnotes] objectAtIndex:0])-1;
 			}
+			doc->restoreCursorEnd = [[doc->sbApp selection] selectionEnd];
 		} else {
 			if ([[[doc->sbApp selection] fields] count]) {
 				doc->restoreFieldIdx = getEntryIndex(doc, [[[doc->sbApp selection] fields] objectAtIndex:0]);
@@ -112,6 +114,7 @@ void storeCursorLocation(document_t* doc) {
 			}
 		}
 	}
+	IGNORING_SB_ERRORS_END
 }
 
 statusCode moveCursorOutOfNote(document_t* doc) {
@@ -134,30 +137,31 @@ statusCode moveCursorOutOfNote(document_t* doc) {
 }
 
 statusCode restoreCursor(document_t* doc) {
+	IGNORING_SB_ERRORS_BEGIN
 	if (!doc->cursorMoved || !doc->shouldRestoreCursor) {
+		IGNORING_SB_ERRORS_END
 		return STATUS_OK;
 	}
 	if (doc->restoreNote != -1) {
 		if (doc->restoreNoteType == WordE160FootnotesStory) {
 			[[[[doc->sbDoc footnotes] objectAtIndex:doc->restoreNote] textObject]
 			 	sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
-			CHECK_STATUS;
 		} else {
 			[[[[doc->sbDoc endnotes] objectAtIndex:doc->restoreNote] textObject]
 			 	sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
-			CHECK_STATUS;
 		}
+		[[doc->sbApp selection] setSelectionStart: doc->restoreCursorEnd];
+		[[doc->sbApp selection] setSelectionEnd: [[doc->sbApp selection] selectionStart]];
 	} else if (doc->restoreFieldIdx != -1) {
 		long position = [[[[doc->sbDoc fields] objectAtIndex:doc->restoreFieldIdx-1] resultRange] endOfContent]+1;
 		[[doc->sbDoc createRangeStart:position end:position]
 		 sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
-		CHECK_STATUS;
 	} else if (doc->restoreCursorEnd != -1) {
 		[[doc->sbDoc createRangeStart:doc->restoreCursorEnd end:doc->restoreCursorEnd]
 		 sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
-		CHECK_STATUS;
 	}
 	doc->cursorMoved = NO;
+	IGNORING_SB_ERRORS_END
 	return STATUS_OK;
 }
 

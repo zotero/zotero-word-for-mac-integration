@@ -308,25 +308,41 @@ statusCode deleteField(field_t* field) {
 		WordFootnote* note = [[field->sbContentRange footnotes]
 							  objectAtIndex:0];
 		if(([[note textObject] startOfContent]
-			== [field->sbCodeRange startOfContent]-offset)
-			&& ([[note textObject] endOfContent]
-				== [field->sbContentRange endOfContent]+offset)) {
-				[note delete];
+				== [field->sbCodeRange startOfContent]-offset)
+				&& ([[note textObject] endOfContent]
+					== [field->sbContentRange endOfContent]+offset)) {
+			WordE160 storyType = [[field->doc->sbApp selection] storyType];
+			CHECK_STATUS
+			if (storyType == WordE160FootnotesStory) {
+				[[field->doc->sbDoc createRangeStart:[[note noteReference] endOfContent] end:[[note noteReference] endOfContent]] sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 				CHECK_STATUS
-				return STATUS_OK;
+				storeCursorLocation(field->doc);
+				field->doc->cursorMoved = NO;
 			}
+			[note delete];
+			CHECK_STATUS
+			return STATUS_OK;
+		}
 		CHECK_STATUS
 	} else if(field->noteType == NOTE_ENDNOTE){ 
 		WordEndnote* note = [[field->sbContentRange endnotes]
 							 objectAtIndex:0];
 		if(([[note textObject] startOfContent]
-			== [field->sbCodeRange startOfContent]-offset)
-		   && ([[note textObject] endOfContent]
-			   == [field->sbContentRange endOfContent]+offset)) {
-			   [note delete];
-			   CHECK_STATUS
-			   return STATUS_OK;
-		   }
+				== [field->sbCodeRange startOfContent]-offset)
+			   && ([[note textObject] endOfContent]
+				   == [field->sbContentRange endOfContent]+offset)) {
+			WordE160 storyType = [[field->doc->sbApp selection] storyType];
+			CHECK_STATUS
+			if (storyType == WordE160EndnotesStory) {
+				[[field->doc->sbDoc createRangeStart:[[note noteReference] endOfContent] end:[[note noteReference] endOfContent]] sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+				CHECK_STATUS
+				storeCursorLocation(field->doc);
+				field->doc->cursorMoved = NO;
+			}
+		   [note delete];
+		   CHECK_STATUS
+		   return STATUS_OK;
+	   }
 		CHECK_STATUS
 	}
 	
@@ -627,12 +643,12 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 	
 	// If selection was at end of mark, put it there again
 	if (restoreSelectionToEnd) {
-		ENSURE_OK_LOCKED(field->doc, restoreCursor(field->doc));
 		[[(field->doc)->sbApp selection] setSelectionStart:
 		 [field->sbCodeRange endOfContent]];
 		CHECK_STATUS_LOCKED(field->doc)
 		[[[(field->doc)->sbApp selection] fontObject] reset];
 		CHECK_STATUS_LOCKED(field->doc)
+		field->doc->cursorMoved = NO;
 	}
 	
 	if(locked) {
