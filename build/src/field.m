@@ -449,6 +449,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 											   stringWithUTF8String:bookmarkName]
 						   confirmConversions:NO
 										 link:NO];
+			CHECK_STATUS_LOCKED(field->doc)
 			
 			// This moves the cursor so we mark it for restoration
 			field->doc->cursorMoved = YES;
@@ -456,6 +457,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 			// Copy out the rich text from the inserted bookmark into the field range
 			tempBookmark = [[(field->doc)->sbDoc bookmarks]
 							objectWithName:@ RTF_TEMP_BOOKMARK];
+			CHECK_STATUS_LOCKED(field->doc)
 			insertedTextRange = [tempBookmark textObject];
 			[field->sbContentRange setFormattedText:insertedTextRange];
 			CHECK_STATUS_LOCKED(field->doc)
