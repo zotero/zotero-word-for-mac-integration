@@ -153,6 +153,32 @@ NSString* getTemporaryFilePath(void) {
 	return tempFileStringNS;
 }
 
+// From https://developer.apple.com/forums/thread/653009 (https://archive.is/etgKB)
+// Checks if Zotero is running as translated Rosetta 2 app (on an M1 Apple)
+int isRosetta(void) {
+	int ret = 0;
+	size_t size = sizeof(ret);
+	// Call the sysctl and if successful return the result
+	if (sysctlbyname("sysctl.proc_translated", &ret, &size, NULL, 0) != -1)
+		return ret;
+	// If "sysctl.proc_translated" is not present then must be native
+	if (errno == ENOENT)
+		return 0;
+	return -1;
+}
+
+// Checks if Word is running with the ARM architecture
+bool isWordArm(void) {
+	NSArray *runningApplications = [[NSWorkspace sharedWorkspace] runningApplications];
+	for (NSRunningApplication* app in runningApplications) {
+		NSRange range = [[app bundleIdentifier] rangeOfString:@"com.microsoft.Word"];
+		if (range.location != NSNotFound) {
+			return [app executableArchitecture] != NSBundleExecutableArchitectureX86_64;
+		}
+	}
+	return false;
+}
+
 // Converts a Cocoa path to an HFS (colon-delimited) path
 NSString* posixPathToHFSPath(NSString *posixPath) {
 	CFURLRef url = CFURLCreateWithFileSystemPath(NULL, (CFStringRef)

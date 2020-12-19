@@ -31,10 +31,13 @@ var Zotero = Components.classes["@zotero.org/Zotero;1"]
 			.wrappedJSObject;
 var field_t, document_t, fieldListNode_t, progressFunction_t, lib, libPath, f, fieldPtr;
 var dataInUse = [];
+var ignoreArmIsSupported = false;
 
 const STATUS_EXCEPTION = 1,
 	STATUS_EXCEPTION_ALREADY_DISPLAYED = 2,
 	STATUS_EXCEPTION_SB_DENIED = 3;
+	STATUS_EXCEPTION_ARM_NOT_SUPPORTED = 4;
+	STATUS_EXCEPTION_ARM_SUPPORTED = 5;
 
 /**
  * Loads libZoteroMacWordIntegration.dylib and initializes js-ctypes functions
@@ -84,9 +87,10 @@ function init() {
 		clearError: lib.declare("clearError", ctypes.default_abi, ctypes.void_t),
 		
 		// statusCode getDocument(int wordVersion, const char* wordPath,
-		//					   const char* documentName, Document** returnValue);
+		//					   const char* documentName, bool ignoreArmIsSupported,
+		//					   Document** returnValue);
 		getDocument: lib.declare("getDocument", ctypes.default_abi, statusCode, ctypes.int,
-			ctypes.char.ptr, ctypes.char.ptr, document_t.ptr.ptr),
+			ctypes.char.ptr, ctypes.char.ptr, ctypes.bool, document_t.ptr.ptr),
 		
 		// void freeDocument(Document *doc);
 		freeDocument: lib.declare("freeDocument", ctypes.default_abi, statusCode, document_t.ptr),
@@ -219,6 +223,24 @@ function getLastError() {
 	return err;
 }
 
+function displayMoreInformationAlert(title, message, showMoreInfoButton) {
+	let ps = Services.prompt;
+	let buttonFlags = ps.BUTTON_POS_0 * ps.BUTTON_TITLE_OK;
+	if (showMoreInfoButton) {
+		buttonFlags += ps.BUTTON_POS_1 * ps.BUTTON_TITLE_IS_STRING;
+	}
+	return ps.confirmEx(
+		null,
+		title,
+		message,
+		buttonFlags,
+		null,
+		showMoreInfoButton ? Zotero.getString('general.moreInformation') : null,
+		null,
+		null, {}
+	);
+}
+
 /**
  * Checks the return status of a function to verify that no error occurred.
  * @param {Integer} status The return status code of a C function
@@ -232,26 +254,37 @@ function checkStatus(status, pre2016=false) {
 		if (status === STATUS_EXCEPTION_SB_DENIED) {
 			let message = Zotero.getString('integration.error.macWordSBPermissionsMissing');
 			if (pre2016) {
-				message += '\n\n' + Zotero.getString('integration.error.macWordSBPermissionsMissing.pre2016')
+				message += '\n\n' + Zotero.getString('integration.error.macWordSBPermissionsMissing.pre2016');
 			}
-			let ps = Services.prompt;
-			let buttonFlags = ps.BUTTON_POS_0 * ps.BUTTON_TITLE_OK
-				+ ps.BUTTON_POS_1 * ps.BUTTON_TITLE_IS_STRING;
-			let index = ps.confirmEx(
-				null,
+			let index = displayMoreInformationAlert(
 				Zotero.getString('integration.error.macWordSBPermissionsMissing.title'),
 				message,
-				buttonFlags,
-				null,
-				Zotero.getString('general.moreInformation'),
-				null,
-				null, {}
+				true
 			);
-			if (index === 1) {
+			if (index == 1) {
 				Zotero.launchURL('https://www.zotero.org/support/kb/mac_word_permissions_missing')
 			}
 		}
-		throw new Error("Exception already displayed");
+		else if (status === STATUS_EXCEPTION_ALREADY_DISPLAYED) {
+			throw new Error("Exception already displayed");
+		}
+		else if (status === STATUS_EXCEPTION_ARM_NOT_SUPPORTED) {
+			let title = Zotero.getString('integration.error.armWordNotSupported.title');
+			let message = Zotero.getString('integration.error.armWordNotSupported');
+			let url = 'https://www.zotero.org/support/kb/mac_word_arm_not_supported';
+			displayMoreInformationAlert(title, message);
+			Zotero.launchURL(url)
+		}
+		else if (status === STATUS_EXCEPTION_ARM_SUPPORTED) {
+			// let title = Zotero.getString('integration.error.armWordSupported.title');
+			// let message = Zotero.getString('integration.error.armWordSupported');
+			// let url = 'https://www.zotero.org/support/kb/mac_word_arm_supported';
+			// let index = displayMoreInformationAlert(title, message);
+			// if (index == 1) {
+			// 	Zotero.launchURL(url)
+			// }
+			ignoreArmIsSupported = true;
+		}
 	}
 }
 
@@ -383,7 +416,7 @@ Application2004.prototype = {
 	getDocument: async function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(2004, path, null, docPtr.address()));
+		checkStatus(f.getDocument(2004, path, null, ignoreArmIsSupported, docPtr.address()));
 		return new Document(docPtr);
 	},
 	getActiveDocument: async function(path) {
@@ -409,7 +442,7 @@ Application2008.prototype = {
 	getDocument: async function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(2008, path, null, docPtr.address()));
+		checkStatus(f.getDocument(2008, path, null, ignoreArmIsSupported, docPtr.address()));
 		return new Document(docPtr);
 	},
 	getActiveDocument: async function(path) {
@@ -435,7 +468,7 @@ Application2016.prototype = {
 	getDocument: async function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(2016, path, null, docPtr.address()));
+		checkStatus(f.getDocument(2016, path, null, ignoreArmIsSupported, docPtr.address()));
 		return new Document(docPtr);
 	},
 	getActiveDocument: async function(path) {
@@ -463,7 +496,7 @@ Application16.prototype = {
 	getDocument: async function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(16, path, null, docPtr.address()));
+		checkStatus(f.getDocument(16, path, null, ignoreArmIsSupported, docPtr.address()));
 		return new Document(docPtr);
 	},
 	getActiveDocument: async function(path) {

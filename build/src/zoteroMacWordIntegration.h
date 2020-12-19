@@ -26,11 +26,14 @@
 #define zoteroMacWordIntegration_h
 
 #include "Word.h"
+#import <sys/sysctl.h>
 enum STATUS {
 	STATUS_OK = 0,
 	STATUS_EXCEPTION = 1,
 	STATUS_EXCEPTION_ALREADY_DISPLAYED = 2,
-	STATUS_EXCEPTION_SB_DENIED = 3
+	STATUS_EXCEPTION_SB_DENIED = 3,
+	STATUS_EXCEPTION_ARM_NOT_SUPPORTED = 4,
+	STATUS_EXCEPTION_ARM_SUPPORTED = 5
 };
 
 enum DIALOG_ICON {
@@ -231,6 +234,9 @@ statusCode flagOSError(OSStatus status, const char function[], NSString* file,
 void clearError(void);
 char* getError(void);
 NSInteger getErrorCode(void);
+int isRosetta(void);
+bool isWordArm(void);
+NSString *getMacOSVersion(void);
 
 void storeCursorLocation(document_t* doc);
 statusCode moveCursorOutOfNote(document_t* doc);
@@ -248,7 +254,7 @@ NSInteger getEntryIndex(document_t* x, SBObject* y);
 
 // application.m
 statusCode getDocument(int wordVersion, const char* wordPath,
-					   const char* documentName, document_t** returnValue);
+					   const char* documentName, bool ignoreArmIsSupported, document_t** returnValue);
 
 // document.m
 void freeDocument(document_t *doc);

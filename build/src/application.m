@@ -28,9 +28,23 @@
 NSMutableDictionary* wordApps = nil;
 
 statusCode getDocument(int wordVersion, const char* wordPath,
-					   const char* documentName, document_t **returnValue) {
+					   const char* documentName, bool ignoreArmIsSupported, document_t **returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
 	clearError();
+	
+	// Leaving a bunch of lines commented out since we don't know if/when Apple will fix this
+//	NSOperatingSystemVersion macOSVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
+	// See https://github.com/zotero/zotero-word-for-mac-integration/issues/26
+	if (isRosetta()) {
+		if (isWordArm()) {
+//			if (macOSVersion.majorVersion == 11 && macOSVersion.minorVersion <= 1)
+			return STATUS_EXCEPTION_ARM_NOT_SUPPORTED;
+		}
+//		else if (!ignoreArmIsSupported && macOSVersion.majorVersion == 11 && macOSVersion.minorVersion > 1) {
+//			return STATUS_EXCEPTION_ARM_SUPPORTED;
+//		}
+	}
+	
 	document_t *doc = (document_t*) malloc(sizeof(document_t));
 	doc->allocatedFieldsStart = NULL;
 	doc->allocatedFieldsEnd = NULL;
