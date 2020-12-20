@@ -171,8 +171,7 @@ int isRosetta(void) {
 bool isWordArm(void) {
 	NSArray *runningApplications = [[NSWorkspace sharedWorkspace] runningApplications];
 	for (NSRunningApplication* app in runningApplications) {
-		NSRange range = [[app bundleIdentifier] rangeOfString:@"com.microsoft.Word"];
-		if (range.location != NSNotFound) {
+		if ([[app bundleIdentifier] isEqual:(@"com.microsoft.Word")]) {
 			return [app executableArchitecture] != NSBundleExecutableArchitectureX86_64;
 		}
 	}
