@@ -223,19 +223,33 @@ function getLastError() {
 	return err;
 }
 
-function displayMoreInformationAlert(title, message, showMoreInfoButton) {
+function displayMoreInformationAlert(title, message) {
 	let ps = Services.prompt;
-	let buttonFlags = ps.BUTTON_POS_0 * ps.BUTTON_TITLE_OK;
-	if (showMoreInfoButton) {
-		buttonFlags += ps.BUTTON_POS_1 * ps.BUTTON_TITLE_IS_STRING;
-	}
+	let buttonFlags = ps.BUTTON_POS_0 * ps.BUTTON_TITLE_OK
+		+ ps.BUTTON_POS_1 * ps.BUTTON_TITLE_IS_STRING;
 	return ps.confirmEx(
 		null,
 		title,
 		message,
 		buttonFlags,
 		null,
-		showMoreInfoButton ? Zotero.getString('general.moreInformation') : null,
+		Zotero.getString('general.moreInformation'),
+		null,
+		null, {}
+	);
+}
+
+function displayPrimaryMoreInformationAlert(title, message) {
+	var ps = Services.prompt;
+	var buttonFlags = ps.BUTTON_POS_0 * ps.BUTTON_TITLE_IS_STRING
+		+ ps.BUTTON_POS_1 * ps.BUTTON_TITLE_CANCEL;
+	return ps.confirmEx(
+		null,
+		title,
+		message,
+		buttonFlags,
+		Zotero.getString('general.moreInformation'),
+		null,
 		null,
 		null, {}
 	);
@@ -258,8 +272,7 @@ function checkStatus(status, pre2016=false) {
 			}
 			let index = displayMoreInformationAlert(
 				Zotero.getString('integration.error.macWordSBPermissionsMissing.title'),
-				message,
-				true
+				message
 			);
 			if (index == 1) {
 				Zotero.launchURL('https://www.zotero.org/support/kb/mac_word_permissions_missing')
@@ -270,17 +283,19 @@ function checkStatus(status, pre2016=false) {
 		}
 		else if (status === STATUS_EXCEPTION_ARM_NOT_SUPPORTED) {
 			let title = Zotero.getString('integration.error.armWordNotSupported.title');
-			let message = Zotero.getString('integration.error.armWordNotSupported');
-			let url = 'https://www.zotero.org/support/kb/mac_word_arm_not_supported';
-			displayMoreInformationAlert(title, message);
-			Zotero.launchURL(url)
+			let message = Zotero.getString('integration.error.armWordNotSupported', Zotero.appName);
+			let url = 'https://www.zotero.org/support/kb/mac_word_apple_silicon_not_supported';
+			let index = displayPrimaryMoreInformationAlert(title, message);
+			if (index == 0) {
+				Zotero.launchURL(url);
+			}
 		}
 		else if (status === STATUS_EXCEPTION_ARM_SUPPORTED) {
 			// let title = Zotero.getString('integration.error.armWordSupported.title');
 			// let message = Zotero.getString('integration.error.armWordSupported');
 			// let url = 'https://www.zotero.org/support/kb/mac_word_arm_supported';
-			// let index = displayMoreInformationAlert(title, message);
-			// if (index == 1) {
+			// let index = displayPrimaryMoreInformationAlert(title, message);
+			// if (index == 0) {
 			// 	Zotero.launchURL(url)
 			// }
 			ignoreArmIsSupported = true;
