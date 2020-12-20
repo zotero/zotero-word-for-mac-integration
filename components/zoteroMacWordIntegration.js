@@ -282,7 +282,7 @@ function checkStatus(status, pre2016=false) {
 			throw new Error("Exception already displayed");
 		}
 		else if (status === STATUS_EXCEPTION_ARM_NOT_SUPPORTED) {
-			let title = Zotero.getString('integration.error.armWordNotSupported.title');
+			let title = Zotero.getString('integration.error.incompatibleWordConfiguration');
 			let message = Zotero.getString('integration.error.armWordNotSupported', Zotero.appName);
 			let url = 'https://www.zotero.org/support/kb/mac_word_apple_silicon_not_supported';
 			let index = displayPrimaryMoreInformationAlert(title, message);
