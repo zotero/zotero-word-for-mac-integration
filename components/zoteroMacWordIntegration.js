@@ -278,9 +278,6 @@ function checkStatus(status, pre2016=false) {
 				Zotero.launchURL('https://www.zotero.org/support/kb/mac_word_permissions_missing')
 			}
 		}
-		else if (status === STATUS_EXCEPTION_ALREADY_DISPLAYED) {
-			throw new Error("Exception already displayed");
-		}
 		else if (status === STATUS_EXCEPTION_ARM_NOT_SUPPORTED) {
 			let title = Zotero.getString('integration.error.incompatibleWordConfiguration');
 			let message = Zotero.getString('integration.error.armWordNotSupported', Zotero.appName);
@@ -300,6 +297,7 @@ function checkStatus(status, pre2016=false) {
 			// }
 			ignoreArmIsSupported = true;
 		}
+		throw new Error("ExceptionAlreadyDisplayed");
 	}
 }
 
