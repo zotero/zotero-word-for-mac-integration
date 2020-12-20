@@ -284,7 +284,9 @@ function checkStatus(status, pre2016=false) {
 			let url = 'https://www.zotero.org/support/kb/mac_word_apple_silicon_compatibility';
 			let index = displayPrimaryMoreInformationAlert(title, message);
 			if (index == 0) {
-				Zotero.launchURL(url);
+				Zotero.setTimeout(() => {
+					Zotero.launchURL(url);
+				}, 250);
 			}
 		}
 		else if (status === STATUS_EXCEPTION_ARM_SUPPORTED) {
