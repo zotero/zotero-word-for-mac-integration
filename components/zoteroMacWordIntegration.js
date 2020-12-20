@@ -33,11 +33,11 @@ var field_t, document_t, fieldListNode_t, progressFunction_t, lib, libPath, f, f
 var dataInUse = [];
 var ignoreArmIsSupported = false;
 
-const STATUS_EXCEPTION = 1,
-	STATUS_EXCEPTION_ALREADY_DISPLAYED = 2,
-	STATUS_EXCEPTION_SB_DENIED = 3;
-	STATUS_EXCEPTION_ARM_NOT_SUPPORTED = 4;
-	STATUS_EXCEPTION_ARM_SUPPORTED = 5;
+const STATUS_EXCEPTION = 1;
+const STATUS_EXCEPTION_ALREADY_DISPLAYED = 2;
+const STATUS_EXCEPTION_SB_DENIED = 3;
+const STATUS_EXCEPTION_ARM_NOT_SUPPORTED = 4;
+const STATUS_EXCEPTION_ARM_SUPPORTED = 5;
 
 /**
  * Loads libZoteroMacWordIntegration.dylib and initializes js-ctypes functions
