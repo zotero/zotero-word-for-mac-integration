@@ -23,7 +23,7 @@
  */
 
 #include <copyfile.h>
-#include "zoteroMacWordIntegration.h"
+#include "ZoteroWordIntegrationService/zoteroMacWordIntegration.h"
 #include "Finder.h"
 
 #define AUTH_PROMPT "Zotero requires administrator "\

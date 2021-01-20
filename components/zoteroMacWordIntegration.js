@@ -55,23 +55,13 @@ function init() {
 	
 	lib = ctypes.open(libPath.path);
 	
-	document_t = new ctypes.StructType("document_t");
+	document_t = new ctypes.StructType("Document");
 	
-	field_t = new ctypes.StructType("field_t", [
-		{ code: ctypes.char.ptr },
-		{ text: ctypes.char.ptr },
-		{ noteType: ctypes.unsigned_short },
-		{ entryIndex: ctypes.long },
-		{ bookmarkName: ctypes.char.ptr },
-		{ sbField: ctypes.voidptr_t },
-		{ sbBookmark: ctypes.voidptr_t }
-		// There's more here, but we will never access it, and we do not create field_t objects
-		// from JavaScript
-	]);
+	field_t = ctypes.unsigned_long;
 	
 	fieldListNode_t = new ctypes.StructType("fieldListNode_t");
 	fieldListNode_t.define([
-		{ field: field_t.ptr },
+		{ field: field_t },
 		{ next: fieldListNode_t.ptr }
 	]);
 	
@@ -92,9 +82,6 @@ function init() {
 		getDocument: lib.declare("getDocument", ctypes.default_abi, statusCode, ctypes.int,
 			ctypes.char.ptr, ctypes.char.ptr, ctypes.bool, document_t.ptr.ptr),
 		
-		// void freeDocument(Document *doc);
-		freeDocument: lib.declare("freeDocument", ctypes.default_abi, statusCode, document_t.ptr),
-			
 		// statusCode activate(Document *doc);
 		activate: lib.declare("activate", ctypes.default_abi, statusCode, document_t.ptr),
 		
@@ -110,7 +97,7 @@ function init() {
 		
 		// statusCode cursorInField(Document *doc, const char fieldType[], Field** returnValue);
 		cursorInField: lib.declare("cursorInField", ctypes.default_abi, statusCode, document_t.ptr,
-			ctypes.char.ptr, field_t.ptr.ptr),
+			ctypes.char.ptr, field_t.ptr),
 		
 		// statusCode getDocumentData(Document *doc, char **returnValue);
 		getDocumentData: lib.declare("getDocumentData", ctypes.default_abi, statusCode,
@@ -123,7 +110,7 @@ function init() {
 		// statusCode insertField(Document *doc, const char fieldType[],
 		//					      unsigned short noteType, Field **returnValue)
 		insertField: lib.declare("insertField", ctypes.default_abi, statusCode, document_t.ptr,
-			ctypes.char.ptr, ctypes.unsigned_short, field_t.ptr.ptr),
+			ctypes.char.ptr, ctypes.unsigned_short, field_t.ptr),
 		
 		// statusCode getFields(document_t *doc, const char fieldType[],
 		//					    fieldListNode_t** returnNode);
@@ -157,38 +144,47 @@ function init() {
 		// statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 		//				      const char toFieldType[], unsigned short noteType[]);
 		convert: lib.declare("convert", ctypes.default_abi, statusCode, document_t.ptr,
-			field_t.ptr.ptr, ctypes.unsigned_long, ctypes.char.ptr, ctypes.unsigned_short.ptr),
+			field_t.ptr, ctypes.unsigned_long, ctypes.char.ptr, ctypes.unsigned_short.ptr),
 		
 		// statusCode cleanup(Document *doc);
 		cleanup: lib.declare("cleanup", ctypes.default_abi, statusCode, document_t.ptr),
 		
 		// statusCode cleanup(Document *doc);
 		complete: lib.declare("complete", ctypes.default_abi, statusCode, document_t.ptr),
-		
-		// statusCode deleteField(Field* field);
-		deleteField: lib.declare("deleteField", ctypes.default_abi, statusCode, field_t.ptr),
+
+		// statusCode deleteField(RemoteDocument *doc, XPCField field);
+		deleteField: lib.declare("deleteField", ctypes.default_abi, statusCode,
+			document_t.ptr, field_t),
+
+		// statusCode removeCode(RemoteDocument *doc, XPCField field);
+		removeCode: lib.declare("removeCode", ctypes.default_abi, statusCode, document_t.ptr, field_t),
 			
-		// statusCode removeCode(Field* field);
-		removeCode: lib.declare("removeCode", ctypes.default_abi, statusCode, field_t.ptr),
+		// statusCode selectField(RemoteDocument *doc, XPCField field);
+		selectField: lib.declare("selectField", ctypes.default_abi, statusCode, document_t.ptr, field_t),
 			
-		// statusCode selectField(Field* field);
-		selectField: lib.declare("selectField", ctypes.default_abi, statusCode, field_t.ptr),
-			
-		// statusCode setText(Field* field, const char string[], bool isRich);
-		setText: lib.declare("setText", ctypes.default_abi, statusCode, field_t.ptr,
+		// statusCode setText(RemoteDocument *doc, XPCField field, const char string[], bool isRich);
+		setText: lib.declare("setText", ctypes.default_abi, statusCode, document_t.ptr, field_t,
 			ctypes.char.ptr, ctypes.bool),
 			
-		// statusCode getText(Field* field, char** returnValue);
-		getText: lib.declare("getText", ctypes.default_abi, statusCode, field_t.ptr,
+		// statusCode getText(RemoteDocument *doc, XPCField field, char** returnValue);
+		getText: lib.declare("getText", ctypes.default_abi, statusCode, document_t.ptr, field_t,
 			ctypes.char.ptr.ptr),
 			
-		// statusCode setCode(Field *field, const char code[]);
-		setCode: lib.declare("setCode", ctypes.default_abi, statusCode, field_t.ptr,
+		// statusCode setCode(RemoteDocument *doc, XPCField field, const char code[]);
+		setCode: lib.declare("setCode", ctypes.default_abi, statusCode, document_t.ptr, field_t,
 			ctypes.char.ptr),
 		
-		// statusCode getNoteIndex(Field* field, unsigned long *returnValue);
+		// statusCode getCode(RemoteDocument *doc, XPCField field, char** returnValue);
+		getCode: lib.declare("getCode", ctypes.default_abi, statusCode, document_t.ptr, field_t,
+			ctypes.char.ptr.ptr),
+		
+		// statusCode getNoteIndex(RemoteDocument *doc, XPCField field, unsigned long *returnValue);
 		getNoteIndex: lib.declare("getNoteIndex", ctypes.default_abi, statusCode,
-			field_t.ptr, ctypes.unsigned_long.ptr),
+			document_t.ptr, field_t, ctypes.unsigned_long.ptr),
+		
+		// statusCode equals(RemoteDocument *doc, XPCField a, XPCField b, bool *returnValue);
+		equals: lib.declare("equals", ctypes.default_abi, statusCode,
+			document_t.ptr, field_t, field_t, ctypes.bool.ptr),
 		
 		// statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]);
 		install: lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr,
@@ -559,9 +555,9 @@ Document.prototype = {
 	cursorInField: function(fieldType) {
 		Zotero.debug("ZoteroMacWordIntegration: cursorInField", 4);
 		checkIfFreed(this._documentStatus);
-		var returnValue = new field_t.ptr();
+		var returnValue = new field_t();
 		checkStatus(f.cursorInField(this._document_t, fieldType, returnValue.address()));
-		return (returnValue.isNull() ? null : new Field(returnValue, this._documentStatus));
+		return (returnValue.value == 0 ? null : new Field(returnValue, this._document_t, this._documentStatus));
 	},
 	
 	getDocumentData: function() {
@@ -583,9 +579,9 @@ Document.prototype = {
 	insertField: function(fieldType, noteType) {
 		Zotero.debug("ZoteroMacWordIntegration: insertField", 4);
 		checkIfFreed(this._documentStatus);
-		var returnValue = new field_t.ptr();
+		var returnValue = new field_t();
 		checkStatus(f.insertField(this._document_t, fieldType, noteType, returnValue.address()));
-		return new Field(returnValue, this._documentStatus);
+		return new Field(returnValue, this._document_t, this._documentStatus);
 	},
 	
 	getFields: async function(fieldType, observer) {
@@ -603,7 +599,7 @@ Document.prototype = {
 					reject(getLastError());
 				}
 				else if (progress == 100) {
-					var fnum = new FieldEnumerator(fieldListNode, this._documentStatus);
+					var fnum = new FieldEnumerator(fieldListNode, this._document_t, this._documentStatus);
 					var fields = [];
 					while (fnum.hasMoreElements()) {
 						fields.push(fnum.getNext());
@@ -646,7 +642,7 @@ Document.prototype = {
 		Zotero.debug("ZoteroMacWordIntegration: convert", 4);
 		checkIfFreed(this._documentStatus);
 		fields = fields.map(field => field._field_t);
-		checkStatus(f.convert(this._document_t, field_t.ptr.array()(fields),
+		checkStatus(f.convert(this._document_t, field_t.array()(fields),
 			fields.length, ctypes.char.array()(toFieldType),
 			ctypes.unsigned_short.array()(toNoteTypes)));
 	},
@@ -665,7 +661,6 @@ Document.prototype = {
 		Zotero.debug("ZoteroMacWordIntegration: complete", 4);
 		if (this._documentStatus.active) {
 			checkStatus(f.complete(this._document_t));
-			f.freeDocument(this._document_t);
 			this._documentStatus.active = false;
 		}
 		else {
@@ -677,8 +672,9 @@ Document.prototype = {
 /**
  * An enumerator implementation to handle passing off fields
  */
-var FieldEnumerator = function(startNode, documentStatus) {
+var FieldEnumerator = function(startNode, document_t, documentStatus) {
 	this._currentNode = startNode;
+	this._document_t = document_t;
 	this._documentStatus = documentStatus;
 };
 FieldEnumerator.prototype = {
@@ -692,7 +688,7 @@ FieldEnumerator.prototype = {
 		var contents = this._currentNode.contents;
 		var fieldPtr = contents.addressOfField("field").contents;
 		this._currentNode = contents.addressOfField("next").contents;
-		return new Field(fieldPtr, this._documentStatus);
+		return new Field(fieldPtr, this._document_t, this._documentStatus);
 	},
 	
 	QueryInterface:  XPCOMUtils.generateQI([Components.interfaces.nsISupports,
@@ -702,40 +698,40 @@ FieldEnumerator.prototype = {
 /**
  * See integrationTest.js
  */
-var Field = function(field_t, documentStatus) {
+var Field = function(field_t, document_t, documentStatus) {
 	this._field_t = field_t;
-	this._isBookmark = field_t.contents.addressOfField("sbField").contents.isNull();
+	this._document_t = document_t;
 	this._documentStatus = documentStatus;
 };
 Field.prototype = {
 	delete: function() {
 		Zotero.debug("ZoteroMacWordIntegration: delete", 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.deleteField(this._field_t));
+		checkStatus(f.deleteField(this._document_t, this._field_t));
 	},
 	
 	removeCode: function() {
 		Zotero.debug("ZoteroMacWordIntegration: removeCode", 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.removeCode(this._field_t));
+		checkStatus(f.removeCode(this._document_t, this._field_t));
 	},
 	
 	select: function() {
 		Zotero.debug("ZoteroMacWordIntegration: select", 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.selectField(this._field_t));
+		checkStatus(f.selectField(this._document_t, this._field_t));
 	},
 	
 	setText: function(text, isRich) {
 		Zotero.debug(`ZoteroMacWordIntegration: setText rtf:${isRich} ${text}`, 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.setText(this._field_t, text, isRich));
+		checkStatus(f.setText(this._document_t, this._field_t, text, isRich));
 	},
 	
 	getText: function() {
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.char.ptr();
-		checkStatus(f.getText(this._field_t, returnValue.address()));
+		checkStatus(f.getText(this._document_t, this._field_t, returnValue.address()));
 		var val = returnValue.readString();
 		Zotero.debug(`ZoteroMacWordIntegration: getText ${val}`, 4);
 		return val;
@@ -744,12 +740,14 @@ Field.prototype = {
 	setCode: function(code) {
 		Zotero.debug(`ZoteroMacWordIntegration: setCode ${code}`, 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.setCode(this._field_t, code));
+		checkStatus(f.setCode(this._document_t, this._field_t, code));
 	},
 	
 	getCode: function() {
 		checkIfFreed(this._documentStatus);
-		var val = this._field_t.contents.addressOfField("code").contents.readString();
+		var returnValue = new ctypes.char.ptr();
+		checkStatus(f.getCode(this._document_t, this._field_t, returnValue.address()));
+		var val = returnValue.readString();
 		Zotero.debug(`ZoteroMacWordIntegration: getCode ${val}`, 4);
 		return val;
 	},
@@ -757,28 +755,16 @@ Field.prototype = {
 	equals: function(field) {
 		Zotero.debug("ZoteroMacWordIntegration: equals", 4);
 		checkIfFreed(this._documentStatus);
-		// Obviously, a field cannot be equal to a bookmark
-		if(this._isBookmark !== field._isBookmark) return false;
-		
-		if(this._isBookmark) {
-			return this._field_t.contents.addressOfField("bookmarkName").contents.readString() ===
-				field._field_t.contents.addressOfField("bookmarkName").contents.readString();
-		} else {
-			var a = this._field_t.contents,
-				b = field._field_t.contents;
-			// This is stupid.
-			return a.addressOfField("noteType").contents.toString()
-				=== b.addressOfField("noteType").contents.toString()
-				&& a.addressOfField("entryIndex").contents.toString()
-				=== b.addressOfField("entryIndex").contents.toString();
-		}
+		var returnValue = new ctypes.bool();
+		checkStatus(f.equals(this._document_t, this._field_t, field._field_t, returnValue.address()));
+		return returnValue.value;
 	},
 	
 	getNoteIndex: function(field) {
 		Zotero.debug("ZoteroMacWordIntegration: getNoteIndex", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.unsigned_long();
-		checkStatus(f.getNoteIndex(this._field_t, returnValue.address()));
+		checkStatus(f.getNoteIndex(this._document_t, this._field_t, returnValue.address()));
 		return parseInt(returnValue.value);
 	}
 }

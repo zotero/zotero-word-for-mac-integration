@@ -41,22 +41,6 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	doc->cursorMoved = NO;
 	doc->shouldRestoreCursor = YES;
 	
-	
-	// This has to run after we malloc the doc or there will be sigsevs when Zotero
-	// handling code tries to cleanup the operation
-	// Leaving a bunch of lines commented out since we don't know if/when Apple will fix this
-	//	NSOperatingSystemVersion macOSVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
-	// See https://github.com/zotero/zotero-word-for-mac-integration/issues/26
-	if (isRosetta()) {
-		if (isWordArm()) {
-			//			if (macOSVersion.majorVersion == 11 && macOSVersion.minorVersion <= 1)
-			return STATUS_EXCEPTION_ARM_NOT_SUPPORTED;
-		}
-		//		else if (!ignoreArmIsSupported && macOSVersion.majorVersion == 11 && macOSVersion.minorVersion > 1) {
-		//			return STATUS_EXCEPTION_ARM_SUPPORTED;
-		//		}
-	}
-	
 	// Get application by path if a path has been specified
 	NSString* wordPathNS;
 	if(!wordPath) {

@@ -732,6 +732,17 @@ statusCode getNoteIndex(field_t* field, unsigned long *returnValue) {
 	HANDLE_EXCEPTIONS_END
 }
 
+statusCode equals(field_t *a, field_t *b, bool *returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
+	ENSURE_OK(checkFieldIntegrity(a));
+	ENSURE_OK(checkFieldIntegrity(b));
+	*returnValue = false;
+	*returnValue = *returnValue || ((a->bookmarkName != NULL && b->bookmarkName != NULL && strcmp(a->bookmarkName, b->bookmarkName) == 0));
+	*returnValue = *returnValue || (a->noteType == b->noteType && a->entryIndex == b->entryIndex);
+	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
+}
+
 // Compares two fields to determine which comes before which
 statusCode compareFields(field_t* a, field_t* b, short *returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
