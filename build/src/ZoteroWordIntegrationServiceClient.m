@@ -9,6 +9,11 @@
 
 statusCode replyStatus;
 
+// Definitions of internal utility functions
+int isRosetta(void);
+void addValueToList(void* value, listNode_t** listStart, listNode_t** listEnd);
+void freeFieldList(listNode_t* fieldList);
+
 // From https://developer.apple.com/forums/thread/653009 (https://archive.is/etgKB)
 // Checks if Zotero is running as translated Rosetta 2 app (on an M1 Apple)
 int isRosetta(void) {
@@ -21,17 +26,6 @@ int isRosetta(void) {
 	if (errno == ENOENT)
 		return 0;
 	return -1;
-}
-
-// Checks if Word is running with the ARM architecture
-bool isWordArm(void) {
-	NSArray *runningApplications = [[NSWorkspace sharedWorkspace] runningApplications];
-	for (NSRunningApplication* app in runningApplications) {
-		if ([[app bundleIdentifier] isEqual:(@"com.microsoft.Word")]) {
-			return [app executableArchitecture] != NSBundleExecutableArchitectureX86_64;
-		}
-	}
-	return false;
 }
 
 // Adds a field to a field list
@@ -89,13 +83,21 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	//	NSOperatingSystemVersion macOSVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
 	// See https://github.com/zotero/zotero-word-for-mac-integration/issues/26
 	if (isRosetta()) {
-		if (isWordArm()) {
-			//			if (macOSVersion.majorVersion == 11 && macOSVersion.minorVersion <= 1)
-//			return STATUS_EXCEPTION_ARM_NOT_SUPPORTED;
+		bool isWordArm = false;
+		NSArray *runningApplications = [[NSWorkspace sharedWorkspace] runningApplications];
+		for (NSRunningApplication* app in runningApplications) {
+			if ([[app bundleIdentifier] isEqual:(@"com.microsoft.Word")]) {
+				isWordArm = [app executableArchitecture] != NSBundleExecutableArchitectureX86_64;
+				break;
+			}
 		}
-		//		else if (!ignoreArmIsSupported && macOSVersion.majorVersion == 11 && macOSVersion.minorVersion > 1) {
-		//			return STATUS_EXCEPTION_ARM_SUPPORTED;
-		//		}
+		NSBundle *wordBundle = [NSBundle bundleWithPath:[NSString stringWithUTF8String:wordPath]];
+		NSString *wordVersion = wordBundle.infoDictionary[@"CFBundleShortVersionString"];
+		NSString *majorWordVersion = [wordVersion componentsSeparatedByString:@"."][0];
+		NSString *minorWordVersion = [wordVersion componentsSeparatedByString:@"."][1];
+		if (!ignoreArmIsSupported && !isWordArm && [majorWordVersion intValue] >= 16 && [minorWordVersion intValue] >= 44) {
+			return STATUS_EXCEPTION_ARM_SUPPORTED;
+		}
 	}
 	NSXPCConnection *xpcConnection;
 	xpcConnection = [[NSXPCConnection alloc] initWithServiceName:@"zotero.ZoteroWordIntegrationService"];

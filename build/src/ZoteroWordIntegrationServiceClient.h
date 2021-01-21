@@ -46,12 +46,6 @@ typedef struct RemoteDocument {
 	listNode_t* allocatedFieldListsEnd;
 } RemoteDocument;
 
-// utility
-int isRosetta(void);
-bool isWordArm(void);
-void addValueToList(void* value, listNode_t** listStart, listNode_t** listEnd);
-void freeFieldList(listNode_t* fieldList);
-
 // remoteUtility
 statusCode getRemoteErrorString(RemoteDocument *doc);
 

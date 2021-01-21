@@ -293,6 +293,12 @@ function checkStatus(status, pre2016=false) {
 			// if (index == 0) {
 			// 	Zotero.launchURL(url)
 			// }
+			// if (shouldAlwaysIgnore) {
+			// 	var prefService = Components.classes["@mozilla.org/preferences-service;1"].
+			// 	getService(Components.interfaces.nsIPrefService);
+			// 	var prefBranch = prefService.getBranch("extensions.zoteroMacWordIntegration.");
+			// 	prefBranch.setIntPref('ignoreArmIsSupportedWarning', true);
+			// }
 			ignoreArmIsSupported = true;
 		}
 		throw new Error("ExceptionAlreadyDisplayed");
@@ -497,6 +503,10 @@ Application2016.prototype = {
 // Word 16.0 and higher
 var Application16 = function() {
 	this.wrappedJSObject = this;
+	var prefService = Components.classes["@mozilla.org/preferences-service;1"].
+	getService(Components.interfaces.nsIPrefService);
+	var prefBranch = prefService.getBranch("extensions.zoteroMacWordIntegration.");
+	ignoreArmIsSupported = prefBranch.getBoolPref('ignoreArmIsSupportedWarning');
 };
 Application16.prototype = {
 	classDescription: "Zotero Word 16.xx for Mac Integration Application",
