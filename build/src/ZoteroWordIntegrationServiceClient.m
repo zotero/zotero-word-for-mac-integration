@@ -91,7 +91,7 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	if (isRosetta()) {
 		if (isWordArm()) {
 			//			if (macOSVersion.majorVersion == 11 && macOSVersion.minorVersion <= 1)
-			return STATUS_EXCEPTION_ARM_NOT_SUPPORTED;
+//			return STATUS_EXCEPTION_ARM_NOT_SUPPORTED;
 		}
 		//		else if (!ignoreArmIsSupported && macOSVersion.majorVersion == 11 && macOSVersion.minorVersion > 1) {
 		//			return STATUS_EXCEPTION_ARM_SUPPORTED;
