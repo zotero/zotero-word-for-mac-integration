@@ -10,23 +10,8 @@
 statusCode replyStatus;
 
 // Definitions of internal utility functions
-int isRosetta(void);
 void addValueToList(void* value, listNode_t** listStart, listNode_t** listEnd);
 void freeFieldList(listNode_t* fieldList);
-
-// From https://developer.apple.com/forums/thread/653009 (https://archive.is/etgKB)
-// Checks if Zotero is running as translated Rosetta 2 app (on an M1 Apple)
-int isRosetta(void) {
-	int ret = 0;
-	size_t size = sizeof(ret);
-	// Call the sysctl and if successful return the result
-	if (sysctlbyname("sysctl.proc_translated", &ret, &size, NULL, 0) != -1)
-		return ret;
-	// If "sysctl.proc_translated" is not present then must be native
-	if (errno == ENOENT)
-		return 0;
-	return -1;
-}
 
 // Adds a field to a field list
 void addValueToList(void* value, listNode_t** listStart,
@@ -74,31 +59,9 @@ statusCode getRemoteErrorString(RemoteDocument *doc) {
 
 // application
 statusCode getDocument(int wordVersion, const char* wordPath,
-					   const char* documentName, bool ignoreArmIsSupported, RemoteDocument** returnValue)
+					   const char* documentName, RemoteDocument** returnValue)
 {
 	HANDLE_EXCEPTIONS_BEGIN
-	// This has to run after we malloc the doc or there will be sigsevs when Zotero
-	// handling code tries to cleanup the operation
-	// Leaving a bunch of lines commented out since we don't know if/when Apple will fix this
-	//	NSOperatingSystemVersion macOSVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
-	// See https://github.com/zotero/zotero-word-for-mac-integration/issues/26
-	if (isRosetta()) {
-		bool isWordArm = false;
-		NSArray *runningApplications = [[NSWorkspace sharedWorkspace] runningApplications];
-		for (NSRunningApplication* app in runningApplications) {
-			if ([[app bundleIdentifier] isEqual:(@"com.microsoft.Word")]) {
-				isWordArm = [app executableArchitecture] != NSBundleExecutableArchitectureX86_64;
-				break;
-			}
-		}
-		NSBundle *wordBundle = [NSBundle bundleWithPath:[NSString stringWithUTF8String:wordPath]];
-		NSString *wordVersion = wordBundle.infoDictionary[@"CFBundleShortVersionString"];
-		NSString *majorWordVersion = [wordVersion componentsSeparatedByString:@"."][0];
-		NSString *minorWordVersion = [wordVersion componentsSeparatedByString:@"."][1];
-		if (!ignoreArmIsSupported && !isWordArm && [majorWordVersion intValue] >= 16 && [minorWordVersion intValue] >= 44) {
-			return STATUS_EXCEPTION_ARM_SUPPORTED;
-		}
-	}
 	NSXPCConnection *xpcConnection;
 	xpcConnection = [[NSXPCConnection alloc] initWithServiceName:@"zotero.ZoteroWordIntegrationService"];
 	xpcConnection.remoteObjectInterface = [NSXPCInterface interfaceWithProtocol:@protocol(ZoteroWordIntegrationServiceProtocol)];

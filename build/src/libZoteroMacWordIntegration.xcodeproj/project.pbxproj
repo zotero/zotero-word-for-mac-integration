@@ -21,10 +21,21 @@
 		7AADFE5425AF34A10003B71A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F402FC3914B2C51E00CC305F /* Foundation.framework */; };
 		7AADFE5525AF34A10003B71A /* ScriptingBridge.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F402FC3714B2C18400CC305F /* ScriptingBridge.framework */; };
 		7AADFE5B25B59B3D0003B71A /* ZoteroWordIntegrationService.xpc in CopyFiles */ = {isa = PBXBuildFile; fileRef = 7AADFE1025A5F90B0003B71A /* ZoteroWordIntegrationService.xpc */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7AADFE9425B9C5CE0003B71A /* sharedUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AADFE3625A741490003B71A /* sharedUtilities.m */; };
+		7AADFE9825B9C5CE0003B71A /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4E5C73414BAAACA00AF7B9F /* AppKit.framework */; };
+		7AADFE9925B9C5CE0003B71A /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4E5C73114BAAA9600AF7B9F /* Security.framework */; };
+		7AADFE9A25B9C5CE0003B71A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F402FC3914B2C51E00CC305F /* Foundation.framework */; };
+		7AADFE9B25B9C5CE0003B71A /* ScriptingBridge.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F402FC3714B2C18400CC305F /* ScriptingBridge.framework */; };
+		7AADFE9D25B9C5CE0003B71A /* Finder.h in Headers */ = {isa = PBXBuildFile; fileRef = F49583D414BA9E4700159335 /* Finder.h */; };
+		7AADFEBC25B9C6F20003B71A /* utilities.m in Sources */ = {isa = PBXBuildFile; fileRef = F402FC8E14B5608600CC305F /* utilities.m */; };
+		7AADFEC025B9C6FD0003B71A /* application.m in Sources */ = {isa = PBXBuildFile; fileRef = F42F45D914B2AE7300F945DB /* application.m */; };
+		7AADFEC125B9C6FD0003B71A /* document.m in Sources */ = {isa = PBXBuildFile; fileRef = F42F45DD14B2AEFF00F945DB /* document.m */; };
+		7AADFEC225B9C6FD0003B71A /* field.m in Sources */ = {isa = PBXBuildFile; fileRef = F402FC3F14B4126A00CC305F /* field.m */; };
+		7AADFEDB25B9C9E20003B71A /* libZoteroWordIntegration.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 7AADFEA325B9C5CE0003B71A /* libZoteroWordIntegration.dylib */; };
+		7AADFEDF25B9CA310003B71A /* install.m in Sources */ = {isa = PBXBuildFile; fileRef = F49583D214BA876800159335 /* install.m */; };
 		F402FC3814B2C18400CC305F /* ScriptingBridge.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F402FC3714B2C18400CC305F /* ScriptingBridge.framework */; };
 		F402FC3A14B2C51E00CC305F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F402FC3914B2C51E00CC305F /* Foundation.framework */; };
-		F4129F9114DAEB2B008A696A /* libzoteroMacWordIntegration.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = F42F45D014B2ADC600F945DB /* libzoteroMacWordIntegration.dylib */; };
-		F49583D314BA876800159335 /* install.m in Sources */ = {isa = PBXBuildFile; fileRef = F49583D214BA876800159335 /* install.m */; };
+		F4129F9114DAEB2B008A696A /* libZoteroWordIntegrationClient.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = F42F45D014B2ADC600F945DB /* libZoteroWordIntegrationClient.dylib */; };
 		F49583D514BA9E4700159335 /* Finder.h in Headers */ = {isa = PBXBuildFile; fileRef = F49583D414BA9E4700159335 /* Finder.h */; };
 		F4E5C73214BAAA9600AF7B9F /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4E5C73114BAAA9600AF7B9F /* Security.framework */; };
 		F4E5C73514BAAACA00AF7B9F /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4E5C73414BAAACA00AF7B9F /* AppKit.framework */; };
@@ -41,13 +52,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7AADFE9E25B9C5CE0003B71A /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(SRCROOT)/../../resource";
+			dstSubfolderSpec = 0;
+			files = (
+				7AADFEDB25B9C9E20003B71A /* libZoteroWordIntegration.dylib in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F4129F9014DAEB18008A696A /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "$(SRCROOT)/../../resource";
 			dstSubfolderSpec = 0;
 			files = (
-				F4129F9114DAEB2B008A696A /* libzoteroMacWordIntegration.dylib in CopyFiles */,
+				F4129F9114DAEB2B008A696A /* libZoteroWordIntegrationClient.dylib in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -64,11 +85,12 @@
 		7AADFE2525A5F9840003B71A /* XPCZoteroWordIntegration.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XPCZoteroWordIntegration.h; sourceTree = "<group>"; };
 		7AADFE2825A704350003B71A /* ZoteroWordIntegrationServiceClient.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ZoteroWordIntegrationServiceClient.m; sourceTree = "<group>"; };
 		7AADFE3625A741490003B71A /* sharedUtilities.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = sharedUtilities.m; sourceTree = "<group>"; };
+		7AADFEA325B9C5CE0003B71A /* libZoteroWordIntegration.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; name = libZoteroWordIntegration.dylib; path = libZoteroWordIntegration.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		F402FC3714B2C18400CC305F /* ScriptingBridge.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScriptingBridge.framework; path = System/Library/Frameworks/ScriptingBridge.framework; sourceTree = SDKROOT; };
 		F402FC3914B2C51E00CC305F /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		F402FC3F14B4126A00CC305F /* field.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = field.m; sourceTree = "<group>"; };
 		F402FC8E14B5608600CC305F /* utilities.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = utilities.m; sourceTree = "<group>"; };
-		F42F45D014B2ADC600F945DB /* libzoteroMacWordIntegration.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libzoteroMacWordIntegration.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		F42F45D014B2ADC600F945DB /* libZoteroWordIntegrationClient.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libZoteroWordIntegrationClient.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		F42F45D914B2AE7300F945DB /* application.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = application.m; sourceTree = "<group>"; };
 		F42F45DD14B2AEFF00F945DB /* document.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = document.m; sourceTree = "<group>"; };
 		F42F45DF14B2AF0600F945DB /* zoteroMacWordIntegration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zoteroMacWordIntegration.h; sourceTree = "<group>"; };
@@ -91,6 +113,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7AADFE9725B9C5CE0003B71A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7AADFE9825B9C5CE0003B71A /* AppKit.framework in Frameworks */,
+				7AADFE9925B9C5CE0003B71A /* Security.framework in Frameworks */,
+				7AADFE9A25B9C5CE0003B71A /* Foundation.framework in Frameworks */,
+				7AADFE9B25B9C5CE0003B71A /* ScriptingBridge.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F42F45CD14B2ADC600F945DB /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -108,12 +141,6 @@
 		7AADFE1125A5F90B0003B71A /* ZoteroWordIntegrationService */ = {
 			isa = PBXGroup;
 			children = (
-				F402FC8E14B5608600CC305F /* utilities.m */,
-				F42F45D914B2AE7300F945DB /* application.m */,
-				F42F45DD14B2AEFF00F945DB /* document.m */,
-				F42F45DF14B2AF0600F945DB /* zoteroMacWordIntegration.h */,
-				F402FC3F14B4126A00CC305F /* field.m */,
-				F42F45E114B2B7BF00F945DB /* Word.h */,
 				7AADFE1325A5F90B0003B71A /* ZoteroWordIntegrationService.h */,
 				7AADFE1425A5F90B0003B71A /* ZoteroWordIntegrationService.m */,
 				7AADFE1625A5F90B0003B71A /* main.m */,
@@ -132,6 +159,12 @@
 		F42F45C514B2ADC600F945DB = {
 			isa = PBXGroup;
 			children = (
+				F42F45DF14B2AF0600F945DB /* zoteroMacWordIntegration.h */,
+				F402FC8E14B5608600CC305F /* utilities.m */,
+				F42F45D914B2AE7300F945DB /* application.m */,
+				F42F45DD14B2AEFF00F945DB /* document.m */,
+				F402FC3F14B4126A00CC305F /* field.m */,
+				F42F45E114B2B7BF00F945DB /* Word.h */,
 				7AADFE3625A741490003B71A /* sharedUtilities.m */,
 				7AADFE1225A5F90B0003B71A /* ZoteroWordIntegrationServiceProtocol.h */,
 				7AADFE2425A5F9300003B71A /* ZoteroWordIntegrationServiceClient.h */,
@@ -152,8 +185,9 @@
 		F42F45D114B2ADC600F945DB /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				F42F45D014B2ADC600F945DB /* libzoteroMacWordIntegration.dylib */,
+				F42F45D014B2ADC600F945DB /* libZoteroWordIntegrationClient.dylib */,
 				7AADFE1025A5F90B0003B71A /* ZoteroWordIntegrationService.xpc */,
+				7AADFEA325B9C5CE0003B71A /* libZoteroWordIntegration.dylib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -161,6 +195,14 @@
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
+		7AADFE9C25B9C5CE0003B71A /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7AADFE9D25B9C5CE0003B71A /* Finder.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F42F45CE14B2ADC600F945DB /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
@@ -190,9 +232,27 @@
 			productReference = 7AADFE1025A5F90B0003B71A /* ZoteroWordIntegrationService.xpc */;
 			productType = "com.apple.product-type.xpc-service";
 		};
-		F42F45CF14B2ADC600F945DB /* libZoteroMacWordIntegration */ = {
+		7AADFE9225B9C5CE0003B71A /* libZoteroWordIntegration */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F42F45D414B2ADC600F945DB /* Build configuration list for PBXNativeTarget "libZoteroMacWordIntegration" */;
+			buildConfigurationList = 7AADFEA025B9C5CE0003B71A /* Build configuration list for PBXNativeTarget "libZoteroWordIntegration" */;
+			buildPhases = (
+				7AADFE9325B9C5CE0003B71A /* Sources */,
+				7AADFE9725B9C5CE0003B71A /* Frameworks */,
+				7AADFE9C25B9C5CE0003B71A /* Headers */,
+				7AADFE9E25B9C5CE0003B71A /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ZoteroWordIntegration;
+			productName = "Zotero Word for Mac Integration Binary Component";
+			productReference = 7AADFEA325B9C5CE0003B71A /* libZoteroWordIntegration.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+		F42F45CF14B2ADC600F945DB /* ZoteroWordIntegrationClient */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F42F45D414B2ADC600F945DB /* Build configuration list for PBXNativeTarget "ZoteroWordIntegrationClient" */;
 			buildPhases = (
 				F42F45CC14B2ADC600F945DB /* Sources */,
 				F42F45CD14B2ADC600F945DB /* Frameworks */,
@@ -203,9 +263,9 @@
 			);
 			dependencies = (
 			);
-			name = libZoteroMacWordIntegration;
+			name = ZoteroWordIntegrationClient;
 			productName = "Zotero Word for Mac Integration Binary Component";
-			productReference = F42F45D014B2ADC600F945DB /* libzoteroMacWordIntegration.dylib */;
+			productReference = F42F45D014B2ADC600F945DB /* libZoteroWordIntegrationClient.dylib */;
 			productType = "com.apple.product-type.library.dynamic";
 		};
 /* End PBXNativeTarget section */
@@ -234,8 +294,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				F42F45CF14B2ADC600F945DB /* libZoteroMacWordIntegration */,
 				7AADFE0F25A5F90B0003B71A /* ZoteroWordIntegrationService */,
+				F42F45CF14B2ADC600F945DB /* ZoteroWordIntegrationClient */,
+				7AADFE9225B9C5CE0003B71A /* libZoteroWordIntegration */,
 			);
 		};
 /* End PBXProject section */
@@ -265,13 +326,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7AADFE9325B9C5CE0003B71A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7AADFEDF25B9CA310003B71A /* install.m in Sources */,
+				7AADFEC025B9C6FD0003B71A /* application.m in Sources */,
+				7AADFEC125B9C6FD0003B71A /* document.m in Sources */,
+				7AADFEC225B9C6FD0003B71A /* field.m in Sources */,
+				7AADFEBC25B9C6F20003B71A /* utilities.m in Sources */,
+				7AADFE9425B9C5CE0003B71A /* sharedUtilities.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F42F45CC14B2ADC600F945DB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				7AADFE3725A741490003B71A /* sharedUtilities.m in Sources */,
 				7AADFE2925A704350003B71A /* ZoteroWordIntegrationServiceClient.m in Sources */,
-				F49583D314BA876800159335 /* install.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -347,6 +420,32 @@
 				PRODUCT_BUNDLE_IDENTIFIER = zotero.ZoteroWordIntegrationService;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		7AADFEA125B9C5CE0003B71A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				EXECUTABLE_PREFIX = lib;
+				GCC_NO_COMMON_BLOCKS = NO;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		7AADFEA225B9C5CE0003B71A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				EXECUTABLE_PREFIX = lib;
+				GCC_NO_COMMON_BLOCKS = NO;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
 			};
 			name = Release;
 		};
@@ -446,7 +545,7 @@
 				GCC_NO_COMMON_BLOCKS = NO;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				ONLY_ACTIVE_ARCH = NO;
-				PRODUCT_NAME = zoteroMacWordIntegration;
+				PRODUCT_NAME = ZoteroWordIntegrationClient;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -459,7 +558,7 @@
 				GCC_NO_COMMON_BLOCKS = NO;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				ONLY_ACTIVE_ARCH = NO;
-				PRODUCT_NAME = zoteroMacWordIntegration;
+				PRODUCT_NAME = ZoteroWordIntegrationClient;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -476,6 +575,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		7AADFEA025B9C5CE0003B71A /* Build configuration list for PBXNativeTarget "libZoteroWordIntegration" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7AADFEA125B9C5CE0003B71A /* Debug */,
+				7AADFEA225B9C5CE0003B71A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		F42F45CA14B2ADC600F945DB /* Build configuration list for PBXProject "libZoteroMacWordIntegration" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -485,7 +593,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F42F45D414B2ADC600F945DB /* Build configuration list for PBXNativeTarget "libZoteroMacWordIntegration" */ = {
+		F42F45D414B2ADC600F945DB /* Build configuration list for PBXNativeTarget "ZoteroWordIntegrationClient" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F42F45D514B2ADC600F945DB /* Debug */,

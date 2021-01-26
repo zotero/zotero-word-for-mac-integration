@@ -5,6 +5,7 @@
 //  Created by Adomas Venckauskas on 2021-01-07.
 //
 
+#import <sys/sysctl.h>
 #include "XPCZoteroWordIntegration.h"
 
 
@@ -122,4 +123,34 @@ statusCode flagOSError(OSStatus status, const char function[], NSString* file,
 // Frees a C string
 void freeData(void* ptr) {
 	free(ptr);
+}
+
+// From https://developer.apple.com/forums/thread/653009 (https://archive.is/etgKB)
+// Checks if Zotero is running as translated Rosetta 2 app (on an M1 Apple)
+int isZoteroRosetta() {
+	int ret = 0;
+	size_t size = sizeof(ret);
+	// Call the sysctl and if successful return the result
+	if (sysctlbyname("sysctl.proc_translated", &ret, &size, NULL, 0) != -1)
+		return ret;
+	// If "sysctl.proc_translated" is not present then must be native
+	if (errno == ENOENT)
+		return 0;
+	return -1;
+}
+
+char *getWordVersion(const char wordPath[]) {
+	NSBundle *wordBundle = [NSBundle bundleWithPath:[NSString stringWithUTF8String:wordPath]];
+	NSString *wordVersion = wordBundle.infoDictionary[@"CFBundleShortVersionString"];
+	return copyNSString(wordVersion);
+}
+
+bool isWordArm() {
+	NSArray *runningApplications = [[NSWorkspace sharedWorkspace] runningApplications];
+	for (NSRunningApplication* app in runningApplications) {
+		if ([[app bundleIdentifier] isEqual:(@"com.microsoft.Word")]) {
+			return [app executableArchitecture] != NSBundleExecutableArchitectureX86_64;
+		}
+	}
+	return false;
 }

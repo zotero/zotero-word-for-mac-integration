@@ -29,9 +29,10 @@ Components.utils.import("resource://gre/modules/Services.jsm");
 var Zotero = Components.classes["@zotero.org/Zotero;1"]
 			.getService(Components.interfaces.nsISupports)
 			.wrappedJSObject;
-var field_t, document_t, fieldListNode_t, progressFunction_t, lib, libPath, f, fieldPtr;
+var field_t, document_t, fieldListNode_t, progressFunction_t, xpcLib, lib, libPath, f, x, fn, fieldPtr;
 var dataInUse = [];
 var ignoreArmIsSupported = false;
+var useXPC = false;
 
 const STATUS_EXCEPTION = 1;
 const STATUS_EXCEPTION_ALREADY_DISPLAYED = 2;
@@ -51,7 +52,9 @@ function init() {
 	var fileURI = resHandler.getSubstitution("zotero-macword-integration")
 		.QueryInterface(Components.interfaces.nsIFileURL);
 	libPath = fileURI.file;
-	libPath.append("libzoteroMacWordIntegration.dylib");
+	libPath.append("libZoteroWordIntegration.dylib");
+	var xpcLibPath = fileURI.file;
+	xpcLibPath.append("libZoteroWordIntegrationClient.dylib");
 	
 	lib = ctypes.open(libPath.path);
 	
@@ -77,10 +80,9 @@ function init() {
 		clearError: lib.declare("clearError", ctypes.default_abi, ctypes.void_t),
 		
 		// statusCode getDocument(int wordVersion, const char* wordPath,
-		//					   const char* documentName, bool ignoreArmIsSupported,
-		//					   Document** returnValue);
+		//					   const char* documentName, Document** returnValue);
 		getDocument: lib.declare("getDocument", ctypes.default_abi, statusCode, ctypes.int,
-			ctypes.char.ptr, ctypes.char.ptr, ctypes.bool, document_t.ptr.ptr),
+			ctypes.char.ptr, ctypes.char.ptr, document_t.ptr.ptr),
 		
 		// statusCode activate(Document *doc);
 		activate: lib.declare("activate", ctypes.default_abi, statusCode, document_t.ptr),
@@ -152,39 +154,38 @@ function init() {
 		// statusCode cleanup(Document *doc);
 		complete: lib.declare("complete", ctypes.default_abi, statusCode, document_t.ptr),
 
-		// statusCode deleteField(RemoteDocument *doc, XPCField field);
-		deleteField: lib.declare("deleteField", ctypes.default_abi, statusCode,
-			document_t.ptr, field_t),
+		// statusCode deleteField(XPCField field);
+		deleteField: lib.declare("deleteField", ctypes.default_abi, statusCode, field_t),
 
-		// statusCode removeCode(RemoteDocument *doc, XPCField field);
-		removeCode: lib.declare("removeCode", ctypes.default_abi, statusCode, document_t.ptr, field_t),
+		// statusCode removeCode(XPCField field);
+		removeCode: lib.declare("removeCode", ctypes.default_abi, statusCode, field_t),
 			
-		// statusCode selectField(RemoteDocument *doc, XPCField field);
-		selectField: lib.declare("selectField", ctypes.default_abi, statusCode, document_t.ptr, field_t),
+		// statusCode selectField(XPCField field);
+		selectField: lib.declare("selectField", ctypes.default_abi, statusCode, field_t),
 			
-		// statusCode setText(RemoteDocument *doc, XPCField field, const char string[], bool isRich);
-		setText: lib.declare("setText", ctypes.default_abi, statusCode, document_t.ptr, field_t,
+		// statusCode setText(XPCField field, const char string[], bool isRich);
+		setText: lib.declare("setText", ctypes.default_abi, statusCode, field_t,
 			ctypes.char.ptr, ctypes.bool),
 			
-		// statusCode getText(RemoteDocument *doc, XPCField field, char** returnValue);
-		getText: lib.declare("getText", ctypes.default_abi, statusCode, document_t.ptr, field_t,
+		// statusCode getText(XPCField field, char** returnValue);
+		getText: lib.declare("getText", ctypes.default_abi, statusCode, field_t,
 			ctypes.char.ptr.ptr),
 			
-		// statusCode setCode(RemoteDocument *doc, XPCField field, const char code[]);
-		setCode: lib.declare("setCode", ctypes.default_abi, statusCode, document_t.ptr, field_t,
+		// statusCode setCode(XPCField field, const char code[]);
+		setCode: lib.declare("setCode", ctypes.default_abi, statusCode, field_t,
 			ctypes.char.ptr),
 		
-		// statusCode getCode(RemoteDocument *doc, XPCField field, char** returnValue);
-		getCode: lib.declare("getCode", ctypes.default_abi, statusCode, document_t.ptr, field_t,
+		// statusCode getCode(XPCField field, char** returnValue);
+		getCode: lib.declare("getCode", ctypes.default_abi, statusCode, field_t,
 			ctypes.char.ptr.ptr),
 		
-		// statusCode getNoteIndex(RemoteDocument *doc, XPCField field, unsigned long *returnValue);
+		// statusCode getNoteIndex(XPCField field, unsigned long *returnValue);
 		getNoteIndex: lib.declare("getNoteIndex", ctypes.default_abi, statusCode,
-			document_t.ptr, field_t, ctypes.unsigned_long.ptr),
+			field_t, ctypes.unsigned_long.ptr),
 		
-		// statusCode equals(RemoteDocument *doc, XPCField a, XPCField b, bool *returnValue);
+		// statusCode equals(XPCField a, XPCField b, bool *returnValue);
 		equals: lib.declare("equals", ctypes.default_abi, statusCode,
-			document_t.ptr, field_t, field_t, ctypes.bool.ptr),
+			field_t, field_t, ctypes.bool.ptr),
 		
 		// statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]);
 		install: lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr,
@@ -199,7 +200,138 @@ function init() {
 			ctypes.char.ptr),
 		
 		// statusCode freeData(void* ptr);
-		freeData: lib.declare("freeData", ctypes.default_abi, statusCode, ctypes.void_t.ptr)
+		freeData: lib.declare("freeData", ctypes.default_abi, statusCode, ctypes.void_t.ptr),
+
+		// bool isWordArm();
+		isWordArm: lib.declare("isWordArm", ctypes.default_abi, ctypes.bool),
+		
+		// char *getWordVersion(const char wordPath[]);
+		getWordVersion: lib.declare("getWordVersion", ctypes.default_abi, ctypes.char.ptr, ctypes.char.ptr),
+		
+		// int isZoteroRosetta();
+		isZoteroRosetta: lib.declare("isZoteroRosetta", ctypes.default_abi, ctypes.int),
+	};
+
+	xpcLib = ctypes.open(xpcLibPath.path);
+	
+	x = {
+		// char* getError(void);
+		getError: xpcLib.declare("getError", ctypes.default_abi, ctypes.char.ptr),
+
+		// void clearError(void);
+		clearError: xpcLib.declare("clearError", ctypes.default_abi, ctypes.void_t),
+
+		// statusCode getDocument(int wordVersion, const char* wordPath,
+		//					   const char* documentName, Document** returnValue);
+		getDocument: xpcLib.declare("getDocument", ctypes.default_abi, statusCode, ctypes.int,
+			ctypes.char.ptr, ctypes.char.ptr, document_t.ptr.ptr),
+
+		// statusCode activate(Document *doc);
+		activate: xpcLib.declare("activate", ctypes.default_abi, statusCode, document_t.ptr),
+
+		// statusCode displayAlert(char const dialogText[], unsigned short icon,
+		//						   unsigned short buttons, unsigned short* returnValue);
+		displayAlert: xpcLib.declare("displayAlert", ctypes.default_abi, ctypes.unsigned_short,
+			document_t.ptr, ctypes.char.ptr, ctypes.unsigned_short, ctypes.unsigned_short,
+			ctypes.unsigned_short.ptr),
+
+		// statusCode canInsertField(Document *doc, const char fieldType[], bool* returnValue);
+		canInsertField: xpcLib.declare("canInsertField", ctypes.default_abi, statusCode,
+			document_t.ptr, ctypes.char.ptr, ctypes.bool.ptr),
+
+		// statusCode cursorInField(Document *doc, const char fieldType[], Field** returnValue);
+		cursorInField: xpcLib.declare("cursorInField", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, field_t.ptr),
+
+		// statusCode getDocumentData(Document *doc, char **returnValue);
+		getDocumentData: xpcLib.declare("getDocumentData", ctypes.default_abi, statusCode,
+			document_t.ptr, ctypes.char.ptr.ptr),
+
+		// statusCode setDocumentData(Document *doc, const char documentData[]);
+		setDocumentData: xpcLib.declare("setDocumentData", ctypes.default_abi, statusCode,
+			document_t.ptr, ctypes.char.ptr),
+
+		// statusCode insertField(Document *doc, const char fieldType[],
+		//					      unsigned short noteType, Field **returnValue)
+		insertField: xpcLib.declare("insertField", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, ctypes.unsigned_short, field_t.ptr),
+
+		// statusCode getFields(document_t *doc, const char fieldType[],
+		//					    fieldListNode_t** returnNode);
+		getFields: xpcLib.declare("getFields", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, fieldListNode_t.ptr.ptr),
+
+		// statusCode getFieldsAsync(document_t *doc, const char fieldType[],
+		// 						     void (*onProgress)(int progress),
+		// 						     fieldListNode_t** returnNode);
+		getFieldsAsync: xpcLib.declare("getFieldsAsync", ctypes.default_abi, statusCode,
+			document_t.ptr, ctypes.char.ptr, fieldListNode_t.ptr.ptr, progressFunction_t),
+
+		// statusCode setBibliographyStyle(Document *doc, long firstLineIndent, 
+		//								   long bodyIndent, unsigned long lineSpacing,
+		//								   unsigned long entrySpacing, long tabStops[],
+		//								   unsigned long tabStopCount);
+		setBibliographyStyle: xpcLib.declare("setBibliographyStyle", ctypes.default_abi,
+			statusCode, document_t.ptr, ctypes.long, ctypes.long, ctypes.unsigned_long,
+			ctypes.unsigned_long, ctypes.long.array(), ctypes.unsigned_long),
+
+		// statusCode exportDocument(Document *doc, const jschar fieldType[],
+		// 							const jschar importInstructions[]);
+		exportDocument: xpcLib.declare("exportDocument", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, ctypes.char.ptr),
+
+		// statusCode importDocument(Document *doc, const jschar fieldType[],
+		// 							bool *returnValue);
+		importDocument: xpcLib.declare("importDocument", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, ctypes.bool.ptr),
+
+		// statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
+		//				      const char toFieldType[], unsigned short noteType[]);
+		convert: xpcLib.declare("convert", ctypes.default_abi, statusCode, document_t.ptr,
+			field_t.ptr, ctypes.unsigned_long, ctypes.char.ptr, ctypes.unsigned_short.ptr),
+
+		// statusCode cleanup(Document *doc);
+		cleanup: xpcLib.declare("cleanup", ctypes.default_abi, statusCode, document_t.ptr),
+
+		// statusCode cleanup(Document *doc);
+		complete: xpcLib.declare("complete", ctypes.default_abi, statusCode, document_t.ptr),
+
+		// statusCode deleteField(RemoteDocument *doc, XPCField field);
+		deleteField: xpcLib.declare("deleteField", ctypes.default_abi, statusCode,
+			document_t.ptr, field_t),
+
+		// statusCode removeCode(RemoteDocument *doc, XPCField field);
+		removeCode: xpcLib.declare("removeCode", ctypes.default_abi, statusCode, document_t.ptr, field_t),
+
+		// statusCode selectField(RemoteDocument *doc, XPCField field);
+		selectField: xpcLib.declare("selectField", ctypes.default_abi, statusCode, document_t.ptr, field_t),
+
+		// statusCode setText(RemoteDocument *doc, XPCField field, const char string[], bool isRich);
+		setText: xpcLib.declare("setText", ctypes.default_abi, statusCode, document_t.ptr, field_t,
+			ctypes.char.ptr, ctypes.bool),
+
+		// statusCode getText(RemoteDocument *doc, XPCField field, char** returnValue);
+		getText: xpcLib.declare("getText", ctypes.default_abi, statusCode, document_t.ptr, field_t,
+			ctypes.char.ptr.ptr),
+
+		// statusCode setCode(RemoteDocument *doc, XPCField field, const char code[]);
+		setCode: xpcLib.declare("setCode", ctypes.default_abi, statusCode, document_t.ptr, field_t,
+			ctypes.char.ptr),
+
+		// statusCode getCode(RemoteDocument *doc, XPCField field, char** returnValue);
+		getCode: xpcLib.declare("getCode", ctypes.default_abi, statusCode, document_t.ptr, field_t,
+			ctypes.char.ptr.ptr),
+
+		// statusCode getNoteIndex(RemoteDocument *doc, XPCField field, unsigned long *returnValue);
+		getNoteIndex: xpcLib.declare("getNoteIndex", ctypes.default_abi, statusCode,
+			document_t.ptr, field_t, ctypes.unsigned_long.ptr),
+
+		// statusCode equals(RemoteDocument *doc, XPCField a, XPCField b, bool *returnValue);
+		equals: xpcLib.declare("equals", ctypes.default_abi, statusCode,
+			document_t.ptr, field_t, field_t, ctypes.bool.ptr),
+
+		// statusCode freeData(void* ptr);
+		freeData: xpcLib.declare("freeData", ctypes.default_abi, statusCode, ctypes.void_t.ptr)
 	};
 	
 	fieldPtr = new ctypes.PointerType(field_t);
@@ -516,8 +648,24 @@ Application16.prototype = {
 	service: 		true,
 	getDocument: async function(path) {
 		init();
+		// See https://github.com/zotero/zotero-word-for-mac-integration/issues/26
+		var isZoteroRosetta = f.isZoteroRosetta().value == 1;
+		if (isZoteroRosetta) {
+			var returnValue = f.getWordVersion(path);
+			var wordVersion = returnValue.readString().split('.');
+			checkStatus(f.freeData(returnValue));
+			if (wordVersion[1] >= 43) {
+				var isWordArm = f.isWordArm();
+				if (!isWordArm && !ignoreArmIsSupported) {
+					// This will cause a throw
+					return checkStatus(STATUS_EXCEPTION_ARM_SUPPORTED);
+				}
+				useXPC = true;
+			}
+		}
+		fn = useXPC ? x : f;
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(16, path, null, ignoreArmIsSupported, docPtr.address()));
+		checkStatus(fn.getDocument(16, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
 	getActiveDocument: async function(path) {
@@ -543,7 +691,7 @@ Document.prototype = {
 	displayAlert: function(dialogText, icon, buttons) {
 		Zotero.debug("ZoteroMacWordIntegration: displayAlert", 4);
 		var buttonPressed = new ctypes.unsigned_short();
-		checkStatus(f.displayAlert(this._document_t, dialogText, icon, buttons,
+		checkStatus(fn.displayAlert(this._document_t, dialogText, icon, buttons,
 			buttonPressed.address()));
 		return buttonPressed.value;
 	},
@@ -551,14 +699,14 @@ Document.prototype = {
 	activate: function() {
 		Zotero.debug("ZoteroMacWordIntegration: activate", 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.activate(this._document_t));
+		checkStatus(fn.activate(this._document_t));
 	},
 	
 	canInsertField: function(fieldType) {
 		Zotero.debug("ZoteroMacWordIntegration: canInsertField", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.bool();
-		checkStatus(f.canInsertField(this._document_t, fieldType, returnValue.address()));
+		checkStatus(fn.canInsertField(this._document_t, fieldType, returnValue.address()));
 		return returnValue.value;
 	},
 	
@@ -566,7 +714,7 @@ Document.prototype = {
 		Zotero.debug("ZoteroMacWordIntegration: cursorInField", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new field_t();
-		checkStatus(f.cursorInField(this._document_t, fieldType, returnValue.address()));
+		checkStatus(fn.cursorInField(this._document_t, fieldType, returnValue.address()));
 		return (returnValue.value == 0 ? null : new Field(returnValue, this._document_t, this._documentStatus));
 	},
 	
@@ -574,23 +722,23 @@ Document.prototype = {
 		Zotero.debug("ZoteroMacWordIntegration: getDocumentData", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.char.ptr();
-		checkStatus(f.getDocumentData(this._document_t, returnValue.address()));
+		checkStatus(fn.getDocumentData(this._document_t, returnValue.address()));
 		var data = returnValue.readString();
-		f.freeData(returnValue);
+		fn.freeData(returnValue);
 		return data;
 	},
 	
 	setDocumentData: function(documentData) {
 		Zotero.debug("ZoteroMacWordIntegration: setDocumentData", 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.setDocumentData(this._document_t, documentData));
+		checkStatus(fn.setDocumentData(this._document_t, documentData));
 	},
 	
 	insertField: function(fieldType, noteType) {
 		Zotero.debug("ZoteroMacWordIntegration: insertField", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new field_t();
-		checkStatus(f.insertField(this._document_t, fieldType, noteType, returnValue.address()));
+		checkStatus(fn.insertField(this._document_t, fieldType, noteType, returnValue.address()));
 		return new Field(returnValue, this._document_t, this._documentStatus);
 	},
 	
@@ -622,7 +770,7 @@ Document.prototype = {
 		// Prevent GC
 		dataInUse = dataInUse.concat([callback, fieldListNode]);
 		await Zotero.Promise.delay();
-		checkStatus(f.getFieldsAsync(this._document_t, fieldType, fieldListNode.address(), callback));
+		checkStatus(fn.getFieldsAsync(this._document_t, fieldType, fieldListNode.address(), callback));
 		return promise;
 	},
 	
@@ -630,7 +778,7 @@ Document.prototype = {
 			tabStops) {
 		Zotero.debug("ZoteroMacWordIntegration: setBibliographyStyle", 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.setBibliographyStyle(this._document_t, firstLineIndent, bodyIndent, lineSpacing,
+		checkStatus(fn.setBibliographyStyle(this._document_t, firstLineIndent, bodyIndent, lineSpacing,
 			entrySpacing, ctypes.long.array(tabStops.length)(tabStops), tabStops.length));
 	},
 
@@ -638,21 +786,21 @@ Document.prototype = {
 		Zotero.debug(`ZoteroWinMacIntegration: importDocument`, 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.bool();
-		checkStatus(f.importDocument(this._document_t, fieldType, returnValue.address()));
+		checkStatus(fn.importDocument(this._document_t, fieldType, returnValue.address()));
 		return returnValue.value;
 	},
 
 	exportDocument: function(fieldType, importInstructions) {
 		Zotero.debug(`ZoteroWinMacIntegration: exportDocument`, 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.exportDocument(this._document_t, fieldType, importInstructions));
+		checkStatus(fn.exportDocument(this._document_t, fieldType, importInstructions));
 	},
 	
 	convert: function(fields, toFieldType, toNoteTypes) {
 		Zotero.debug("ZoteroMacWordIntegration: convert", 4);
 		checkIfFreed(this._documentStatus);
 		fields = fields.map(field => field._field_t);
-		checkStatus(f.convert(this._document_t, field_t.array()(fields),
+		checkStatus(fn.convert(this._document_t, field_t.array()(fields),
 			fields.length, ctypes.char.array()(toFieldType),
 			ctypes.unsigned_short.array()(toNoteTypes)));
 	},
@@ -660,7 +808,7 @@ Document.prototype = {
 	cleanup: function() {
 		Zotero.debug("ZoteroMacWordIntegration: cleanup", 4);
 		if (this._documentStatus.active) {
-			checkStatus(f.cleanup(this._document_t));
+			checkStatus(fn.cleanup(this._document_t));
 		}
 		else {
 			Zotero.debug("complete() already called on document; ignoring", 4);
@@ -670,7 +818,7 @@ Document.prototype = {
 	complete: function() {
 		Zotero.debug("ZoteroMacWordIntegration: complete", 4);
 		if (this._documentStatus.active) {
-			checkStatus(f.complete(this._document_t));
+			checkStatus(fn.complete(this._document_t));
 			this._documentStatus.active = false;
 		}
 		else {
@@ -717,31 +865,51 @@ Field.prototype = {
 	delete: function() {
 		Zotero.debug("ZoteroMacWordIntegration: delete", 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.deleteField(this._document_t, this._field_t));
+		if (useXPC) {
+			checkStatus(x.deleteField(this._document_t, this._field_t));
+		} else {
+			checkStatus(f.deleteField(this._field_t));
+		}
 	},
 	
 	removeCode: function() {
 		Zotero.debug("ZoteroMacWordIntegration: removeCode", 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.removeCode(this._document_t, this._field_t));
+		if (useXPC) {
+			checkStatus(x.removeCode(this._document_t, this._field_t));
+		} else {
+			checkStatus(f.removeCode(this._field_t));
+		}
 	},
 	
 	select: function() {
 		Zotero.debug("ZoteroMacWordIntegration: select", 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.selectField(this._document_t, this._field_t));
+		if (useXPC) {
+			checkStatus(x.selectField(this._document_t, this._field_t));
+		} else {
+			checkStatus(f.selectField(this._field_t));
+		}
 	},
 	
 	setText: function(text, isRich) {
 		Zotero.debug(`ZoteroMacWordIntegration: setText rtf:${isRich} ${text}`, 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.setText(this._document_t, this._field_t, text, isRich));
+		if (useXPC) {
+			checkStatus(x.setText(this._document_t, this._field_t, text, isRich));
+		} else {
+			checkStatus(f.setText(this._field_t, text, isRich));
+		}
 	},
 	
 	getText: function() {
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.char.ptr();
-		checkStatus(f.getText(this._document_t, this._field_t, returnValue.address()));
+		if (useXPC) {
+			checkStatus(x.getText(this._document_t, this._field_t, returnValue.address()));
+		} else {
+			checkStatus(f.getText(this._field_t, returnValue.address()));
+		}
 		var val = returnValue.readString();
 		Zotero.debug(`ZoteroMacWordIntegration: getText ${val}`, 4);
 		return val;
@@ -750,13 +918,21 @@ Field.prototype = {
 	setCode: function(code) {
 		Zotero.debug(`ZoteroMacWordIntegration: setCode ${code}`, 4);
 		checkIfFreed(this._documentStatus);
-		checkStatus(f.setCode(this._document_t, this._field_t, code));
+		if (useXPC) {
+			checkStatus(x.setCode(this._document_t, this._field_t, code));
+		} else {
+			checkStatus(f.setCode(this._field_t, code));
+		}
 	},
 	
 	getCode: function() {
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.char.ptr();
-		checkStatus(f.getCode(this._document_t, this._field_t, returnValue.address()));
+		if (useXPC) {
+			checkStatus(x.getCode(this._document_t, this._field_t, returnValue.address()));
+		} else {
+			checkStatus(f.getCode(this._field_t, returnValue.address()));
+		}
 		var val = returnValue.readString();
 		Zotero.debug(`ZoteroMacWordIntegration: getCode ${val}`, 4);
 		return val;
@@ -766,7 +942,11 @@ Field.prototype = {
 		Zotero.debug("ZoteroMacWordIntegration: equals", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.bool();
-		checkStatus(f.equals(this._document_t, this._field_t, field._field_t, returnValue.address()));
+		if (useXPC) {
+			checkStatus(x.equals(this._document_t, this._field_t, field._field_t, returnValue.address()));
+		} else {
+			checkStatus(f.equals(this._field_t, field._field_t, returnValue.address()));
+		}
 		return returnValue.value;
 	},
 	
@@ -774,7 +954,11 @@ Field.prototype = {
 		Zotero.debug("ZoteroMacWordIntegration: getNoteIndex", 4);
 		checkIfFreed(this._documentStatus);
 		var returnValue = new ctypes.unsigned_long();
-		checkStatus(f.getNoteIndex(this._document_t, this._field_t, returnValue.address()));
+		if (useXPC) {
+			checkStatus(x.getNoteIndex(this._document_t, this._field_t, returnValue.address()));
+		} else {
+			checkStatus(f.getNoteIndex(this._field_t, returnValue.address()));
+		}
 		return parseInt(returnValue.value);
 	}
 }

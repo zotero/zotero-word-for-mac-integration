@@ -46,4 +46,9 @@ statusCode flagOSError(OSStatus status, const char function[], NSString* file,
 
 void freeData(void* ptr);
 
+int isZoteroRosetta(void);
+char *getWordVersion(const char wordPath[]);
+bool isWordArm(void);
+
+
 #endif /* XPCZoteroWordIntegration_h */

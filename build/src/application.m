@@ -28,7 +28,7 @@
 NSMutableDictionary* wordApps = nil;
 
 statusCode getDocument(int wordVersion, const char* wordPath,
-					   const char* documentName, bool ignoreArmIsSupported, document_t **returnValue) {
+					   const char* documentName, document_t **returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
 	clearError();
 	

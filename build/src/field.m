@@ -669,6 +669,13 @@ statusCode getText(field_t* field, char** returnValue) {
 	HANDLE_EXCEPTIONS_END
 }
 
+statusCode getCode(field_t* field, char** returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
+	*returnValue = field->code;
+	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
+}
+
 // Sets the field code
 statusCode setCode(field_t *field, const char code[]) {
 	HANDLE_EXCEPTIONS_BEGIN

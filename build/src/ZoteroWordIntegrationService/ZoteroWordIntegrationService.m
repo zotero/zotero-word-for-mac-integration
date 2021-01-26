@@ -13,7 +13,7 @@
 - (void)getDocumentWithWordVersion:(int)wordVersion wordPath:(const char*)wordPath
 					  documentName:(const char*)documentName andReply:(void (^)(statusCode))reply {
 	document_t *doc;
-	statusCode status = getDocument(wordVersion, wordPath, documentName, true, &(doc));
+	statusCode status = getDocument(wordVersion, wordPath, documentName, &(doc));
 	self.doc = doc;
 	reply(status);
 }
@@ -157,8 +157,9 @@
 }
 
 - (void)getCode:(XPCField)field withReply:(void (^)(statusCode, char *))reply {
-	field_t *f = (field_t *)field;
-	reply(STATUS_OK, f->code);
+	char *result;
+	statusCode status = getCode((field_t *) field, &result);
+	reply(status, result);
 }
 
 - (void)getNoteIndex:(XPCField)field withReply:(void (^)(statusCode, unsigned long))reply {

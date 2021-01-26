@@ -9,7 +9,6 @@
 #define ZoteroWordIntegrationServiceClient_h
 
 #import <AppKit/AppKit.h>
-#import <sys/sysctl.h>
 #include "XPCZoteroWordIntegration.h"
 
 #define HANDLE_REPLY(status, doc) \
@@ -51,7 +50,7 @@ statusCode getRemoteErrorString(RemoteDocument *doc);
 
 // application
 statusCode getDocument(int wordVersion, const char* wordPath,
-						const char* documentName, bool ignoreArmIsSupported, RemoteDocument** returnValue);
+						const char* documentName, RemoteDocument** returnValue);
 
 // document
 statusCode activate(RemoteDocument *doc);

@@ -26,7 +26,7 @@
 #define zoteroMacWordIntegration_h
 
 #include "Word.h"
-#include "../XPCZoteroWordIntegration.h"
+#include "XPCZoteroWordIntegration.h"
 
 
 enum DIALOG_ICON {
@@ -215,7 +215,7 @@ NSInteger getEntryIndex(document_t* x, SBObject* y);
 
 // application.m
 statusCode getDocument(int wordVersion, const char* wordPath,
-					   const char* documentName, bool ignoreArmIsSupported, document_t** returnValue);
+					   const char* documentName, document_t** returnValue);
 
 // document.m
 void freeDocument(document_t *doc);
@@ -266,6 +266,7 @@ statusCode selectField(field_t* field);
 statusCode setText(field_t* field, const char string[], bool isRich);
 statusCode getText(field_t* field, char** returnValue);
 statusCode setCode(field_t *field, const char code[]);
+statusCode getCode(field_t* field, char** returnValue);
 statusCode getNoteIndex(field_t* field, unsigned long *returnValue);
 
 statusCode initField(document_t *doc, WordField* sbField, short noteType,
