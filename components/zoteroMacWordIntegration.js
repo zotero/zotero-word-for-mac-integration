@@ -565,7 +565,7 @@ Application2004.prototype = {
 	getDocument: async function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(2004, path, null, ignoreArmIsSupported, docPtr.address()));
+		checkStatus(f.getDocument(2004, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
 	getActiveDocument: async function(path) {
@@ -591,7 +591,7 @@ Application2008.prototype = {
 	getDocument: async function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(2008, path, null, ignoreArmIsSupported, docPtr.address()));
+		checkStatus(f.getDocument(2008, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
 	getActiveDocument: async function(path) {
@@ -617,7 +617,7 @@ Application2016.prototype = {
 	getDocument: async function(path) {
 		init();
 		var docPtr = new document_t.ptr();
-		checkStatus(f.getDocument(2016, path, null, ignoreArmIsSupported, docPtr.address()));
+		checkStatus(f.getDocument(2016, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
 	getActiveDocument: async function(path) {
