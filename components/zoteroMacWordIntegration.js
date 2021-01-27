@@ -422,7 +422,7 @@ function showWordWarning(wordVersion) {
 	var url = 'https://www.zotero.org/support/kb/mac_word_apple_silicon_compatibility';
 	var ignoreCheckboxValue = {};
 	var index = displayMoreInformationAlert(title, message, ignoreCheckboxValue);
-	if (index == 2) {
+	if (index == 1) {
 		Zotero.launchURL(url)
 	}
 	if (ignoreCheckboxValue.value) {
