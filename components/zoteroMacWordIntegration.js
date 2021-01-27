@@ -429,10 +429,8 @@ function showWordWarning(wordVersion) {
 		let prefService = Components.classes["@mozilla.org/preferences-service;1"]
 			.getService(Components.interfaces.nsIPrefService);
 		let prefBranch = prefService.getBranch("extensions.zoteroMacWordIntegration.");
-		prefBranch.setIntPref(
-			'nextArmIsSupportedWarning',
-			Math.floor(Date.now() / 1000) + (86400 * armIsSupportedWarningIgnoreDays)
-		);
+		nextArmIsSupportedWarning = Math.floor(Date.now() / 1000) + (86400 * armIsSupportedWarningIgnoreDays);
+		prefBranch.setIntPref('nextArmIsSupportedWarning', nextArmIsSupportedWarning);
 	}
 	throw new Error("ExceptionAlreadyDisplayed");
 }
