@@ -26,15 +26,8 @@
 #define zoteroMacWordIntegration_h
 
 #include "Word.h"
-#import <sys/sysctl.h>
-enum STATUS {
-	STATUS_OK = 0,
-	STATUS_EXCEPTION = 1,
-	STATUS_EXCEPTION_ALREADY_DISPLAYED = 2,
-	STATUS_EXCEPTION_SB_DENIED = 3,
-	STATUS_EXCEPTION_ARM_NOT_SUPPORTED = 4,
-	STATUS_EXCEPTION_ARM_SUPPORTED = 5
-};
+#include "XPCZoteroWordIntegration.h"
+
 
 enum DIALOG_ICON {
 	DIALOG_ICON_STOP = 0,
@@ -47,11 +40,6 @@ enum DIALOG_BUTTONS {
 	DIALOG_BUTTONS_OK_CANCEL = 1,
 	DIALOG_BUTTONS_YES_NO = 2,
 	DIALOG_BUTTONS_YES_NO_CANCEL = 3
-};
-
-enum NOTE_TYPE {
-	NOTE_FOOTNOTE = 1,
-	NOTE_ENDNOTE = 2
 };
 
 #define MAX_PROPERTY_LENGTH 255
@@ -136,11 +124,6 @@ throwError([NSString stringWithFormat:@"%@", e], __FUNCTION__, [@__FILE__ lastPa
 return STATUS_EXCEPTION; \
 }
 
-typedef struct ListNode {
-	void* value;
-	struct ListNode* next;
-} listNode_t;
-
 typedef struct Document {
 	char* wordPath;
 	int wordVersion;
@@ -218,26 +201,7 @@ typedef struct Field {
 	NSString* rawCode;
 } field_t;
 
-typedef unsigned short statusCode;
-
 // utilities.m
-@class ZoteroSBApplicationDelegate;
-@interface ZoteroSBApplicationDelegate : NSObject <SBApplicationDelegate>
-@end
-BOOL errorHasOccurred(void);
-void setErrorMonitor(BOOL status);
-void flagError(const char function[], NSString* file, unsigned int line);
-void throwError(NSString *errorString, const char function[], NSString* file,
-				unsigned int line);
-statusCode flagOSError(OSStatus status, const char function[], NSString* file,
-					   unsigned int line);
-void clearError(void);
-char* getError(void);
-NSInteger getErrorCode(void);
-int isRosetta(void);
-bool isWordArm(void);
-NSString *getMacOSVersion(void);
-
 void storeCursorLocation(document_t* doc);
 statusCode moveCursorOutOfNote(document_t* doc);
 statusCode restoreCursor(document_t* doc);
@@ -245,16 +209,13 @@ statusCode restoreCursor(document_t* doc);
 FILE* getTemporaryFile(document_t *doc);
 void deleteTemporaryFile(void);
 NSString* getTemporaryFilePath(void);
-NSString* posixPathToHFSPath(NSString *posixPath);
 
-char* copyNSString(NSString* string);
-void freeData(void* ptr);
 NSString* generateRandomString(NSUInteger length);
 NSInteger getEntryIndex(document_t* x, SBObject* y);
 
 // application.m
 statusCode getDocument(int wordVersion, const char* wordPath,
-					   const char* documentName, bool ignoreArmIsSupported, document_t** returnValue);
+					   const char* documentName, document_t** returnValue);
 
 // document.m
 void freeDocument(document_t *doc);
@@ -305,6 +266,7 @@ statusCode selectField(field_t* field);
 statusCode setText(field_t* field, const char string[], bool isRich);
 statusCode getText(field_t* field, char** returnValue);
 statusCode setCode(field_t *field, const char code[]);
+statusCode getCode(field_t* field, char** returnValue);
 statusCode getNoteIndex(field_t* field, unsigned long *returnValue);
 
 statusCode initField(document_t *doc, WordField* sbField, short noteType,
@@ -315,6 +277,7 @@ statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark, short noteTyp
 						NSString* bookmarkName, BOOL ignoreCode,
 						field_t **returnValue);
 statusCode compareFields(field_t* a, field_t* b, short *returnValue);
+statusCode equals(field_t *a, field_t *b, bool *returnValue);
 int compareFieldsQsort(void* statusCode, const void* a, const void* b);
 statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 					  BOOL deleteBM);
