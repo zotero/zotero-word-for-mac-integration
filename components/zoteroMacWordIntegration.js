@@ -649,7 +649,7 @@ Application16.prototype = {
 	getDocument: async function(path) {
 		init();
 		// See https://github.com/zotero/zotero-word-for-mac-integration/issues/26
-		var isZoteroRosetta = f.isZoteroRosetta().value == 1;
+		var isZoteroRosetta = f.isZoteroRosetta() == 1;
 		if (isZoteroRosetta) {
 			var returnValue = f.getWordVersion(path);
 			var wordVersion = returnValue.readString().split('.');
