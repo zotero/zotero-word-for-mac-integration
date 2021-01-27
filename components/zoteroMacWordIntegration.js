@@ -31,14 +31,13 @@ var Zotero = Components.classes["@zotero.org/Zotero;1"]
 			.wrappedJSObject;
 var field_t, document_t, fieldListNode_t, progressFunction_t, xpcLib, lib, libPath, f, x, fn, fieldPtr;
 var dataInUse = [];
-var ignoreArmIsSupported = false;
 var useXPC = false;
+var nextArmIsSupportedWarning = 0;
+const armIsSupportedWarningIgnoreDays = 7;
 
 const STATUS_EXCEPTION = 1;
 const STATUS_EXCEPTION_ALREADY_DISPLAYED = 2;
 const STATUS_EXCEPTION_SB_DENIED = 3;
-const STATUS_EXCEPTION_ARM_NOT_SUPPORTED = 4;
-const STATUS_EXCEPTION_ARM_SUPPORTED = 5;
 
 /**
  * Loads libZoteroMacWordIntegration.dylib and initializes js-ctypes functions
@@ -351,7 +350,7 @@ function getLastError() {
 	return err;
 }
 
-function displayMoreInformationAlert(title, message) {
+function displayMoreInformationAlert(title, message, ignoreCheckboxValue = null) {
 	let ps = Services.prompt;
 	let buttonFlags = ps.BUTTON_POS_0 * ps.BUTTON_TITLE_OK
 		+ ps.BUTTON_POS_1 * ps.BUTTON_TITLE_IS_STRING;
@@ -363,7 +362,14 @@ function displayMoreInformationAlert(title, message) {
 		null,
 		Zotero.getString('general.moreInformation'),
 		null,
-		null, {}
+		ignoreCheckboxValue
+			? Zotero.getString(
+				'general.dontShowAgainFor',
+				armIsSupportedWarningIgnoreDays,
+				armIsSupportedWarningIgnoreDays
+			)
+			: null,
+		ignoreCheckboxValue || {}
 	);
 }
 
@@ -406,35 +412,29 @@ function checkStatus(status, pre2016=false) {
 				Zotero.launchURL('https://www.zotero.org/support/kb/mac_word_permissions_missing')
 			}
 		}
-		else if (status === STATUS_EXCEPTION_ARM_NOT_SUPPORTED) {
-			let title = Zotero.getString('integration.error.incompatibleWordConfiguration');
-			let message = Zotero.getString('integration.error.armWordNotSupported', Zotero.appName);
-			let url = 'https://www.zotero.org/support/kb/mac_word_apple_silicon_compatibility';
-			let index = displayPrimaryMoreInformationAlert(title, message);
-			if (index == 0) {
-				Zotero.setTimeout(() => {
-					Zotero.launchURL(url);
-				}, 250);
-			}
-		}
-		else if (status === STATUS_EXCEPTION_ARM_SUPPORTED) {
-			// let title = Zotero.getString('integration.error.armWordSupported.title');
-			// let message = Zotero.getString('integration.error.armWordSupported');
-			// let url = 'https://www.zotero.org/support/kb/mac_word_arm_supported';
-			// let index = displayPrimaryMoreInformationAlert(title, message);
-			// if (index == 0) {
-			// 	Zotero.launchURL(url)
-			// }
-			// if (shouldAlwaysIgnore) {
-			// 	var prefService = Components.classes["@mozilla.org/preferences-service;1"].
-			// 	getService(Components.interfaces.nsIPrefService);
-			// 	var prefBranch = prefService.getBranch("extensions.zoteroMacWordIntegration.");
-			// 	prefBranch.setIntPref('ignoreArmIsSupportedWarning', true);
-			// }
-			ignoreArmIsSupported = true;
-		}
 		throw new Error("ExceptionAlreadyDisplayed");
 	}
+}
+
+function showWordWarning(wordVersion) {
+	var title = Zotero.getString('integration.error.rosettaWord.title');
+	var message = Zotero.getString(`integration.error.rosettaWord${wordVersion}`, Zotero.appName);
+	var url = 'https://www.zotero.org/support/kb/mac_word_apple_silicon_compatibility';
+	var ignoreCheckboxValue = {};
+	var index = displayMoreInformationAlert(title, message, ignoreCheckboxValue);
+	if (index == 1) {
+		Zotero.launchURL(url)
+	}
+	if (ignoreCheckboxValue.value) {
+		let prefService = Components.classes["@mozilla.org/preferences-service;1"]
+			.getService(Components.interfaces.nsIPrefService);
+		let prefBranch = prefService.getBranch("extensions.zoteroMacWordIntegration.");
+		nextArmIsSupportedWarning = Math.floor(Date.now() / 1000) + (86400 * armIsSupportedWarningIgnoreDays);
+		prefBranch.setIntPref('nextArmIsSupportedWarning', nextArmIsSupportedWarning);
+		// Continue operation
+		return;
+	}
+	throw new Error("ExceptionAlreadyDisplayed");
 }
 
 async function initializePipes() {
@@ -635,10 +635,10 @@ Application2016.prototype = {
 // Word 16.0 and higher
 var Application16 = function() {
 	this.wrappedJSObject = this;
-	var prefService = Components.classes["@mozilla.org/preferences-service;1"].
-	getService(Components.interfaces.nsIPrefService);
+	var prefService = Components.classes["@mozilla.org/preferences-service;1"]
+		.getService(Components.interfaces.nsIPrefService);
 	var prefBranch = prefService.getBranch("extensions.zoteroMacWordIntegration.");
-	ignoreArmIsSupported = prefBranch.getBoolPref('ignoreArmIsSupportedWarning');
+	nextArmIsSupportedWarning = prefBranch.getIntPref('nextArmIsSupportedWarning', 0);
 };
 Application16.prototype = {
 	classDescription: "Zotero Word 16.xx for Mac Integration Application",
@@ -649,16 +649,25 @@ Application16.prototype = {
 	getDocument: async function(path) {
 		init();
 		// See https://github.com/zotero/zotero-word-for-mac-integration/issues/26
-		var isZoteroRosetta = f.isZoteroRosetta().value == 1;
+		var isZoteroRosetta = f.isZoteroRosetta() == 1;
 		if (isZoteroRosetta) {
 			var returnValue = f.getWordVersion(path);
 			var wordVersion = returnValue.readString().split('.');
 			checkStatus(f.freeData(returnValue));
-			if (wordVersion[1] >= 43) {
+			// 16.43 is always Rosetta, but people should upgrade
+			if (wordVersion[1] == 43) {
+				if (Math.floor(Date.now() / 1000) > nextArmIsSupportedWarning) {
+					// Throws ExceptionAlreadyDisplayed unless "Don't show again" is checked
+					showWordWarning(1643);
+				}
+				useXPC = true;
+			}
+			// 16.44 and later should be native
+			else if (wordVersion[1] > 44) {
 				var isWordArm = f.isWordArm();
-				if (!isWordArm && !ignoreArmIsSupported) {
-					// This will cause a throw
-					return checkStatus(STATUS_EXCEPTION_ARM_SUPPORTED);
+				if (!isWordArm && Math.floor(Date.now() / 1000) > nextArmIsSupportedWarning) {
+					// Throws ExceptionAlreadyDisplayed unless "Don't show again" is checked
+					showWordWarning(1644);
 				}
 				useXPC = true;
 			}
