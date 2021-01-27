@@ -48,6 +48,7 @@ void freeData(void* ptr);
 
 int isZoteroRosetta(void);
 char *getWordVersion(const char wordPath[]);
+void flushBundleCache(const char wordPath[]);
 bool isWordArm(void);
 
 
