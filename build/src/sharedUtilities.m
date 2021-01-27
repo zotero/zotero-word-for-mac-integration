@@ -145,6 +145,25 @@ char *getWordVersion(const char wordPath[]) {
 	return copyNSString(wordVersion);
 }
 
+// Declare the function making it weak-linked
+// ensures the preference pane won't crash if the function
+// is removed from in a future version of Mac OS X.
+// See https://stackoverflow.com/questions/13525665/is-there-a-way-to-invalidate-nsbundle-localization-cache-withour-restarting-app
+extern void _CFBundleFlushBundleCaches(CFBundleRef bundle)
+__attribute__((weak_import));
+
+void flushBundleCache(const char wordPath[]) {
+	// Before calling the function, we need to check if it exists
+	// since it was weak-linked.
+	if (_CFBundleFlushBundleCaches != NULL) {
+		NSBundle *bundle = [NSBundle bundleWithPath:[NSString stringWithUTF8String:wordPath]];
+		CFBundleRef cfBundle =
+		CFBundleCreate(nil, (CFURLRef)[bundle bundleURL]);
+		_CFBundleFlushBundleCaches(cfBundle);
+		CFRelease(cfBundle);
+	}
+}
+
 bool isWordArm() {
 	NSArray *runningApplications = [[NSWorkspace sharedWorkspace] runningApplications];
 	for (NSRunningApplication* app in runningApplications) {

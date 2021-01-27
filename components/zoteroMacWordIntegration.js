@@ -206,6 +206,9 @@ function init() {
 		
 		// char *getWordVersion(const char wordPath[]);
 		getWordVersion: lib.declare("getWordVersion", ctypes.default_abi, ctypes.char.ptr, ctypes.char.ptr),
+
+		// void flushBundleCache(const char wordPath[]);
+		flushWordVersion: lib.declare("flushBundleCache", ctypes.default_abi, ctypes.void_t, ctypes.char.ptr),
 		
 		// int isZoteroRosetta();
 		isZoteroRosetta: lib.declare("isZoteroRosetta", ctypes.default_abi, ctypes.int),
