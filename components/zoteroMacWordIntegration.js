@@ -34,7 +34,7 @@ var dataInUse = [];
 var useXPC = false;
 var flushWordVersion = false;
 var nextArmIsSupportedWarning = 0;
-const armIsSupportedWarningIgnoreDays = 30;
+const armIsSupportedWarningIgnoreDays = 7;
 
 const STATUS_EXCEPTION = 1;
 const STATUS_EXCEPTION_ALREADY_DISPLAYED = 2;
