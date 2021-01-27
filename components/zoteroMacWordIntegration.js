@@ -32,6 +32,7 @@ var Zotero = Components.classes["@zotero.org/Zotero;1"]
 var field_t, document_t, fieldListNode_t, progressFunction_t, xpcLib, lib, libPath, f, x, fn, fieldPtr;
 var dataInUse = [];
 var useXPC = false;
+var flushWordVersion = false;
 var nextArmIsSupportedWarning = 0;
 const armIsSupportedWarningIgnoreDays = 7;
 
@@ -654,6 +655,9 @@ Application16.prototype = {
 		// See https://github.com/zotero/zotero-word-for-mac-integration/issues/26
 		var isZoteroRosetta = f.isZoteroRosetta() == 1;
 		if (isZoteroRosetta) {
+			if (flushWordVersion) {
+				f.flushWordVersion(path);
+			}
 			var returnValue = f.getWordVersion(path);
 			var wordVersion = returnValue.readString().split('.');
 			checkStatus(f.freeData(returnValue));
@@ -661,18 +665,30 @@ Application16.prototype = {
 			if (wordVersion[1] == 43) {
 				if (Math.floor(Date.now() / 1000) > nextArmIsSupportedWarning) {
 					// Throws ExceptionAlreadyDisplayed unless "Don't show again" is checked
-					showWordWarning(1643);
+					try {
+						showWordWarning(1643);
+					}
+					catch (e) {
+						flushWordVersion = true;
+						throw e;
+					}
 				}
-				useXPC = true;
+				useXPC = false;
 			}
 			// 16.44 and later should be native
 			else if (wordVersion[1] > 44) {
 				var isWordArm = f.isWordArm();
 				if (!isWordArm && Math.floor(Date.now() / 1000) > nextArmIsSupportedWarning) {
 					// Throws ExceptionAlreadyDisplayed unless "Don't show again" is checked
-					showWordWarning(1644);
+					try {
+						showWordWarning(1644);
+					}
+					catch (e) {
+						flushWordVersion = true;
+						throw e;
+					}
 				}
-				useXPC = true;
+				useXPC = isWordArm;
 			}
 		}
 		fn = useXPC ? x : f;
