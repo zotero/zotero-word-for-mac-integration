@@ -431,6 +431,8 @@ function showWordWarning(wordVersion) {
 		let prefBranch = prefService.getBranch("extensions.zoteroMacWordIntegration.");
 		nextArmIsSupportedWarning = Math.floor(Date.now() / 1000) + (86400 * armIsSupportedWarningIgnoreDays);
 		prefBranch.setIntPref('nextArmIsSupportedWarning', nextArmIsSupportedWarning);
+		// Continue operation
+		return;
 	}
 	throw new Error("ExceptionAlreadyDisplayed");
 }
@@ -655,8 +657,8 @@ Application16.prototype = {
 			// 16.43 is always Rosetta, but people should upgrade
 			if (wordVersion[1] == 43) {
 				if (Math.floor(Date.now() / 1000) > nextArmIsSupportedWarning) {
-					// Throws ExceptionAlreadyDisplayed
-					return showWordWarning(1643);
+					// Throws ExceptionAlreadyDisplayed unless "Don't show again" is checked
+					showWordWarning(1643);
 				}
 				useXPC = true;
 			}
@@ -664,8 +666,8 @@ Application16.prototype = {
 			else if (wordVersion[1] > 44) {
 				var isWordArm = f.isWordArm();
 				if (!isWordArm && Math.floor(Date.now() / 1000) > nextArmIsSupportedWarning) {
-					// Throws ExceptionAlreadyDisplayed
-					return showWordWarning(1644);
+					// Throws ExceptionAlreadyDisplayed unless "Don't show again" is checked
+					showWordWarning(1644);
 				}
 				useXPC = true;
 			}
