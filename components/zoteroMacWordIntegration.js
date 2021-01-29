@@ -569,6 +569,7 @@ Application2004.prototype = {
 	getDocument: async function(path) {
 		init();
 		var docPtr = new document_t.ptr();
+		fn = f;
 		checkStatus(f.getDocument(2004, path, null, docPtr.address()));
 		return new Document(docPtr);
 	},
@@ -594,6 +595,7 @@ Application2008.prototype = {
 	service: 		true,
 	getDocument: async function(path) {
 		init();
+		fn = f;
 		var docPtr = new document_t.ptr();
 		checkStatus(f.getDocument(2008, path, null, docPtr.address()));
 		return new Document(docPtr);
@@ -620,6 +622,7 @@ Application2016.prototype = {
 	service: 		true,
 	getDocument: async function(path) {
 		init();
+		fn = f;
 		var docPtr = new document_t.ptr();
 		checkStatus(f.getDocument(2016, path, null, docPtr.address()));
 		return new Document(docPtr);
