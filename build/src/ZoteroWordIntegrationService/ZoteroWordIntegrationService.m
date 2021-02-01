@@ -47,7 +47,7 @@
 }
 
 - (void)getDocumentDataWithReply:(void (^)(statusCode, char *))reply {
-	char *result;
+	char *result = NULL;
 	statusCode status = getDocumentData(self.doc, &result);
 	reply(status, result);
 	free(result);

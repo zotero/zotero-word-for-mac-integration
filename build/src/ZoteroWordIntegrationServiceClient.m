@@ -45,15 +45,16 @@ void freeFieldList(listNode_t* fieldList) {
 
 statusCode getRemoteErrorString(RemoteDocument *doc) {
 	HANDLE_EXCEPTIONS_BEGIN
+	__block statusCode thisReplyStatus;
 	[doc->remoteObject getErrorWithReply:^(statusCode status, char *reply) {
-		replyStatus = status;
-		if (replyStatus != STATUS_OK) {
+		thisReplyStatus = thisReplyStatus;
+		if (status != STATUS_OK) {
 			throwError(@"Failed to retrieve the remote error string", __FUNCTION__, [@__FILE__ lastPathComponent], __LINE__);
 			return;
 		}
 		setError(reply);
 	}];
-	return replyStatus;
+	return thisReplyStatus;
 	HANDLE_EXCEPTIONS_END
 }
 

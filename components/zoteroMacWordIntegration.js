@@ -344,13 +344,13 @@ function init() {
  * Gets the last error that took place in C code.
  */
 function getLastError() {
-	var errPtr = f.getError();
+	var errPtr = fn.getError();
 	if(errPtr.isNull()) {
 		var err = "An unexpected error occurred.";
 	} else {
 		var err = errPtr.readString().replace("\u2019", "'", "g");
 	}
-	f.clearError();
+	fn.clearError();
 	return err;
 }
 
