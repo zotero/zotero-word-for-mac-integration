@@ -237,6 +237,30 @@ statusCode importDocument(RemoteDocument *doc, const char fieldType[], bool *ret
 	return replyStatus;
 	HANDLE_EXCEPTIONS_END
 }
+statusCode insertText(RemoteDocument *doc, const char htmlString[]) {
+	HANDLE_EXCEPTIONS_BEGIN
+	[doc->remoteObject insertTextWithHtmlString:htmlString andReply:REPLY_BLOCK(doc)];
+	return replyStatus;
+	HANDLE_EXCEPTIONS_END
+}
+statusCode convertPlaceholdersToFields(RemoteDocument *doc, const char* placeholders[],
+									   const unsigned long nPlaceholders ,const unsigned short noteType,
+									   const char fieldType[], listNode_t** returnNode) {
+	HANDLE_EXCEPTIONS_BEGIN
+	__block listNode_t* fieldListStart = NULL;
+	__block listNode_t* fieldListEnd = NULL;
+	[doc->remoteObject convertPlaceholdersToFieldsWithPlaceholders:placeholders placeholderCount:nPlaceholders noteType:noteType fieldType:fieldType andReply:^(statusCode status, NSArray *fields) {
+		HANDLE_REPLY(status, doc)
+		for (NSValue *value in fields) {
+			XPCField field = [value nonretainedObjectValue];
+			addValueToList(field, &fieldListStart, &fieldListEnd);
+		}
+	}];
+	addValueToList(fieldListStart, &(doc->allocatedFieldListsStart), &(doc->allocatedFieldListsEnd));
+	*returnNode = fieldListStart;
+	return replyStatus;
+	HANDLE_EXCEPTIONS_END
+}
 statusCode cleanup(RemoteDocument *doc) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->remoteObject cleanupWithReply:REPLY_BLOCK(doc)];
