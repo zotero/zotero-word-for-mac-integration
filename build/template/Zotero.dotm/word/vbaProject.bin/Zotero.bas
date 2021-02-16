@@ -25,6 +25,10 @@ Sub ZoteroInsertCitation()
 CallZotero ("addCitation")
 End Sub
 
+Sub ZoteroAddNote()
+CallZotero ("addNote")
+End Sub
+
 Sub ZoteroEditCitation()
 CallZotero ("editCitation")
 End Sub
@@ -51,6 +55,7 @@ End Sub
 
 Sub CallZotero(func)
 nl$ = Chr$(10)
+templateVersion$ = "1"
 wordVersion$ = "MacWord2016"
 pipeLocation$ = "PIPE=\""$CFFIXED_USER_HOME/.zoteroIntegrationPipe\""; if [ ! -e \""$PIPE\"" ]; then PIPE=\""/Users/$USER/Library/Containers/com.microsoft.Word/Data/.zoteroIntegrationPipe\""; fi; if [ ! -e \""$PIPE\"" ]; then PIPE=.zoteroIntegrationPipe; fi"
 #If VBA6 Then
@@ -60,5 +65,5 @@ pipeLocation$ = "PIPE=\""$CFFIXED_USER_HOME/.zoteroIntegrationPipe\""; if [ ! -e
          wordVersion$ = "MacWord16"
      End If
 #End If
-MacScript "try" & nl$ & "do shell script """ & pipeLocation$ & "; if [ -e \""$PIPE\"" ]; then echo '" & wordVersion$ & " " & func & " "" & POSIX path of (path to current application) & ""' > \""$PIPE\""; else exit 1; fi;""" & nl$ & "on error" & nl$ & "display alert ""Word could not communicate with Zotero. Please ensure that Zotero is open and try again.""  as critical" & nl$ & "end try"
+MacScript "try" & nl$ & "do shell script """ & pipeLocation$ & "; if [ -e \""$PIPE\"" ]; then echo '" & wordVersion$ & " " & func & " "" & POSIX path of (path to current application) & "" " & templateVersion & "' > \""$PIPE\""; else exit 1; fi;""" & nl$ & "on error" & nl$ & "display alert ""Word could not communicate with Zotero. Please ensure that Zotero is open and try again.""  as critical" & nl$ & "end try"
 End Sub

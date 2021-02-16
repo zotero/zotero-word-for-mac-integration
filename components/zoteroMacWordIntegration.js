@@ -304,6 +304,16 @@ function init() {
 		importDocument: xpcLib.declare("importDocument", ctypes.default_abi, statusCode, document_t.ptr,
 			ctypes.char.ptr, ctypes.bool.ptr),
 
+		// statusCode insertText(Document *doc, const char htmlString[]);
+		insertText: lib.declare("insertText", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr),
+
+		// statusCode convertPlaceholdersToFields(Document *doc, char* placeholders[],
+		//		unsigned long nPlaceholders, unsigned short noteType, char fieldType[], listNode_t** returnNode);
+		convertPlaceholdersToFields: lib.declare("convertPlaceholdersToFields", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr.ptr, ctypes.unsigned_long, ctypes.unsigned_short,
+			ctypes.char.ptr, fieldListNode_t.ptr.ptr),
+
 		// statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 		//				      const char toFieldType[], unsigned short noteType[]);
 		convert: xpcLib.declare("convert", ctypes.default_abi, statusCode, document_t.ptr,
@@ -876,7 +886,7 @@ Document.prototype = {
 				fieldListNode.address()
 			)
 		);
-		var fnum = new FieldEnumerator(fieldListNode, this._documentStatus);
+		var fnum = new FieldEnumerator(fieldListNode, this._document_t, this._documentStatus);
 		var fields = [];
 		while (fnum.hasMoreElements()) {
 			fields.push(fnum.getNext());

@@ -119,6 +119,29 @@
 	reply(status, result);
 }
 
+- (void)insertTextWithHtmlString:(const char *)htmlString andReply:(void (^)(statusCode))reply {
+	reply(insertText(self.doc, htmlString));
+}
+
+- (void)convertPlaceholdersToFieldsWithPlaceholders:(const char**)placeholder
+								   placeholderCount:(const unsigned long)nPlaceholders
+										   noteType:(const unsigned short)noteType
+										  fieldType:(const char *)fieldType
+										   andReply:(void (^)(statusCode, NSArray *))reply {
+	NSMutableArray *fields = [NSMutableArray new];
+	listNode_t *fieldList;
+	statusCode status = convertPlaceholdersToFields(self.doc, placeholder, nPlaceholders, noteType, fieldType, &fieldList);
+	if (status == STATUS_OK) {
+		listNode_t* nextNode = fieldList;
+		while (nextNode) {
+			listNode_t* currentNode = nextNode;
+			[fields addObject:[NSData dataWithBytes:&(currentNode->value) length:sizeof(field_t *)]];
+			nextNode = currentNode->next;
+		}
+	}
+	reply(status, fields);
+}
+
 - (void)cleanupWithReply:(void (^)(statusCode))reply {
 	reply(cleanup(self.doc));
 }
