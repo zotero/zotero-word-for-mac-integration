@@ -52,7 +52,7 @@ End Sub
 Sub CallZotero(func)
 nl$ = Chr$(10)
 wordVersion$ = "MacWord2016"
-pipeLocation$ = "PIPE=""$HOME/.zoteroIntegrationPipe""; if [ ! -e ""$PIPE"" ]; then PIPE=""/Users/$USER/Library/Containers/com.microsoft.Word/Data/.zoteroIntegrationPipe""; fi"
+pipeLocation$ = "PIPE=""$HOME/.zoteroIntegrationPipe""; if [ ! -e ""$PIPE"" ]; then PIPE=""$HOME/Library/Containers/com.microsoft.Word/Data/.zoteroIntegrationPipe""; fi"
 #If VBA6 Then
      Dim majorVersion As Integer
      majorVersion = Split(Application.Version, ".")(0)

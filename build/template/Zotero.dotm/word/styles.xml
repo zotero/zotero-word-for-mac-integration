@@ -121,6 +121,7 @@
     <w:lsdException w:name="HTML Sample" w:semiHidden="1" w:unhideWhenUsed="1"/>
     <w:lsdException w:name="HTML Typewriter" w:semiHidden="1" w:unhideWhenUsed="1"/>
     <w:lsdException w:name="HTML Variable" w:semiHidden="1" w:unhideWhenUsed="1"/>
+    <w:lsdException w:name="Normal Table" w:semiHidden="1" w:unhideWhenUsed="1"/>
     <w:lsdException w:name="annotation subject" w:semiHidden="1" w:unhideWhenUsed="1"/>
     <w:lsdException w:name="No List" w:semiHidden="1" w:unhideWhenUsed="1"/>
     <w:lsdException w:name="Outline List 1" w:semiHidden="1" w:unhideWhenUsed="1"/>
@@ -167,8 +168,10 @@
     <w:lsdException w:name="Table Subtle 2" w:semiHidden="1" w:unhideWhenUsed="1"/>
     <w:lsdException w:name="Table Web 1" w:semiHidden="1" w:unhideWhenUsed="1"/>
     <w:lsdException w:name="Table Web 2" w:semiHidden="1" w:unhideWhenUsed="1"/>
+    <w:lsdException w:name="Table Web 3" w:semiHidden="1" w:unhideWhenUsed="1"/>
     <w:lsdException w:name="Balloon Text" w:semiHidden="1" w:unhideWhenUsed="1"/>
     <w:lsdException w:name="Table Grid" w:uiPriority="39"/>
+    <w:lsdException w:name="Table Theme" w:semiHidden="1" w:unhideWhenUsed="1"/>
     <w:lsdException w:name="Placeholder Text" w:semiHidden="1"/>
     <w:lsdException w:name="No Spacing" w:uiPriority="1" w:qFormat="1"/>
     <w:lsdException w:name="Light Shading" w:uiPriority="60"/>
