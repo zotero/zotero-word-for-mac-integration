@@ -187,10 +187,9 @@ function init() {
 		equals: lib.declare("equals", ctypes.default_abi, statusCode,
 			field_t, field_t, ctypes.bool.ptr),
 		
-		// statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[],
-		// 					  const char zoteroScptPath[]);
+		// statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]);
 		install: lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr,
-			ctypes.char.ptr, ctypes.char.ptr),
+			ctypes.char.ptr),
 		
 		// statusCode getScriptItemsDirectory(char** scriptFolder);
 		getScriptItemsDirectory: lib.declare("getScriptItemsDirectory", ctypes.default_abi,
@@ -542,11 +541,9 @@ Installer.prototype = {
 		var zoteroDot = libPath.parent.parent;
 		zoteroDot.append("install");
 		var zoteroDotm = zoteroDot.clone();
-		var zoteroScpt = zoteroDot.clone();
 		zoteroDot.append("Zotero.dot");
 		zoteroDotm.append("Zotero.dotm");
-		zoteroScpt.append("Zotero.scpt");
-		checkStatus(f.install(zoteroDot.path, zoteroDotm.path, zoteroScpt.path));
+		checkStatus(f.install(zoteroDot.path, zoteroDotm.path));
 	},
 	getScriptItemsDirectory: function() {
 		var returnValue = new ctypes.char.ptr();
