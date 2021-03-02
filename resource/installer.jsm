@@ -37,7 +37,7 @@ var Plugin = new function() {
 	this.APP = 'Microsoft Word';
 	
 	this.REQUIRED_ADDONS = [];
-	this.LAST_INSTALLED_FILE_UPDATE = "5.0.35pre";
+	this.LAST_INSTALLED_FILE_UPDATE = "5.0.36pre";
 	
 	var zoteroPluginInstaller;
 	
