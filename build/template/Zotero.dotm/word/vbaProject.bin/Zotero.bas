@@ -52,7 +52,7 @@ End Sub
 Sub CallZotero(func)
 nl$ = Chr$(10)
 wordVersion$ = "MacWord2016"
-pipeLocation$ = "PIPE=""$HOME/.zoteroIntegrationPipe""; if [ ! -e ""$PIPE"" ]; then PIPE=""$HOME/Library/Containers/com.microsoft.Word/Data/.zoteroIntegrationPipe""; fi"
+pipeLocation$ = "PIPE=\""$CFFIXED_USER_HOME/.zoteroIntegrationPipe\""; if [ ! -e \""$PIPE\"" ]; then PIPE=\""/Users/$USER/Library/Containers/com.microsoft.Word/Data/.zoteroIntegrationPipe\""; fi; if [ ! -e \""$PIPE\"" ]; then PIPE=.zoteroIntegrationPipe; fi"
 #If VBA6 Then
      Dim majorVersion As Integer
      majorVersion = Split(Application.Version, ".")(0)
@@ -60,6 +60,5 @@ pipeLocation$ = "PIPE=""$HOME/.zoteroIntegrationPipe""; if [ ! -e ""$PIPE"" ]; t
          wordVersion$ = "MacWord16"
      End If
 #End If
-shellScript$ = pipeLocation$ & "; if [ -e ""$PIPE"" ]; then echo '" & wordVersion$ & " " & func & " " & Application.Path & Application.PathSeparator & Application.Name & ".app/' > ""$PIPE""; else exit 1; fi;"
-Result$ = AppleScriptTask("Zotero.scpt", "callZotero", shellScript$)
+MacScript "try" & nl$ & "do shell script """ & pipeLocation$ & "; if [ -e \""$PIPE\"" ]; then echo '" & wordVersion$ & " " & func & " "" & POSIX path of (path to current application) & ""' > \""$PIPE\""; else exit 1; fi;""" & nl$ & "on error" & nl$ & "display alert ""Word could not communicate with Zotero. Please ensure that Zotero is open and try again.""  as critical" & nl$ & "end try"
 End Sub
