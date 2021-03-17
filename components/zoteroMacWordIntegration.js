@@ -203,9 +203,10 @@ function init() {
 		equals: lib.declare("equals", ctypes.default_abi, statusCode,
 			field_t, field_t, ctypes.bool.ptr),
 		
-		// statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]);
+		// statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[],
+		// 					  const char zoteroScptPath[]);
 		install: lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr,
-			ctypes.char.ptr),
+			ctypes.char.ptr, ctypes.char.ptr),
 		
 		// statusCode getScriptItemsDirectory(char** scriptFolder);
 		getScriptItemsDirectory: lib.declare("getScriptItemsDirectory", ctypes.default_abi,
@@ -567,8 +568,10 @@ Installer.prototype = {
 		var zoteroDot = libPath.parent.parent;
 		zoteroDot.append("install");
 		var zoteroDotm = zoteroDot.clone();
+		var zoteroScpt = zoteroDot.clone();
 		zoteroDot.append("Zotero.dot");
 		zoteroDotm.append("Zotero.dotm");
+		zoteroScpt.append("Zotero.scpt");
 		// The install procedure always runs in the main lib file (not the XPC service)
 		// and checkStatus() may call getLastError() which will call fn.getError()
 		// so we need to make sure fn == f at that time.
@@ -576,7 +579,7 @@ Installer.prototype = {
 		var tempFn = fn;
 		fn = f;
 		try {
-			checkStatus(f.install(zoteroDot.path, zoteroDotm.path));
+			checkStatus(f.install(zoteroDot.path, zoteroDotm.path, zoteroScpt.path));
 		} finally {
 			fn = tempFn;
 		}

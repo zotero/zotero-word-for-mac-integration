@@ -65,5 +65,12 @@ pipeLocation$ = "PIPE=\""$CFFIXED_USER_HOME/.zoteroIntegrationPipe\""; if [ ! -e
          wordVersion$ = "MacWord16"
      End If
 #End If
-MacScript "try" & nl$ & "do shell script """ & pipeLocation$ & "; if [ -e \""$PIPE\"" ]; then echo '" & wordVersion$ & " " & func & " "" & POSIX path of (path to current application) & "" " & templateVersion & "' > \""$PIPE\""; else exit 1; fi;""" & nl$ & "on error" & nl$ & "display alert ""Word could not communicate with Zotero. Please ensure that Zotero is open and try again.""  as critical" & nl$ & "end try"
+On Error GoTo catch
+    MacScript "try" & nl$ & "do shell script """ & pipeLocation$ & "; if [ -e \""$PIPE\"" ]; then echo '" & wordVersion$ & " " & func & " "" & POSIX path of (path to current application) & "" " & templateVersion & "' > \""$PIPE\""; else exit 1; fi;""" & nl$ & "on error" & nl$ & "display alert ""Word could not communicate with Zotero. Please ensure that Zotero is open and try again.""  as critical" & nl$ & "end try"
+    GoTo endSub
+catch:
+    pipeLocation$ = "PIPE=""$HOME/.zoteroIntegrationPipe""; if [ ! -e ""$PIPE"" ]; then PIPE=""$HOME/Library/Containers/com.microsoft.Word/Data/.zoteroIntegrationPipe""; fi"
+    shellScript$ = pipeLocation$ & "; if [ -e ""$PIPE"" ]; then echo '" & wordVersion$ & " " & func & " " & Application.Path & Application.PathSeparator & Application.Name & ".app/ " & templateVersion & "' > ""$PIPE""; else exit 1; fi;"
+    Result$ = AppleScriptTask("Zotero.scpt", "callZotero", shellScript$)
+endSub:
 End Sub
