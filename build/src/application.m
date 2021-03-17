@@ -66,6 +66,19 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 		[wordApps setObject:wordApp forKey:wordPathNS];
 	}
 	
+	// Tell Word to execute one of the scripting additions functions
+	// so that it loads the necessary handling code for Scripting Additions stuff
+	// and sending an event to display a dialog works
+	// Scripting additions are loaded automatically when running MacScript
+	// from Word, but it triggers a Run-Time Error 5 for some users.
+	NSString* scriptNS = [[NSString alloc] initWithFormat:
+						  @"tell application \"%@\" to time to GMT",
+						  wordPathNS];
+	NSAppleScript* scriptObject = [[NSAppleScript alloc]
+								   initWithSource:scriptNS];
+	NSDictionary *errorDict = nil;
+	[scriptObject executeAndReturnError:&errorDict];
+	
 	doc->sbApp = wordApp;
 	[doc->sbApp retain];
 	
