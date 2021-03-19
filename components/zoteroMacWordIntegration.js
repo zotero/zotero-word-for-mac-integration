@@ -566,7 +566,17 @@ Installer.prototype = {
 		zoteroDot.append("Zotero.dot");
 		zoteroDotm.append("Zotero.dotm");
 		zoteroScpt.append("Zotero.scpt");
-		checkStatus(f.install(zoteroDot.path, zoteroDotm.path, zoteroScpt.path));
+		// The install procedure always runs in the main lib file (not the XPC service)
+		// and checkStatus() may call getLastError() which will call fn.getError()
+		// so we need to make sure fn == f at that time.
+		// This is kinda awful, but the whole xpc thing is temporary™ (2021-03-19)
+		var tempFn = fn;
+		fn = f;
+		try {
+			checkStatus(f.install(zoteroDot.path, zoteroDotm.path, zoteroScpt.path));
+		} finally {
+			fn = tempFn;
+		}
 	},
 	getScriptItemsDirectory: function() {
 		var returnValue = new ctypes.char.ptr();
