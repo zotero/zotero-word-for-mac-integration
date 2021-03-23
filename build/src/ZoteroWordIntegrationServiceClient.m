@@ -175,6 +175,7 @@ statusCode getFieldsAsync(RemoteDocument *doc, const char fieldType[],
 	id <ZoteroWordIntegrationServiceProtocol> remoteObject = [doc->connection remoteObjectProxyWithErrorHandler:^(NSError * _Nonnull error) {
 		throwError([error localizedDescription], __FUNCTION__, [@__FILE__ lastPathComponent], __LINE__);
 		dispatch_async(currentQueue, ^{
+			getRemoteErrorString(doc);
 			onProgress(-1);
 		});
 	}];
@@ -183,6 +184,7 @@ statusCode getFieldsAsync(RemoteDocument *doc, const char fieldType[],
 	[remoteObject getFieldsWithFieldType:fieldType andReply:^(statusCode status, NSArray *fields) {
 		if (status != STATUS_OK) {
 			dispatch_async(currentQueue, ^{
+				getRemoteErrorString(doc);
 				onProgress(-1);
 			});
 			return;
