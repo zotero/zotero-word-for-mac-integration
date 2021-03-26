@@ -71,13 +71,17 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	// and sending an event to display a dialog works
 	// Scripting additions are loaded automatically when running MacScript
 	// from Word, but it triggers a Run-Time Error 5 for some users.
-	NSString* scriptNS = [[NSString alloc] initWithFormat:
-						  @"tell application \"%@\" to time to GMT",
-						  wordPathNS];
-	NSAppleScript* scriptObject = [[NSAppleScript alloc]
-								   initWithSource:scriptNS];
-	NSDictionary *errorDict = nil;
-	[scriptObject executeAndReturnError:&errorDict];
+	//
+	// But not with ARM Word because that causes Zotero to freeze/crash (see commit message)
+	if (isWordArm()) {
+		NSString* scriptNS = [[NSString alloc] initWithFormat:
+							  @"tell application \"%@\" to time to GMT",
+							  wordPathNS];
+		NSAppleScript* scriptObject = [[NSAppleScript alloc]
+									   initWithSource:scriptNS];
+		NSDictionary *errorDict = nil;
+		[scriptObject executeAndReturnError:&errorDict];
+	}
 	
 	doc->sbApp = wordApp;
 	[doc->sbApp retain];
