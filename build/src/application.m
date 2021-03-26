@@ -83,6 +83,9 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 		[scriptObject executeAndReturnError:&errorDict];
 	}
 	
+	[wordApp setTimeout:kNoTimeOut];
+	CHECK_STATUS
+	
 	doc->sbApp = wordApp;
 	[doc->sbApp retain];
 	
