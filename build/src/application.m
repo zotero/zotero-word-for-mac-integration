@@ -73,7 +73,7 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	// from Word, but it triggers a Run-Time Error 5 for some users.
 	//
 	// But not with ARM Word because that causes Zotero to freeze/crash (see commit message)
-	if (isWordArm()) {
+	if (!isWordArm()) {
 		NSString* scriptNS = [[NSString alloc] initWithFormat:
 							  @"tell application \"%@\" to time to GMT",
 							  wordPathNS];
