@@ -27,6 +27,8 @@
 FILE* tempFile = NULL;
 char* tempFileString = NULL;
 NSString* tempFileStringNS = nil;
+id <NSObject> _appNapPreventingActivity;
+dispatch_queue_t _mainQueue;
 
 
 // Gets a FILE for the temporary file, truncating it to zero length
@@ -74,6 +76,21 @@ void deleteTemporaryFile(void) {
 // Gets an NSString representing the temp file
 NSString* getTemporaryFilePath(void) {
 	return tempFileStringNS;
+}
+
+void preventAppNap() {
+	if (_appNapPreventingActivity != nil) return;
+	NSActivityOptions options = NSActivityUserInitiatedAllowingIdleSystemSleep;
+	NSString *reason = @"Zotero App Nap is disabled during a Word Integration operation";
+	_appNapPreventingActivity = [[NSProcessInfo processInfo] beginActivityWithOptions:options reason:reason];
+	[_appNapPreventingActivity retain];
+}
+
+void allowAppNap(void) {
+	if (_appNapPreventingActivity == nil) return;
+	[[NSProcessInfo processInfo] endActivity:_appNapPreventingActivity];
+	[_appNapPreventingActivity release];
+	_appNapPreventingActivity = nil;
 }
 
 void storeCursorLocation(document_t* doc) {
