@@ -202,6 +202,9 @@ typedef struct Field {
 } field_t;
 
 // utilities.m
+void preventAppNap(void);
+void allowAppNap(void);
+
 void storeCursorLocation(document_t* doc);
 statusCode moveCursorOutOfNote(document_t* doc);
 statusCode restoreCursor(document_t* doc);

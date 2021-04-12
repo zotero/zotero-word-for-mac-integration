@@ -78,6 +78,12 @@ function init() {
 		
 		// void clearError(void);
 		clearError: lib.declare("clearError", ctypes.default_abi, ctypes.void_t),
+
+		// void preventAppNap(void);
+		preventAppNap: lib.declare("preventAppNap", ctypes.default_abi, ctypes.void_t),
+
+		// void allowAppNap(void);
+		allowAppNap: lib.declare("allowAppNap", ctypes.default_abi, ctypes.void_t),
 		
 		// statusCode getDocument(int wordVersion, const char* wordPath,
 		//					   const char* documentName, Document** returnValue);
@@ -486,32 +492,32 @@ function initLegacyPipe() {
 	
 	// try to initialize pipe
 	try {
-		Zotero.Integration.initPipe(pipe);
+		Zotero.Integration.initPipe(pipe, () => f.preventAppNap());
 	} catch(e) {
 		Zotero.logError(e);
-	}	
+	}
 }
 
 async function init2016Pipe() {
-    var office2016Container = Components.classes["@mozilla.org/file/directory_service;1"].
-        getService(Components.interfaces.nsIProperties).
-        get("Home", Components.interfaces.nsIFile);
-    office2016Container.append("Library");
-    office2016Container.append("Containers");
-    office2016Container.append("com.microsoft.Word");
-    office2016Container.append("Data");
-    
-    if(!office2016Container.exists() || !office2016Container.isDirectory() || !office2016Container.isWritable()) return;
+	var office2016Container = Components.classes["@mozilla.org/file/directory_service;1"].
+		getService(Components.interfaces.nsIProperties).
+		get("Home", Components.interfaces.nsIFile);
+	office2016Container.append("Library");
+	office2016Container.append("Containers");
+	office2016Container.append("com.microsoft.Word");
+	office2016Container.append("Data");
+	
+	if(!office2016Container.exists() || !office2016Container.isDirectory() || !office2016Container.isWritable()) return;
 
-    var pipe = office2016Container.clone();
-    pipe.append(".zoteroIntegrationPipe");
+	var pipe = office2016Container.clone();
+	pipe.append(".zoteroIntegrationPipe");
 
-    if(pipe.exists()) {
-        if(!Zotero.Integration.deletePipe(pipe)) return;
-    }
-    
-    // try to initialize pipe
-    Zotero.Integration.initPipe(pipe);
+	if(pipe.exists()) {
+		if(!Zotero.Integration.deletePipe(pipe)) return;
+	}
+	
+	// try to initialize pipe
+	Zotero.Integration.initPipe(pipe, () => f.preventAppNap());
 }
 
 /**
@@ -861,6 +867,7 @@ Document.prototype = {
 		if (this._documentStatus.active) {
 			checkStatus(fn.complete(this._document_t));
 			this._documentStatus.active = false;
+			f.allowAppNap();
 		}
 		else {
 			Zotero.debug("complete() already called on document; ignoring", 4);
