@@ -139,17 +139,27 @@ function init() {
 			statusCode, document_t.ptr, ctypes.long, ctypes.long, ctypes.unsigned_long,
 			ctypes.unsigned_long, ctypes.long.array(), ctypes.unsigned_long),
 		
-		// statusCode exportDocument(Document *doc, const jschar fieldType[],
-		// 							const jschar importInstructions[]);
+		// statusCode exportDocument(Document *doc, const char fieldType[],
+		// 							const char importInstructions[]);
 		exportDocument: lib.declare("exportDocument", ctypes.default_abi, statusCode, document_t.ptr,
 			ctypes.char.ptr, ctypes.char.ptr),
 
-		// statusCode importDocument(Document *doc, const jschar fieldType[],
+		// statusCode importDocument(Document *doc, const char fieldType[],
 		// 							bool *returnValue);
 		importDocument: lib.declare("importDocument", ctypes.default_abi, statusCode, document_t.ptr,
 			ctypes.char.ptr, ctypes.bool.ptr),
 		
-		// statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
+		// statusCode insertText(Document *doc, const char htmlString[]);
+		insertText: lib.declare("insertText", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr),
+
+		// statusCode convertPlaceholdersToFields(Document *doc, char* placeholders[],
+		//		unsigned long nPlaceholders, unsigned short noteType, char fieldType[], listNode_t** returnNode);
+		convertPlaceholdersToFields: lib.declare("convertPlaceholdersToFields", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr.ptr, ctypes.unsigned_long, ctypes.unsigned_short,
+			ctypes.char.ptr, fieldListNode_t.ptr.ptr),
+		
+		// statusCode convert(Document *doc, field_t* fields[], unsigned long nFields,
 		//				      const char toFieldType[], unsigned short noteType[]);
 		convert: lib.declare("convert", ctypes.default_abi, statusCode, document_t.ptr,
 			field_t.ptr, ctypes.unsigned_long, ctypes.char.ptr, ctypes.unsigned_short.ptr),
@@ -193,9 +203,10 @@ function init() {
 		equals: lib.declare("equals", ctypes.default_abi, statusCode,
 			field_t, field_t, ctypes.bool.ptr),
 		
-		// statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]);
+		// statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[],
+		// 					  const char zoteroScptPath[]);
 		install: lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr,
-			ctypes.char.ptr),
+			ctypes.char.ptr, ctypes.char.ptr),
 		
 		// statusCode getScriptItemsDirectory(char** scriptFolder);
 		getScriptItemsDirectory: lib.declare("getScriptItemsDirectory", ctypes.default_abi,
@@ -293,6 +304,16 @@ function init() {
 		// 							bool *returnValue);
 		importDocument: xpcLib.declare("importDocument", ctypes.default_abi, statusCode, document_t.ptr,
 			ctypes.char.ptr, ctypes.bool.ptr),
+
+		// statusCode insertText(Document *doc, const char htmlString[]);
+		insertText: lib.declare("insertText", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr),
+
+		// statusCode convertPlaceholdersToFields(Document *doc, char* placeholders[],
+		//		unsigned long nPlaceholders, unsigned short noteType, char fieldType[], listNode_t** returnNode);
+		convertPlaceholdersToFields: lib.declare("convertPlaceholdersToFields", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr.ptr, ctypes.unsigned_long, ctypes.unsigned_short,
+			ctypes.char.ptr, fieldListNode_t.ptr.ptr),
 
 		// statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 		//				      const char toFieldType[], unsigned short noteType[]);
@@ -547,8 +568,10 @@ Installer.prototype = {
 		var zoteroDot = libPath.parent.parent;
 		zoteroDot.append("install");
 		var zoteroDotm = zoteroDot.clone();
+		var zoteroScpt = zoteroDot.clone();
 		zoteroDot.append("Zotero.dot");
 		zoteroDotm.append("Zotero.dotm");
+		zoteroScpt.append("Zotero.scpt");
 		// The install procedure always runs in the main lib file (not the XPC service)
 		// and checkStatus() may call getLastError() which will call fn.getError()
 		// so we need to make sure fn == f at that time.
@@ -556,7 +579,7 @@ Installer.prototype = {
 		var tempFn = fn;
 		fn = f;
 		try {
-			checkStatus(f.install(zoteroDot.path, zoteroDotm.path));
+			checkStatus(f.install(zoteroDot.path, zoteroDotm.path, zoteroScpt.path));
 		} finally {
 			fn = tempFn;
 		}
@@ -650,6 +673,7 @@ Application2016.prototype = {
 	secondaryFieldType: "Bookmark",
 	supportedNotes: ['footnotes', 'endnotes'],
 	supportsImportExport: true,
+	supportsTextInsertion: true,
 	outputFormat: "rtf",
 	processorName: "Word"
 };
@@ -722,6 +746,7 @@ Application16.prototype = {
 	secondaryFieldType: "Bookmark",
 	supportedNotes: ['footnotes', 'endnotes'],
 	supportsImportExport: true,
+	supportsTextInsertion: true,
 	outputFormat: "rtf",
 	processorName: "Word"
 };
@@ -841,6 +866,36 @@ Document.prototype = {
 		Zotero.debug(`ZoteroWinMacIntegration: exportDocument`, 4);
 		checkIfFreed(this._documentStatus);
 		checkStatus(fn.exportDocument(this._document_t, fieldType, importInstructions));
+	},
+	
+	insertText: function(text) {
+		Zotero.debug(`ZoteroMacWordIntegration: insertText`, 4);
+		checkIfFreed(this._documentStatus);
+		checkStatus(f.insertText(this._document_t, text));
+	},
+
+	convertPlaceholdersToFields: async function(placeholderIDs, noteType, fieldType) {
+		Zotero.debug("ZoteroMacWordIntegration: convertPlaceholdersToFields", 4);
+		checkIfFreed(this._documentStatus);
+		var cPlaceholderIDs = placeholderIDs.map(placeholderID => ctypes.char.array()(placeholderID));
+		var fieldListNode = new fieldListNode_t.ptr();
+		checkStatus(
+			f.convertPlaceholdersToFields(
+				this._document_t,
+				ctypes.char.ptr.array()(cPlaceholderIDs),
+				placeholderIDs.length,
+				noteType,
+				fieldType,
+				fieldListNode.address()
+			)
+		);
+		var fnum = new FieldEnumerator(fieldListNode, this._document_t, this._documentStatus);
+		var fields = [];
+		while (fnum.hasMoreElements()) {
+			fields.push(fnum.getNext());
+			await Zotero.Promise.delay();
+		}
+		return fields;
 	},
 	
 	convert: function(fields, toFieldType, toNoteTypes) {

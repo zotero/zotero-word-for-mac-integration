@@ -40,6 +40,7 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	doc->restoreNote = doc->restoreCursorEnd = doc->restoreFieldIdx = -1;
 	doc->cursorMoved = NO;
 	doc->shouldRestoreCursor = YES;
+	doc->insertTextIntoNote = 0;
 	
 	// Get application by path if a path has been specified
 	NSString* wordPathNS;
@@ -64,6 +65,26 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 		}
 		[wordApps setObject:wordApp forKey:wordPathNS];
 	}
+	
+	// Tell Word to execute one of the scripting additions functions
+	// so that it loads the necessary handling code for Scripting Additions stuff
+	// and sending an event to display a dialog works
+	// Scripting additions are loaded automatically when running MacScript
+	// from Word, but it triggers a Run-Time Error 5 for some users.
+	//
+	// But not with ARM Word because that causes Zotero to freeze/crash (see commit message)
+	if (!isWordArm()) {
+		NSString* scriptNS = [[NSString alloc] initWithFormat:
+							  @"tell application \"%@\" to time to GMT",
+							  wordPathNS];
+		NSAppleScript* scriptObject = [[NSAppleScript alloc]
+									   initWithSource:scriptNS];
+		NSDictionary *errorDict = nil;
+		[scriptObject executeAndReturnError:&errorDict];
+	}
+	
+	[wordApp setTimeout:kNoTimeOut];
+	CHECK_STATUS
 	
 	doc->sbApp = wordApp;
 	[doc->sbApp retain];

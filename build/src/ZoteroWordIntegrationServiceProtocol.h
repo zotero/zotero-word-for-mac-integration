@@ -61,6 +61,12 @@ typedef unsigned long XPCField;
 					andReply:(void (^)(statusCode))reply;
 - (void)importDocumentWithFieldType:(const char *)fieldType
 					andReply:(void (^)(statusCode, bool))reply;
+- (void)insertTextWithHtmlString:(const char *)htmlString andReply:(void (^)(statusCode))reply;
+- (void)convertPlaceholdersToFieldsWithPlaceholders:(const char**)placeholder
+				    placeholderCount:(const unsigned long)nPlaceholders
+					noteType:(const unsigned short)noteType
+				    fieldType:(const char *)fieldType
+				    andReply:(void (^)(statusCode, NSArray *))reply;
 - (void)cleanupWithReply:(void (^)(statusCode))reply;
 - (void)completeWithReply:(void (^)(statusCode))reply;
 

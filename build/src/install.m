@@ -38,6 +38,7 @@ statusCode installTemplateIntoStartupDirectory(NSString* templatePath, NSString*
 statusCode setTemplateTypeCreator(NSString* templatePath, bool);
 statusCode installScripts(NSString* templatePath);
 statusCode installContainerTemplate(NSString*);
+statusCode installAppleScript(NSString*);
 statusCode parseAuthorizationStatus(OSStatus status, const char file[],
 									const char function[], unsigned int line);
 statusCode performAuthorizedAction(NSString* templatePath,
@@ -53,11 +54,12 @@ statusCode writeScriptNS(NSString* scriptPath, NSString* scriptContent);
 @end
 
 // Installs all scripts and templates, given the path to Zotero.dot
-statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
+statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[], const char zoteroScptPath[]) {
 	HANDLE_EXCEPTIONS_BEGIN
 	NSFileManager *fm = [NSFileManager defaultManager];
 	NSString* dotPathNS = [NSString stringWithUTF8String:zoteroDotPath];
 	NSString* dotmPathNS = [NSString stringWithUTF8String:zoteroDotmPath];
+	NSString* scptPathNS = [NSString stringWithUTF8String:zoteroScptPath];
 	FinderApplication* finder = nil;
 	
 	// Get directories
@@ -132,8 +134,8 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
         // Install template into container directory for Word 2016
 		shouldInstallContainerTemplate = shouldInstallContainerTemplate || majorVersion >= 15;
 		
-		// Prompt pre-15.38 users to updates
-		shouldPromptAboutWordUpdate = shouldPromptAboutWordUpdate || (majorVersion == 15 && minorVersion < 38);
+		// Prompt pre-16 users to updates
+		shouldPromptAboutWordUpdate = shouldPromptAboutWordUpdate || (majorVersion == 15);
 		
         if(majorVersion == 11 || majorVersion == 14) {
             // Install template into startup directory for Word 2004 or Word 2011
@@ -149,6 +151,7 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 
     if (shouldInstallContainerTemplate) {
 		ENSURE_OK(installContainerTemplate(dotmPathNS))
+		ENSURE_OK(installAppleScript(scptPathNS))
         installed = true;
     }
 	
@@ -204,7 +207,7 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[]) {
 									   alternateButton:nil
 										   otherButton:nil
 							 informativeTextWithFormat:@"Please update Word 2016 to "
-						  "version 15.38 or higher."];
+						  "version 16.16.27."];
 		[alert runModal];
 	}
 	
@@ -276,6 +279,29 @@ statusCode installContainerTemplate(NSString* dotmPathNS) {
 	return STATUS_OK;
 }
 
+statusCode installAppleScript(NSString* scriptPathNS) {
+	// Get path to startup folder
+	NSString *applicationScriptsDirectory = [NSHomeDirectory() stringByAppendingPathComponent:
+								  @"Library/Application Scripts/com.microsoft.Word"];
+	
+	// Make sure directory exists, but don't empty it
+	statusCode status = performAuthorizedMkdir(scriptPathNS, applicationScriptsDirectory,
+											   false);
+	if(status) return status;
+
+	NSString *newScriptPath = [applicationScriptsDirectory
+								 stringByAppendingPathComponent:
+								 @"Zotero.scpt"];
+	
+	status = performAuthorizedCopy(scriptPathNS, scriptPathNS, newScriptPath);
+	if(status) return status;
+	
+	// Fix template type and creator
+	status = setTemplateTypeCreator(newScriptPath, false);
+	if(status) return status;
+	
+	return STATUS_OK;
+}
 // Installs a template to a given path
 statusCode installTemplateIntoStartupDirectory(NSString* templatePath, NSString* path) {
 	// Get path to startup folder

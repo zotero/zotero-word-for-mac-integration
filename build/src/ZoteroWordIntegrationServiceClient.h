@@ -79,6 +79,10 @@ statusCode setBibliographyStyle(RemoteDocument *doc, long firstLineIndent,
 statusCode exportDocument(RemoteDocument *doc, const char fieldType[],
 						const char importInstructions[]);
 statusCode importDocument(RemoteDocument *doc, const char fieldType[], bool *returnValue);
+statusCode insertText(RemoteDocument *doc, const char htmlString[]);
+statusCode convertPlaceholdersToFields(RemoteDocument *doc, const char* placeholders[],
+									   const unsigned long nPlaceholders ,const unsigned short noteType,
+									   const char fieldType[], listNode_t** returnNode);
 statusCode cleanup(RemoteDocument *doc);
 statusCode complete(RemoteDocument *doc);
 
