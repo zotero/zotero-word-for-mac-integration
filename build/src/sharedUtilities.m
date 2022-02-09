@@ -6,13 +6,15 @@
 //
 
 #import <sys/sysctl.h>
-#include "XPCZoteroWordIntegration.h"
-
+#include "zoteroMacWordIntegration.h"
 
 BOOL monitorErrors = true;
 NSError* lastError = nil;
 char* lastErrorString = NULL;
 
+// These could just as well live in utilities.m
+// Originally were shared between XPC ARM service to work around
+// 2048+ char AE messaging bug, hence sharedUtilities.m
 
 // Converts a Cocoa path to an HFS (colon-delimited) path
 NSString* posixPathToHFSPath(NSString *posixPath) {
@@ -90,7 +92,7 @@ char* getError(void) {
 	return lastErrorString;
 }
 
-void setError(char *errorString) {
+void setError(const char *errorString) {
 	clearError();
 	lastErrorString = strdup(errorString);
 }
@@ -137,6 +139,28 @@ int isZoteroRosetta() {
 	if (errno == ENOENT)
 		return 0;
 	return -1;
+}
+
+char *getMacOSVersion() {
+	NSTask *task = [[NSTask alloc] init];
+	@try {
+		NSPipe *stdoutPipe = [NSPipe pipe];
+		[task setLaunchPath:@"/usr/bin/sw_vers"];
+		[task setArguments:[NSArray arrayWithObjects:@"-productVersion", nil]];
+		[task setStandardOutput:stdoutPipe];
+		
+		[task launch];
+		NSData *stdoutData = [[stdoutPipe fileHandleForReading] readDataToEndOfFile];
+		NSString *macOSVersionStr = [[NSString alloc] initWithData:stdoutData encoding:NSUTF8StringEncoding];
+		return copyNSString(macOSVersionStr);
+	}
+	@catch (NSException *e) {
+		setError([[e reason] UTF8String]);
+		return copyNSString(@"");
+	}
+	@finally {
+		[task release];
+	}
 }
 
 char *getWordVersion(const char wordPath[]) {

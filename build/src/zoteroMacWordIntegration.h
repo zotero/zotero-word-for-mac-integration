@@ -26,8 +26,17 @@
 #define zoteroMacWordIntegration_h
 
 #include "Word.h"
-#include "XPCZoteroWordIntegration.h"
 
+typedef unsigned short statusCode;
+
+enum STATUS {
+	STATUS_OK = 0,
+	STATUS_EXCEPTION = 1,
+	STATUS_EXCEPTION_ALREADY_DISPLAYED = 2,
+	STATUS_EXCEPTION_SB_DENIED = 3,
+	STATUS_EXCEPTION_ARM_NOT_SUPPORTED = 4,
+	STATUS_EXCEPTION_ARM_SUPPORTED = 5
+};
 
 enum DIALOG_ICON {
 	DIALOG_ICON_STOP = 0,
@@ -40,6 +49,11 @@ enum DIALOG_BUTTONS {
 	DIALOG_BUTTONS_OK_CANCEL = 1,
 	DIALOG_BUTTONS_YES_NO = 2,
 	DIALOG_BUTTONS_YES_NO_CANCEL = 3
+};
+
+enum NOTE_TYPE {
+	NOTE_FOOTNOTE = 1,
+	NOTE_ENDNOTE = 2
 };
 
 #define MAX_PROPERTY_LENGTH 255
@@ -123,6 +137,11 @@ return STATUS_EXCEPTION; }
 throwError([NSString stringWithFormat:@"%@", e], __FUNCTION__, [@__FILE__ lastPathComponent], __LINE__); \
 return STATUS_EXCEPTION; \
 }
+
+typedef struct ListNode {
+	void* value;
+	struct ListNode* next;
+} listNode_t;
 
 typedef struct Document {
 	char* wordPath;
@@ -216,6 +235,36 @@ NSString* getTemporaryFilePath(void);
 
 NSString* generateRandomString(NSUInteger length);
 NSInteger getEntryIndex(document_t* x, SBObject* y);
+
+// sharedUtilites.m
+@class ZoteroSBApplicationDelegate;
+@interface ZoteroSBApplicationDelegate : NSObject <SBApplicationDelegate>
+@end
+void (^handleXPCError)(NSError *);
+
+NSString* posixPathToHFSPath(NSString *posixPath);
+char* copyNSString(NSString* string);
+
+BOOL errorHasOccurred(void);
+void setErrorMonitor(BOOL status);
+void flagError(const char function[], NSString* file, unsigned int line);
+void clearError(void);
+char *getError(void);
+void setError(const char *);
+NSInteger getErrorCode(void);
+void throwError(NSString *errorString, const char function[], NSString* file,
+				unsigned int line);
+statusCode flagOSError(OSStatus status, const char function[], NSString* file,
+					   unsigned int line);
+
+void freeData(void* ptr);
+
+int isZoteroRosetta(void);
+char *getMacOSVersion(void);
+char *getWordVersion(const char wordPath[]);
+void flushBundleCache(const char wordPath[]);
+bool isWordArm(void);
+
 
 // application.m
 statusCode getDocument(int wordVersion, const char* wordPath,
