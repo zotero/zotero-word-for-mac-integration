@@ -319,24 +319,29 @@ function checkM1OSAndShowWarning() {
 	if (m1OSOSVersionChecked) return;
 	m1OSOSVersionChecked = true;
 
-	var isZoteroRosetta = f.isZoteroRosetta() == 1;
-	if (!isZoteroRosetta) return;
-	
-	var macOSVersion = f.getMacOSVersion().readString();
-	if (!macOSVersion.length) {
-		Zotero.logError(`Failed to check macOS version: ${getLastError()}`);
-		return;
-	}
-	
-	macOSVersion = macOSVersion.split('.').map(parseInt);
-	if (macOSVersion[0] >= 12 || (macOSVersion[0] == 11 && macOSVersion[1] >= 4)) return;
-	
-	var title = Zotero.getString('integration.error.m1UpgradeOS.title');
-	var message = Zotero.getString(`integration.error.m1UpgradeOS`, Zotero.appName);
-	var url = 'https://www.zotero.org/support/kb/mac_word_apple_silicon_compatibility';
-	var index = displayMoreInformationAlert(title, message);
-	if (index == 1) {
-		Zotero.launchURL(url)
+	try {
+		var isZoteroRosetta = f.isZoteroRosetta() == 1;
+		if (!isZoteroRosetta) return;
+
+		var macOSVersion = f.getMacOSVersion().readString();
+		if (!macOSVersion.length) {
+			Zotero.logError(`Failed to check macOS version: ${getLastError()}`);
+			return;
+		}
+
+		macOSVersion = macOSVersion.split('.').map(parseInt);
+		if (macOSVersion[0] >= 12 || (macOSVersion[0] == 11 && macOSVersion[1] >= 4)) return;
+
+		var title = Zotero.getString('integration.error.m1UpgradeOS.title');
+		var message = Zotero.getString(`integration.error.m1UpgradeOS`, Zotero.appName);
+		var url = 'https://www.zotero.org/support/kb/mac_word_apple_silicon_compatibility';
+		var index = displayMoreInformationAlert(title, message);
+		if (index == 1) {
+			Zotero.launchURL(url)
+		}
+	} catch (e) {
+		Zotero.debug('An unexpected error occurred while trying to check M1 mac OS version or display a warning dialog')
+		Zotero.logError(e);
 	}
 	throw new Error("ExceptionAlreadyDisplayed");
 }
