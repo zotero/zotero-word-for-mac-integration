@@ -154,8 +154,10 @@ statusCode checkFieldIntegrity(field_t *field) {
 	// Field order upset. Sometimes SB returns 0 for entry index, which is invalid since
 	// all those indices are 1-indexed, indicating.. something?.. that the field is no longer in the doc?
 	NSInteger entryIndex = getEntryIndex(field->doc, field->sbField);
-	CHECK_STATUS
-	if (field->entryIndex == entryIndex) return STATUS_OK;
+	if (errorHasOccurred()) {
+		clearError();
+	}
+	else if (field->entryIndex == entryIndex) return STATUS_OK;
 	
 	[field->sbField release];
 	[field->sbCodeRange release];
