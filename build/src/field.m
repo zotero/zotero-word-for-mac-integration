@@ -762,8 +762,12 @@ statusCode equals(field_t *a, field_t *b, bool *returnValue) {
 	ENSURE_OK(checkFieldIntegrity(a));
 	ENSURE_OK(checkFieldIntegrity(b));
 	*returnValue = false;
-	*returnValue = *returnValue || ((a->bookmarkName != NULL && b->bookmarkName != NULL && strcmp(a->bookmarkName, b->bookmarkName) == 0));
-	*returnValue = *returnValue || (a->noteType == b->noteType && a->entryIndex == b->entryIndex);
+	if (a->bookmarkName != NULL && b->bookmarkName != NULL) {
+		*returnValue = (strcmp(a->bookmarkName, b->bookmarkName) == 0);
+	}
+	else {
+		*returnValue = a->noteType == b->noteType && a->entryIndex == b->entryIndex;
+	}
 	return STATUS_OK;
 	HANDLE_EXCEPTIONS_END
 }
