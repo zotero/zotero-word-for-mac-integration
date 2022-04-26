@@ -322,6 +322,7 @@ function checkM1OSAndShowWarning() {
 	try {
 		var isZoteroRosetta = f.isZoteroRosetta() == 1;
 		if (!isZoteroRosetta) return;
+		Zotero.debug('MacWord: M1 Mac detected. Checking macOS version.')
 
 		var macOSVersion = f.getMacOSVersion().readString();
 		if (!macOSVersion.length) {
@@ -329,9 +330,12 @@ function checkM1OSAndShowWarning() {
 			return;
 		}
 
+		Zotero.debug(`MacWord: macOS version: ${macOSVersion}`);
 		macOSVersion = macOSVersion.split('.').map(parseInt);
+		Zotero.debug(`MacWord: parsed macOS version: ${macOSVersion}`);
 		if (macOSVersion[0] >= 12 || (macOSVersion[0] == 11 && macOSVersion[1] >= 4)) return;
 
+		Zotero.debug(`MacWord: macOS version below 11.4, displaying an upgrade warning`);
 		var title = Zotero.getString('integration.error.m1UpgradeOS.title');
 		var message = Zotero.getString(`integration.error.m1UpgradeOS`, Zotero.appName);
 		var url = 'https://www.zotero.org/support/kb/mac_word_apple_silicon_compatibility';
