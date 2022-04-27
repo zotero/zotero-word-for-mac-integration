@@ -331,7 +331,7 @@ function checkM1OSAndShowWarning() {
 		}
 
 		Zotero.debug(`MacWord: macOS version: ${macOSVersion}`);
-		macOSVersion = macOSVersion.split('.').map(parseInt);
+		macOSVersion = macOSVersion.split('.').map(num => parseInt(num));
 		Zotero.debug(`MacWord: parsed macOS version: ${macOSVersion}`);
 		if (macOSVersion[0] >= 12 || (macOSVersion[0] == 11 && macOSVersion[1] >= 4)) return;
 
