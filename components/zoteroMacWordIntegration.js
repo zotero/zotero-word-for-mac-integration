@@ -29,7 +29,7 @@ Components.utils.import("resource://gre/modules/Services.jsm");
 var Zotero = Components.classes["@zotero.org/Zotero;1"]
 			.getService(Components.interfaces.nsISupports)
 			.wrappedJSObject;
-var field_t, document_t, fieldListNode_t, progressFunction_t, xpcLib, lib, libPath, f, x, fn, fieldPtr;
+var field_t, document_t, fieldListNode_t, progressFunction_t, lib, libPath, f, x, fn, fieldPtr;
 var dataInUse = [];
 var useXPC = false;
 var flushWordVersion = false;
@@ -52,8 +52,6 @@ function init() {
 		.QueryInterface(Components.interfaces.nsIFileURL);
 	libPath = fileURI.file;
 	libPath.append("libZoteroWordIntegration.dylib");
-	var xpcLibPath = fileURI.file;
-	xpcLibPath.append("libZoteroWordIntegrationClient.dylib");
 	
 	lib = ctypes.open(libPath.path);
 	
