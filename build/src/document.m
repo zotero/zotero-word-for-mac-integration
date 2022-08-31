@@ -1129,11 +1129,8 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	IGNORING_SB_ERRORS_BEGIN
 	// Save properties
 	WordFont* font = [selectionRange fontObject];
-	double oldFontSize = [font fontSize];
 	NSString* oldFontName = [font name];
 	NSString* oldFontOtherName = [font otherName];
-	WordE110 oldColorIndex = [font colorIndex];
-	WordE113 oldUnderline = [font underline];
 	IGNORING_SB_ERRORS_END
 	
 	// Insert a temp bookmark into which we'll insert the HTML
@@ -1167,11 +1164,8 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	IGNORING_SB_ERRORS_BEGIN
 	// Set properties back to saved
 	font = [bookmarkRange fontObject];
-	[font setFontSize:oldFontSize];
 	[font setName:oldFontName];
 	[font setOtherName:oldFontOtherName];
-	[font setColorIndex:oldColorIndex];
-	[font setUnderline:oldUnderline];
 	IGNORING_SB_ERRORS_END
 	
 	// Remove the previously added empty paragraph
