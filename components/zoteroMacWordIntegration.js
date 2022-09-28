@@ -22,9 +22,10 @@
     ***** END LICENSE BLOCK *****
 */
 
-Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
+Components.utils.import("resource://gre/modules/ComponentUtils.jsm");
 Components.utils.import("resource://gre/modules/ctypes.jsm");
 Components.utils.import("resource://gre/modules/Services.jsm");
+Components.utils.import("resource://gre/modules/FileUtils.jsm");
 
 var Zotero = Components.classes["@zotero.org/Zotero;1"]
 			.getService(Components.interfaces.nsISupports)
@@ -44,13 +45,9 @@ const STATUS_EXCEPTION_SB_DENIED = 3;
  */
 function init() {
 	if(lib) return;
-	var ios = Components.classes["@mozilla.org/network/io-service;1"]  
-		.getService(Components.interfaces.nsIIOService);
-	var resHandler = ios.getProtocolHandler("resource")
-		.QueryInterface(Components.interfaces.nsIResProtocolHandler);
-	var fileURI = resHandler.getSubstitution("zotero-macword-integration")
-		.QueryInterface(Components.interfaces.nsIFileURL);
-	libPath = fileURI.file;
+	libPath = FileUtils.getDir('ARes', []).parent.parent;
+	libPath.append('integration');
+	libPath.append('word-for-mac');
 	libPath.append("libZoteroWordIntegration.dylib");
 	
 	lib = ctypes.open(libPath.path);
@@ -434,19 +431,22 @@ function checkIfFreed(documentStatus) {
 var Installer = function() {
 	initializePipes();
 	init();
+	var Integration = Components.utils.import("resource://zotero-macword-integration/integration.js").MacWordIntegration;
+	Integration.init();
 	this.wrappedJSObject = this;
 };
 Installer.prototype = {
 	classDescription: "Zotero Word for Mac Integration Installer",
 	classID:		Components.ID("{aa56c6c0-95f0-48c2-b223-b11b96b9c9e5}"),
 	contractID:		"@zotero.org/Zotero/integration/installer?agent=MacWord;1",
-	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
+	QueryInterface: ChromeUtils.generateQI([Components.interfaces.nsISupports,
 		Components.interfaces.nsIRunnable]),
 	service: 		true,
 	run: function() {
 		init();
-		var zoteroDot = libPath.parent.parent;
-		zoteroDot.append("install");
+		let zoteroDot = FileUtils.getDir('ARes', []).parent.parent;
+		zoteroDot.append('integration');
+		zoteroDot.append('word-for-mac');
 		var zoteroDotm = zoteroDot.clone();
 		var zoteroScpt = zoteroDot.clone();
 		zoteroDot.append("Zotero.dot");
@@ -483,7 +483,7 @@ Application2004.prototype = {
 	classDescription: "Zotero Word 2004 for Mac Integration Application",
 	classID:		Components.ID("{b063dd87-5615-45c5-ac3d-4b0583034616}"),
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2004;1",
-	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
+	QueryInterface: ChromeUtils.generateQI([Components.interfaces.nsISupports]),
 	service: 		true,
 	getDocument: async function(path) {
 		init();
@@ -510,7 +510,7 @@ Application2008.prototype = {
 	classDescription: "Zotero Word 2008/2011 for Mac Integration Application",
 	classID:		Components.ID("{ea584d70-2797-4cd1-8015-1a5f5fb85af7}"),
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2008;1",
-	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
+	QueryInterface: ChromeUtils.generateQI([Components.interfaces.nsISupports]),
 	service: 		true,
 	getDocument: async function(path) {
 		init();
@@ -537,7 +537,7 @@ Application2016.prototype = {
 	classDescription: "Zotero Word 2016 for Mac Integration Application",
 	classID:		Components.ID("{9c6e787b-27d7-4567-98d4-b57d0afa3d8c}"),
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2016;1",
-	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
+	QueryInterface: ChromeUtils.generateQI([Components.interfaces.nsISupports]),
 	service: 		true,
 	getDocument: async function(path) {
 		init();
@@ -567,7 +567,7 @@ Application16.prototype = {
 	classDescription: "Zotero Word 16.xx for Mac Integration Application",
 	classID:		Components.ID("{0a5ec6de-f9eb-11e7-8c3f-9a214cf093ae}"),
 	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord16;1",
-	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports]),
+	QueryInterface: ChromeUtils.generateQI([Components.interfaces.nsISupports]),
 	service: 		true,
 	getDocument: async function(path) {
 		init();
@@ -790,7 +790,7 @@ FieldEnumerator.prototype = {
 		return new Field(fieldPtr, this._document_t, this._documentStatus);
 	},
 	
-	QueryInterface:  XPCOMUtils.generateQI([Components.interfaces.nsISupports,
+	QueryInterface:  ChromeUtils.generateQI([Components.interfaces.nsISupports,
 		Components.interfaces.nsISimpleEnumerator])
 };
 
@@ -879,7 +879,7 @@ for (let cls of [Document, Field]) {
 	}
 }
 
-const NSGetFactory = XPCOMUtils.generateNSGetFactory([
+const NSGetFactory = ComponentUtils.generateNSGetFactory([
 	Installer,
 	Application2004,
 	Application2008,

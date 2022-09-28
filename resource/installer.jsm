@@ -35,13 +35,11 @@ var Plugin = new function() {
 	this.EXTENSION_PREF_BRANCH = "extensions.zoteroMacWordIntegration.";
 	this.EXTENSION_DIR = "zotero-macword-integration";
 	this.APP = 'Microsoft Word';
+	this.VERSION_FILE = 'resource://zotero-macword-integration/version.txt';
 	
-	this.REQUIRED_ADDONS = [];
 	this.LAST_INSTALLED_FILE_UPDATE = "6.0.0pre";
 	
 	var zoteroPluginInstaller;
-	
-	this.verifyNotCorrupt = function(zpi) {}
 	
 	this.install = function(zpi) {
 		zoteroPluginInstaller = zpi;
@@ -49,7 +47,7 @@ var Plugin = new function() {
 		Zotero.debug("Installing ZoteroMacWordIntegration");
 		try {
 			var installer = Components.classes["@zotero.org/Zotero/integration/installer?agent=MacWord;1"].
-				createInstance(Components.interfaces.nsIRunnable);
+				createInstance(Components.interfaces.nsISupports).wrappedJSObject;
 			installer.run();
 			zoteroPluginInstaller.success();
 		} catch(e) {

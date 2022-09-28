@@ -25,7 +25,7 @@
 		7AADFE9E25B9C5CE0003B71A /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
-			dstPath = "$(SRCROOT)/../../resource";
+			dstPath = "$(SRCROOT)/../../install";
 			dstSubfolderSpec = 0;
 			files = (
 				7AADFEDB25B9C9E20003B71A /* libZoteroWordIntegration.dylib in CopyFiles */,
