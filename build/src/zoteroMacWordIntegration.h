@@ -192,6 +192,9 @@ typedef struct Field {
 	// The bookmark name
 	char* bookmarkName;
 	
+	// Whether this field is adjacent to the next field
+	bool adjacent;
+	
 	// Only one of these will be set
 	WordField* sbField;
 	WordBookmark* sbBookmark;
@@ -325,6 +328,7 @@ statusCode getText(field_t* field, char** returnValue);
 statusCode setCode(field_t *field, const char code[]);
 statusCode getCode(field_t* field, char** returnValue);
 statusCode getNoteIndex(field_t* field, unsigned long *returnValue);
+statusCode isAdjacentToNextField(field_t* field, bool *returnValue);
 
 statusCode initField(document_t *doc, WordField* sbField, short noteType,
 					 NSInteger entryIndex, BOOL ignoreCode,

@@ -120,6 +120,7 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 		field->noteLocation = -1;
 		field->entryIndex = entryIndex;
 		field->noteType = noteType;
+		field->adjacent = false;
 		
 		field->doc = doc;
 		field->sbField = sbField;
@@ -245,6 +246,7 @@ statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark,
 		field->textLocation = -1;
 		field->noteLocation = -1;
 		field->rawCode = nil;
+		field->adjacent = false;
 		
 		field->bookmarkNameNS = resolvedBookmarkName;
 		field->bookmarkName = copyNSString(resolvedBookmarkName);
@@ -753,6 +755,14 @@ statusCode getNoteIndex(field_t* field, unsigned long *returnValue) {
 		*returnValue = 0;
 	}
 	
+	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
+}
+
+// Returns whether the next field is adjacent to this field
+statusCode isAdjacentToNextField(field_t* field, bool *returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
+	*returnValue = field->adjacent;
 	return STATUS_OK;
 	HANDLE_EXCEPTIONS_END
 }

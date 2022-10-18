@@ -196,6 +196,10 @@ function init() {
 		getNoteIndex: lib.declare("getNoteIndex", ctypes.default_abi, statusCode,
 			field_t, ctypes.unsigned_long.ptr),
 		
+		// statusCode isAdjacentToNextField(XPCField field, unsigned long *returnValue);
+		isAdjacentToNextField: lib.declare("isAdjacentToNextField", ctypes.default_abi, statusCode,
+			field_t, ctypes.bool.ptr),
+		
 		// statusCode equals(XPCField a, XPCField b, bool *returnValue);
 		equals: lib.declare("equals", ctypes.default_abi, statusCode,
 			field_t, field_t, ctypes.bool.ptr),
@@ -864,6 +868,14 @@ Field.prototype = {
 		var returnValue = new ctypes.unsigned_long();
 		checkStatus(fn.getNoteIndex(this._field_t, returnValue.address()));
 		return parseInt(returnValue.value);
+	},
+
+	isAdjacentToNextField: function() {
+		Zotero.debug("ZoteroMacWordIntegration: isAdjacentToNextField", 4);
+		checkIfFreed(this._documentStatus);
+		var returnValue = new ctypes.bool();
+		checkStatus(fn.isAdjacentToNextField(this._field_t, returnValue.address()));
+		return returnValue.value;
 	}
 }
 
