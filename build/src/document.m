@@ -34,6 +34,7 @@ statusCode extractFieldsFromNotes(SBElementArray* notes,
 statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 					unsigned short noteType,
 					WordFootnote **returnValue);
+statusCode setFieldAdjacency(field_t *fieldA, field_t *fieldB);
 @interface FieldGetter : NSObject {
 	document_t* document;
 	char* fieldType;
@@ -405,6 +406,13 @@ statusCode insertField(document_t *doc, const char fieldType[],
 	HANDLE_EXCEPTIONS_END
 }
 
+statusCode setFieldAdjacency(field_t *fieldA, field_t *fieldB) {
+	HANDLE_EXCEPTIONS_BEGIN
+	// Mac Word appears to maintain some fake 1-char wide character between field codes in Word.
+	fieldA->adjacent = fieldA->noteType == fieldB->noteType && [fieldA->sbContentRange endOfContent] + 2 - [fieldB->sbCodeRange startOfContent] >= 0;
+	HANDLE_EXCEPTIONS_END
+}
+
 // Gets fields
 statusCode getFields(document_t *doc, const char fieldType[],
 					 listNode_t** returnNode) {
@@ -496,6 +504,10 @@ statusCode getFields(document_t *doc, const char fieldType[],
 				}
 			}
 			if(!isNextField) break;
+			
+			if (fieldListEnd) {
+				ENSURE_OK_LOCKED(doc, setFieldAdjacency((field_t *) fieldListEnd->value, currentFields[noteTypeA]));
+			}
 			
 			// Add node to linked list
 			addValueToList(currentFields[noteTypeA], &fieldListStart,
