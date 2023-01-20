@@ -1143,6 +1143,8 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	WordFont* font = [selectionRange fontObject];
 	NSString* oldFontName = [font name];
 	NSString* oldFontOtherName = [font otherName];
+	WordE110 oldColorIndex = [font colorIndex];
+	WordE113 oldUnderline = [font underline];
 	IGNORING_SB_ERRORS_END
 	
 	// Insert a temp bookmark into which we'll insert the HTML
@@ -1287,6 +1289,10 @@ statusCode convertPlaceholdersToFields(document_t *doc, const char* placeholders
 								 MAIN_FIELD_PREFIX,
 								 @"TEMP"];
 			[[link fieldCode] setContent:rawCode];
+			WordFont *font = [linkRange fontObject];
+			[font setColorIndex:WordE110Auto];
+			[font setUnderline:WordE113UnderlineNone];
+			
 			CHECK_STATUS_LOCKED(doc)
 			ENSURE_OK_LOCKED(doc, initField(doc, link, -1, -1, false, &newField))
 		}
