@@ -34,7 +34,6 @@
 #define PATH_CHOWN "/usr/sbin/chown"
 #define PATH_CHMOD "/bin/chmod"
 
-statusCode installTemplateIntoStartupDirectory(NSString* templatePath, NSString* path);
 statusCode setTemplateTypeCreator(NSString* templatePath, bool);
 statusCode installScripts(NSString* templatePath);
 statusCode installContainerTemplate(NSString*);
@@ -136,12 +135,6 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[], cons
 		
 		// Prompt pre-16 users to updates
 		shouldPromptAboutWordUpdate = shouldPromptAboutWordUpdate || (majorVersion == 15);
-		
-        if(majorVersion == 11 || majorVersion == 14) {
-            // Install template into startup directory for Word 2004 or Word 2011
-			ENSURE_OK(installTemplateIntoStartupDirectory(dotPathNS, path))
-			installed = true;
-        }
 	}
 	
 	if(shouldInstallScripts) {
@@ -299,50 +292,6 @@ statusCode installAppleScript(NSString* scriptPathNS) {
 	// Fix template type and creator
 	status = setTemplateTypeCreator(newScriptPath, false);
 	if(status) return status;
-	
-	return STATUS_OK;
-}
-// Installs a template to a given path
-statusCode installTemplateIntoStartupDirectory(NSString* templatePath, NSString* path) {
-	// Get path to startup folder
-	NSString* officeDirectory = [path stringByDeletingLastPathComponent];
-	NSString* startupDirectory = [officeDirectory stringByAppendingPathComponent:
-								  @"Office/Startup/Word"];
-	
-	BOOL isDirectory = NO;
-	NSFileManager *fm = [NSFileManager defaultManager];
-	if(![fm fileExistsAtPath:startupDirectory isDirectory:&isDirectory]) {
-		// If no Startup directory, look for a Start directory
-		NSString* testStartupDirectory = [officeDirectory
-										  stringByAppendingPathComponent:
-										  @"Office/Start/Word"];
-		if([fm fileExistsAtPath:testStartupDirectory
-					 isDirectory:&isDirectory]) {
-			if(!isDirectory) {
-				NSString* err = [NSString
-								 stringWithFormat:@"%@ is not a directory",
-								 testStartupDirectory];
-				DIE(err);
-			}
-			startupDirectory = testStartupDirectory;
-		}
-	}
-	
-	// Make sure directory exists, but don't empty it
-	statusCode status = performAuthorizedMkdir(templatePath, startupDirectory,
-											   false);
-	if(status) return status;
-	
-	// Try to copy template to directory
-	NSString *newTemplatePath = [startupDirectory
-								stringByAppendingPathComponent:
-								 @"Zotero.dot"];
-	status = performAuthorizedCopy(templatePath, templatePath, newTemplatePath);
-	if(status) return status;
-	
-	// Fix template type and creator
-    status = setTemplateTypeCreator(newTemplatePath, false);
-    if(status) return status;
 	
 	return STATUS_OK;
 }
