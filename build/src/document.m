@@ -35,55 +35,6 @@ statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 					unsigned short noteType,
 					WordFootnote **returnValue);
 statusCode setFieldAdjacency(field_t *fieldA, field_t *fieldB);
-@interface FieldGetter : NSObject {
-	document_t* document;
-	char* fieldType;
-	void (*onProgress)(int progress);
-	listNode_t** returnNode;
-}
-
-- (FieldGetter*) initWithDocument:(document_t*)aDocument
-						fieldType:(char*)aFieldType
-					   onProgress:(void (*)(int progress))aOnProgress
-					   returnNode:(listNode_t**)aReturnNode;
-- (void) getFields;
-- (void) progress:(NSNumber*)progressValue;
-@end
-
-// This object handles acquiring fields on a separate thread
-@implementation FieldGetter
-
-- (FieldGetter*) initWithDocument:(document_t*)aDocument
-						fieldType:(char*)aFieldType
-					   onProgress:(void (*)(int progress))aOnProgress
-					   returnNode:(listNode_t**)aReturnNode {
-	document = aDocument;
-	fieldType = aFieldType;
-	onProgress = aOnProgress;
-	returnNode = aReturnNode;
-	return self;
-}
-
-// Gets fields. Call this from off the main thread.
-- (void) getFields {
-	NSNumber* progressValue;
-	statusCode status = getFields(document, fieldType, returnNode);
-	if(status) {
-		progressValue = [NSNumber numberWithInt:-1];
-	} else {
-		progressValue = [NSNumber numberWithInt:100];
-	}
-	
-	[self performSelectorOnMainThread:@selector(progress:)
-						   withObject:progressValue waitUntilDone:NO];
-}
-
-// Dispatches the progress handler, which is a function pointer to a JavaScript
-// function.
-- (void) progress:(NSNumber*)progressValue {
-	(*onProgress)([progressValue intValue]);
-}
-@end
 
 // Frees a document struct.
 void freeDocument(document_t* doc) {
@@ -569,26 +520,6 @@ statusCode getFields(document_t *doc, const char fieldType[],
 	
 	*returnNode = fieldListStart;
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
-	HANDLE_EXCEPTIONS_END
-}
-
-statusCode getFieldsAsync(document_t *doc, const char fieldType[],
-						  listNode_t** returnNode,
-						  void (*onProgress)(int progress)) {
-	HANDLE_EXCEPTIONS_BEGIN
-	size_t bufferSize = strlen(fieldType)+1;
-	char* fieldTypeCopy = (char*) malloc(bufferSize);
-	memcpy(fieldTypeCopy, fieldType, bufferSize);
-	FieldGetter* fieldGetter = [[FieldGetter alloc]
-								initWithDocument:doc
-								fieldType:fieldTypeCopy
-								onProgress:onProgress
-								returnNode:returnNode];
-	
-	[fieldGetter performSelectorInBackground:@selector(getFields)
-								  withObject:nil];
-	
-	return STATUS_OK;
 	HANDLE_EXCEPTIONS_END
 }
 
