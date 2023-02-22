@@ -31,7 +31,6 @@ var Zotero = Components.classes["@zotero.org/Zotero;1"]
 			.wrappedJSObject;
 var field_t, document_t, fieldListNode_t, progressFunction_t, lib, libPath, f, x, fn, fieldPtr;
 var dataInUse = [];
-var useXPC = false;
 var flushWordVersion = false;
 var m1OSOSVersionChecked = false;
 
@@ -208,15 +207,7 @@ function init() {
 		// 					  const char zoteroScptPath[]);
 		install: lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr,
 			ctypes.char.ptr, ctypes.char.ptr),
-		
-		// statusCode getScriptItemsDirectory(char** scriptFolder);
-		getScriptItemsDirectory: lib.declare("getScriptItemsDirectory", ctypes.default_abi,
-			statusCode, ctypes.char.ptr.ptr),
-		
-		// statusCode writeScript(char* scriptPath, char* scriptContent);
-		writeScript: lib.declare("writeScript", ctypes.default_abi, statusCode, ctypes.char.ptr,
-			ctypes.char.ptr),
-		
+	
 		// statusCode freeData(void* ptr);
 		freeData: lib.declare("freeData", ctypes.default_abi, statusCode, ctypes.void_t.ptr),
 
@@ -456,27 +447,7 @@ Installer.prototype = {
 		zoteroDot.append("Zotero.dot");
 		zoteroDotm.append("Zotero.dotm");
 		zoteroScpt.append("Zotero.scpt");
-		// The install procedure always runs in the main lib file (not the XPC service)
-		// and checkStatus() may call getLastError() which will call fn.getError()
-		// so we need to make sure fn == f at that time.
-		// This is kinda awful, but the whole xpc thing is temporary™ (2021-03-19)
-		var tempFn = fn;
-		fn = f;
-		try {
-			checkStatus(f.install(zoteroDot.path, zoteroDotm.path, zoteroScpt.path));
-		} finally {
-			fn = tempFn;
-		}
-	},
-	getScriptItemsDirectory: function() {
-		var returnValue = new ctypes.char.ptr();
-		checkStatus(f.getScriptItemsDirectory(returnValue.address()));
-		var outString = returnValue.readString();
-		f.freeData(returnValue);
-		return outString;
-	},
-	writeScript: function(scriptPath, scriptContent) {
-		checkStatus(f.writeScript(scriptPath, scriptContent));
+		checkStatus(f.install(zoteroDot.path, zoteroDotm.path, zoteroScpt.path));
 	}
 };
 
