@@ -29,6 +29,13 @@ Components.utils.import("resource://gre/modules/FileUtils.jsm");
 var Zotero = Components.classes["@zotero.org/Zotero;1"]
 			.getService(Components.interfaces.nsISupports)
 			.wrappedJSObject;
+<<<<<<< HEAD
+=======
+var field_t, document_t, fieldListNode_t, progressFunction_t, lib, libPath, f, x, fn, fieldPtr;
+var dataInUse = [];
+var flushWordVersion = false;
+var m1OSOSVersionChecked = false;
+>>>>>>> fa74f09 (Removes old installation code for 2011 and earlier versions. Closes #28)
 
 Components.classes["@mozilla.org/moz/jssubscript-loader;1"]
 	.getService(Components.interfaces.mozIJSSubScriptLoader)
@@ -49,6 +56,7 @@ async function init() {
 	libPath.append('word-for-mac');
 	libPath.append("libZoteroWordIntegration.dylib");
 	
+<<<<<<< HEAD
 	worker = new ChromeWorker("resource://zotero-macword-integration/webWorkerLibInterface.js")
 	
 	Messaging = new MessagingGeneric({
@@ -66,6 +74,226 @@ async function init() {
 	for (let method of ["preventAppNap", "allowAppNap",
 			"install", "isWordArm", "getMacOSVersion", "isZoteroRosetta"]) {
 		fn[method] = (...args) => Messaging.sendMessage(method, args);
+=======
+	lib = ctypes.open(libPath.path);
+	
+	document_t = new ctypes.StructType("Document");
+	
+	field_t = ctypes.unsigned_long;
+	
+	fieldListNode_t = new ctypes.StructType("fieldListNode_t");
+	fieldListNode_t.define([
+		{ field: field_t },
+		{ next: fieldListNode_t.ptr }
+	]);
+	
+	progressFunction_t = new ctypes.FunctionType(ctypes.default_abi, ctypes.void_t,
+		[ctypes.int]).ptr;
+	
+	var statusCode = ctypes.unsigned_short;
+	f = {
+		// char* getError(void);
+		getError: lib.declare("getError", ctypes.default_abi, ctypes.char.ptr),
+		
+		// void clearError(void);
+		clearError: lib.declare("clearError", ctypes.default_abi, ctypes.void_t),
+
+		// void preventAppNap(void);
+		preventAppNap: lib.declare("preventAppNap", ctypes.default_abi, ctypes.void_t),
+
+		// void allowAppNap(void);
+		allowAppNap: lib.declare("allowAppNap", ctypes.default_abi, ctypes.void_t),
+		
+		// statusCode getDocument(int wordVersion, const char* wordPath,
+		//					   const char* documentName, Document** returnValue);
+		getDocument: lib.declare("getDocument", ctypes.default_abi, statusCode, ctypes.int,
+			ctypes.char.ptr, ctypes.char.ptr, document_t.ptr.ptr),
+		
+		// statusCode activate(Document *doc);
+		activate: lib.declare("activate", ctypes.default_abi, statusCode, document_t.ptr),
+		
+		// statusCode displayAlert(char const dialogText[], unsigned short icon,
+		//						   unsigned short buttons, unsigned short* returnValue);
+		displayAlert: lib.declare("displayAlert", ctypes.default_abi, ctypes.unsigned_short,
+			document_t.ptr, ctypes.char.ptr, ctypes.unsigned_short, ctypes.unsigned_short,
+			ctypes.unsigned_short.ptr),
+		
+		// statusCode canInsertField(Document *doc, const char fieldType[], bool* returnValue);
+		canInsertField: lib.declare("canInsertField", ctypes.default_abi, statusCode,
+			document_t.ptr, ctypes.char.ptr, ctypes.bool.ptr),
+		
+		// statusCode cursorInField(Document *doc, const char fieldType[], Field** returnValue);
+		cursorInField: lib.declare("cursorInField", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, field_t.ptr),
+		
+		// statusCode getDocumentData(Document *doc, char **returnValue);
+		getDocumentData: lib.declare("getDocumentData", ctypes.default_abi, statusCode,
+			document_t.ptr, ctypes.char.ptr.ptr),
+		
+		// statusCode setDocumentData(Document *doc, const char documentData[]);
+		setDocumentData: lib.declare("setDocumentData", ctypes.default_abi, statusCode,
+			document_t.ptr, ctypes.char.ptr),
+		
+		// statusCode insertField(Document *doc, const char fieldType[],
+		//					      unsigned short noteType, Field **returnValue)
+		insertField: lib.declare("insertField", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, ctypes.unsigned_short, field_t.ptr),
+		
+		// statusCode getFields(document_t *doc, const char fieldType[],
+		//					    fieldListNode_t** returnNode);
+		getFields: lib.declare("getFields", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, fieldListNode_t.ptr.ptr),
+		
+		// statusCode getFieldsAsync(document_t *doc, const char fieldType[],
+		// 						     void (*onProgress)(int progress),
+		// 						     fieldListNode_t** returnNode);
+		getFieldsAsync: lib.declare("getFieldsAsync", ctypes.default_abi, statusCode,
+			document_t.ptr, ctypes.char.ptr, fieldListNode_t.ptr.ptr, progressFunction_t),
+		
+		// statusCode setBibliographyStyle(Document *doc, long firstLineIndent, 
+		//								   long bodyIndent, unsigned long lineSpacing,
+		//								   unsigned long entrySpacing, long tabStops[],
+		//								   unsigned long tabStopCount);
+		setBibliographyStyle: lib.declare("setBibliographyStyle", ctypes.default_abi,
+			statusCode, document_t.ptr, ctypes.long, ctypes.long, ctypes.unsigned_long,
+			ctypes.unsigned_long, ctypes.long.array(), ctypes.unsigned_long),
+		
+		// statusCode exportDocument(Document *doc, const char fieldType[],
+		// 							const char importInstructions[]);
+		exportDocument: lib.declare("exportDocument", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, ctypes.char.ptr),
+
+		// statusCode importDocument(Document *doc, const char fieldType[],
+		// 							bool *returnValue);
+		importDocument: lib.declare("importDocument", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, ctypes.bool.ptr),
+		
+		// statusCode insertText(Document *doc, const char htmlString[]);
+		insertText: lib.declare("insertText", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr),
+
+		// statusCode convertPlaceholdersToFields(Document *doc, char* placeholders[],
+		//		unsigned long nPlaceholders, unsigned short noteType, char fieldType[], listNode_t** returnNode);
+		convertPlaceholdersToFields: lib.declare("convertPlaceholdersToFields", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr.ptr, ctypes.unsigned_long, ctypes.unsigned_short,
+			ctypes.char.ptr, fieldListNode_t.ptr.ptr),
+		
+		// statusCode convert(Document *doc, field_t* fields[], unsigned long nFields,
+		//				      const char toFieldType[], unsigned short noteType[]);
+		convert: lib.declare("convert", ctypes.default_abi, statusCode, document_t.ptr,
+			field_t.ptr, ctypes.unsigned_long, ctypes.char.ptr, ctypes.unsigned_short.ptr),
+		
+		// statusCode cleanup(Document *doc);
+		cleanup: lib.declare("cleanup", ctypes.default_abi, statusCode, document_t.ptr),
+		
+		// statusCode cleanup(Document *doc);
+		complete: lib.declare("complete", ctypes.default_abi, statusCode, document_t.ptr),
+
+		// statusCode deleteField(XPCField field);
+		deleteField: lib.declare("deleteField", ctypes.default_abi, statusCode, field_t),
+
+		// statusCode removeCode(XPCField field);
+		removeCode: lib.declare("removeCode", ctypes.default_abi, statusCode, field_t),
+			
+		// statusCode selectField(XPCField field);
+		selectField: lib.declare("selectField", ctypes.default_abi, statusCode, field_t),
+			
+		// statusCode setText(XPCField field, const char string[], bool isRich);
+		setText: lib.declare("setText", ctypes.default_abi, statusCode, field_t,
+			ctypes.char.ptr, ctypes.bool),
+			
+		// statusCode getText(XPCField field, char** returnValue);
+		getText: lib.declare("getText", ctypes.default_abi, statusCode, field_t,
+			ctypes.char.ptr.ptr),
+			
+		// statusCode setCode(XPCField field, const char code[]);
+		setCode: lib.declare("setCode", ctypes.default_abi, statusCode, field_t,
+			ctypes.char.ptr),
+		
+		// statusCode getCode(XPCField field, char** returnValue);
+		getCode: lib.declare("getCode", ctypes.default_abi, statusCode, field_t,
+			ctypes.char.ptr.ptr),
+		
+		// statusCode getNoteIndex(XPCField field, unsigned long *returnValue);
+		getNoteIndex: lib.declare("getNoteIndex", ctypes.default_abi, statusCode,
+			field_t, ctypes.unsigned_long.ptr),
+		
+		// statusCode isAdjacentToNextField(XPCField field, unsigned long *returnValue);
+		isAdjacentToNextField: lib.declare("isAdjacentToNextField", ctypes.default_abi, statusCode,
+			field_t, ctypes.bool.ptr),
+		
+		// statusCode equals(XPCField a, XPCField b, bool *returnValue);
+		equals: lib.declare("equals", ctypes.default_abi, statusCode,
+			field_t, field_t, ctypes.bool.ptr),
+		
+		// statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[],
+		// 					  const char zoteroScptPath[]);
+		install: lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr,
+			ctypes.char.ptr, ctypes.char.ptr),
+	
+		// statusCode freeData(void* ptr);
+		freeData: lib.declare("freeData", ctypes.default_abi, statusCode, ctypes.void_t.ptr),
+
+		// bool isWordArm();
+		isWordArm: lib.declare("isWordArm", ctypes.default_abi, ctypes.bool),
+		
+		// char *getWordVersion(const char wordPath[]);
+		getWordVersion: lib.declare("getWordVersion", ctypes.default_abi, ctypes.char.ptr, ctypes.char.ptr),
+		
+		// char *getMacOSVersion();
+		getMacOSVersion: lib.declare("getMacOSVersion", ctypes.default_abi, ctypes.char.ptr),
+
+		// void flushBundleCache(const char wordPath[]);
+		flushWordVersion: lib.declare("flushBundleCache", ctypes.default_abi, ctypes.void_t, ctypes.char.ptr),
+		
+		// int isZoteroRosetta();
+		isZoteroRosetta: lib.declare("isZoteroRosetta", ctypes.default_abi, ctypes.int),
+	};
+	
+	fn = f;
+
+	fieldPtr = new ctypes.PointerType(field_t);
+}
+
+/**
+ * Gets the last error that took place in C code.
+ */
+function getLastError() {
+	var errPtr = fn.getError();
+	if(errPtr.isNull()) {
+		var err = "An unexpected error occurred.";
+	} else {
+		var err = errPtr.readString().replace("\u2019", "'", "g");
+	}
+	fn.clearError();
+	return err;
+}
+
+/**
+ * Checks the return status of a function to verify that no error occurred.
+ * @param {Integer} status The return status code of a C function
+ */
+function checkStatus(status, pre2016=false) {
+	if(!status) return;
+
+	if (status === STATUS_EXCEPTION) {
+		throw Components.Exception(getLastError());
+	} else {
+		if (status === STATUS_EXCEPTION_SB_DENIED) {
+			let message = Zotero.getString('integration.error.macWordSBPermissionsMissing');
+			if (pre2016) {
+				message += '\n\n' + Zotero.getString('integration.error.macWordSBPermissionsMissing.pre2016');
+			}
+			let index = displayMoreInformationAlert(
+				Zotero.getString('integration.error.macWordSBPermissionsMissing.title'),
+				message
+			);
+			if (index == 1) {
+				Zotero.launchURL('https://www.zotero.org/support/kb/mac_word_permissions_missing')
+			}
+		}
+		throw new Error("ExceptionAlreadyDisplayed");
+>>>>>>> fa74f09 (Removes old installation code for 2011 and earlier versions. Closes #28)
 	}
 	
 	await Messaging.sendMessage('init', [libPath.path])
@@ -196,7 +424,11 @@ Installer.prototype = {
 		zoteroDot.append("Zotero.dot");
 		zoteroDotm.append("Zotero.dotm");
 		zoteroScpt.append("Zotero.scpt");
+<<<<<<< HEAD
 		checkStatus(await fn.install(zoteroDot.path, zoteroDotm.path, zoteroScpt.path));
+=======
+		checkStatus(f.install(zoteroDot.path, zoteroDotm.path, zoteroScpt.path));
+>>>>>>> fa74f09 (Removes old installation code for 2011 and earlier versions. Closes #28)
 	}
 };
 
