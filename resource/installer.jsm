@@ -36,8 +36,9 @@ var Plugin = new function() {
 	this.EXTENSION_DIR = "zotero-macword-integration";
 	this.APP = 'Microsoft Word';
 	this.VERSION_FILE = 'resource://zotero-macword-integration/version.txt';
-	
-	this.LAST_INSTALLED_FILE_UPDATE = "6.0.0pre";
+
+	// Bump to make Zotero update the template (Zotero.dotm) for existing installs. Do not remove "pre"
+	this.LAST_INSTALLED_FILE_UPDATE = "7.0.1pre";
 	
 	var zoteroPluginInstaller;
 	
