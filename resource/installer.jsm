@@ -37,7 +37,8 @@ var Plugin = new function() {
 	this.APP = 'Microsoft Word';
 	
 	this.REQUIRED_ADDONS = [];
-	this.LAST_INSTALLED_FILE_UPDATE = "6.0.0pre";
+	// Bump to make Zotero update the template (Zotero.dotm) for existing installs. Do not remove "pre"
+	this.LAST_INSTALLED_FILE_UPDATE = "6.0.6pre";
 	
 	var zoteroPluginInstaller;
 	
