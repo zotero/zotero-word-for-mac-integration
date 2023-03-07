@@ -1696,9 +1696,10 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		} else {
 			// Need to find the field within the document text. Luckily, we know
 			// where we created it.
-			NSInteger whereStart = [sbWhere startOfContent];
-			WordTextRange* tmpRange = [doc->sbDoc createRangeStart:whereStart-1
-															   end:([sbWhere endOfContent]+1)];
+			NSInteger whereStart = [sbWhere startOfContent] - 1;
+			NSInteger whereEnd = MIN([sbWhere endOfContent] + 1, [sbWhere storyLength]);
+			WordTextRange* tmpRange = [doc->sbDoc createRangeStart:whereStart
+															   end:whereEnd];
 			NSArray* sbFields = [[tmpRange fields] get];
 			NSUInteger fieldsInRange = [sbFields count];
 			if(!fieldsInRange) DIE(@"Field reference lost")
