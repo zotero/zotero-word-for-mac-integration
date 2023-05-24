@@ -58,9 +58,13 @@ async function init() {
 		}),
 		handlerFunctionOverrides: {
 			'debug': true,
+			'getString': true,
+			'launchURL': true
 		},
 		overrideTarget: Zotero
 	});
+	
+	Messaging.addMessageListener('displayMoreInformationAlert', (...args) => displayMoreInformationAlert(...args))
 	
 	fn = {}
 	for (let method of ["preventAppNap", "allowAppNap",

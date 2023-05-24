@@ -45,14 +45,19 @@ const STATUS_EXCEPTION = 1;
 const STATUS_EXCEPTION_ALREADY_DISPLAYED = 2;
 const STATUS_EXCEPTION_SB_DENIED = 3;
 
+var Zotero = {};
+
 var Messaging = new MessagingGeneric({
 	sendMessage: (...args) => postMessage(args),
 	addMessageListener: (listener) => addEventListener('message', (event) => {
 		listener(event.data);
 	}),
 	functionOverrides: {
-		'Zotero.debug': true,
-	}
+		'debug': true,
+		'getString': true,
+		'launchURL': true,
+	},
+	overrideTarget: Zotero
 });
 // Add listener for init
 Messaging.addMessageListener('init', init);
@@ -355,14 +360,16 @@ function checkStatus(status) {
 		throw new Error(getLastError());
 	} else {
 		if (status === STATUS_EXCEPTION_SB_DENIED) {
-			let message = Zotero.getString('integration.error.macWordSBPermissionsMissing');
-			let index = displayMoreInformationAlert(
-				Zotero.getString('integration.error.macWordSBPermissionsMissing.title'),
-				message
-			);
-			if (index == 1) {
-				Zotero.launchURL('https://www.zotero.org/support/kb/mac_word_permissions_missing')
-			}
+			(async () => {
+				let message = await Zotero.getString('integration.error.macWordSBPermissionsMissing');
+				let index = await Messaging.sendMessage('displayMoreInformationAlert', [
+					await Zotero.getString('integration.error.macWordSBPermissionsMissing.title'),
+					message
+				]);
+				if (index == 1) {
+					Zotero.launchURL('https://www.zotero.org/support/kb/mac_word_permissions_missing')
+				}
+			})();
 		}
 		throw new Error("ExceptionAlreadyDisplayed");
 	}
