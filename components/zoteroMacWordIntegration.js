@@ -43,6 +43,17 @@ var Messaging;
  * so as not to block the main thread and UI
  */
 async function init() {
+	// We run all AppleScript/SBBridge automation in a ChromeWorker (which is a type of SharedWorker)
+	// in Zotero 7. To run those, Zotero needs permissions to automate Word. However, macOS does not
+	// prompt for those permissions when trying to automate Word from the ChromeWorker.
+	// MacOS tracks "responsibility" and is supposed to generally know, that Zotero is responsible for the
+	// ChromeWorker thread, but for some reason it doesn't. See https://developer.apple.com/forums/thread/731504
+	// What we do here is execute a no-op at the start of a Word transaction to make sure the users are prompted
+	// to provide Zotero with the permission.
+	try {
+		await Zotero.Utilities.Internal.exec('/usr/bin/osascript', ['-e', 'tell application "Microsoft Word" to time to GMT'])
+	} catch (e) {}
+	
 	if (worker) return;
 	let libPath = FileUtils.getDir('ARes', []).parent.parent;
 	libPath.append('integration');
