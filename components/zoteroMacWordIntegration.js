@@ -347,6 +347,11 @@ async function initializePipes() {
 	// If library had been initialized then so have the pipes
 	if (lib) return;
 	await Zotero.initializationPromise;
+	let macOSVersion = await Zotero.getOSVersion();
+	if (Zotero.Utilities.semverCompare('14.0.0', macOSVersion.split(' ')[1]) <= 0) {
+		Zotero.debug(`ZoteroMacWordIntegration: MacOS 14+ (${macOSVersion}) detected, not initializing pipes. User should use the new plugin template that talks to Zotero via HTTP`);
+		return
+	}
 	Zotero.debug("ZoteroMacWordIntegration: Initializing integration pipes");
 	initLegacyPipe();
 	init2016Pipe();

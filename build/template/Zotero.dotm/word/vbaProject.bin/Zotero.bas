@@ -54,10 +54,13 @@ CallZotero ("removeCodes")
 End Sub
 
 Sub CallZotero(func)
+zoteroUrl$ = "http://127.0.0.1:23119/integration/macWordCommand?"
+
 nl$ = Chr$(10)
-templateVersion$ = "1"
+templateVersion$ = "2"
 wordVersion$ = "MacWord2016"
-pipeLocation$ = "PIPE=\""$CFFIXED_USER_HOME/.zoteroIntegrationPipe\""; if [ ! -e \""$PIPE\"" ]; then PIPE=\""/Users/$USER/Library/Containers/com.microsoft.Word/Data/.zoteroIntegrationPipe\""; fi; if [ ! -e \""$PIPE\"" ]; then PIPE=.zoteroIntegrationPipe; fi"
+onFailMessage$ = "Word could not communicate with Zotero. Please ensure that Zotero is open and try again."
+wordAppPath$ = Replace(MacScript("POSIX path of (path to current application)"), " ", "%20")
 #If VBA6 Then
      Dim majorVersion As Integer
      majorVersion = Split(Application.Version, ".")(0)
@@ -65,12 +68,5 @@ pipeLocation$ = "PIPE=\""$CFFIXED_USER_HOME/.zoteroIntegrationPipe\""; if [ ! -e
          wordVersion$ = "MacWord16"
      End If
 #End If
-On Error GoTo catch
-    MacScript "try" & nl$ & "do shell script """ & pipeLocation$ & "; if [ -e \""$PIPE\"" ]; then echo '" & wordVersion$ & " " & func & " "" & POSIX path of (path to current application) & "" " & templateVersion & "' > \""$PIPE\""; else exit 1; fi;""" & nl$ & "on error" & nl$ & "display alert ""Word could not communicate with Zotero. Please ensure that Zotero is open and try again.""  as critical" & nl$ & "end try"
-    GoTo endSub
-catch:
-    pipeLocation$ = "PIPE=""$HOME/.zoteroIntegrationPipe""; if [ ! -e ""$PIPE"" ]; then PIPE=""$HOME/Library/Containers/com.microsoft.Word/Data/.zoteroIntegrationPipe""; fi"
-    shellScript$ = pipeLocation$ & "; if [ -e ""$PIPE"" ]; then echo '" & wordVersion$ & " " & func & " " & Application.Path & Application.PathSeparator & Application.Name & ".app/ " & templateVersion & "' > ""$PIPE""; else exit 1; fi;"
-    Result$ = AppleScriptTask("Zotero.scpt", "callZotero", shellScript$)
-endSub:
+MacScript "try" & nl$ & "do shell script ""curl -s -o /dev/null -I -w '%{http_code}' -X GET '" & zoteroUrl$ & "agent=" & wordVersion$ & "&command=" & func & "&document=" & wordAppPath$ & "&templateVersion=" & templateVersion$ & "' | grep -q '200' || exit 1""" & nl$ & "on error" & nl$ & "display alert """ & onFailMessage$ & """  as critical" & nl$ & "end try"
 End Sub
