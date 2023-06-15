@@ -54,8 +54,19 @@ CallZotero ("removeCodes")
 End Sub
 
 Sub CallZotero(func)
-zoteroUrl$ = "http://127.0.0.1:23119/integration/macWordCommand?"
+Dim zoteroUrl As String
+If zoteroUrl = "" Then
+    zoteroUrl = "http://127.0.0.1:23119/integration/macWordCommand?"
+    FileNum = FreeFile()
+    On Error GoTo customUrlNotSet
+        Open Application.StartupPath & Application.PathSeparator & "ZoteroUrl.txt" For Input As #FileNum
+        If Not EOF(FileNum) Then
+            Line Input #FileNum, DataLine
+            zoteroUrl = DataLine & "/integration/macWordCommand?"
+        End If
+End If
 
+customUrlNotSet:
 nl$ = Chr$(10)
 templateVersion$ = "2"
 wordVersion$ = "MacWord2016"
@@ -68,5 +79,5 @@ wordAppPath$ = Replace(MacScript("POSIX path of (path to current application)"),
          wordVersion$ = "MacWord16"
      End If
 #End If
-MacScript "try" & nl$ & "do shell script ""curl -s -o /dev/null -I -w '%{http_code}' -X GET '" & zoteroUrl$ & "agent=" & wordVersion$ & "&command=" & func & "&document=" & wordAppPath$ & "&templateVersion=" & templateVersion$ & "' | grep -q '200' || exit 1""" & nl$ & "on error" & nl$ & "display alert """ & onFailMessage$ & """  as critical" & nl$ & "end try"
+MacScript "try" & nl$ & "do shell script ""curl -s -o /dev/null -I -w '%{http_code}' -X GET '" & zoteroUrl & "agent=" & wordVersion$ & "&command=" & func & "&document=" & wordAppPath$ & "&templateVersion=" & templateVersion$ & "' | grep -q '200' || exit 1""" & nl$ & "on error" & nl$ & "display alert """ & onFailMessage$ & """  as critical" & nl$ & "end try"
 End Sub
