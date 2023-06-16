@@ -159,8 +159,8 @@ async function initializePipes() {
 	if (pipesInitialized) return;
 	await Zotero.initializationPromise;
 	let macOSVersion = await Zotero.getOSVersion();
-	if (Zotero.Utilities.semverCompare('14.0.0', macOSVersion.split(' ')[1]) <= 0) {
-		Zotero.debug(`ZoteroMacWordIntegration: MacOS 14+ (${macOSVersion}) detected, not initializing pipes. User should use the new plugin template that talks to Zotero via HTTP`);
+	if (Zotero.Utilities.semverCompare('13.999', macOSVersion.split(' ')[1]) <= 0) {
+		Zotero.debug(`ZoteroMacWordIntegration: ${macOSVersion} detected -- not initializing pipes`);
 		return
 	}
 	Zotero.debug("ZoteroMacWordIntegration: Initializing integration pipes");
