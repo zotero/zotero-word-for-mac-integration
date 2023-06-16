@@ -36,6 +36,7 @@ Components.classes["@mozilla.org/moz/jssubscript-loader;1"]
 
 var fn, worker, pipesInitialized = false;
 var m1OSOSVersionChecked = false;
+var hasPromptedForAutomationPermission = false;
 var Messaging;
 
 /**
@@ -77,6 +78,8 @@ async function init() {
 }
 
 async function promptForAutomationPermission() {
+	if (hasPromptedForAutomationPermission) return;
+	hasPromptedForAutomationPermission = true;
 	// We run all AppleScript/SBBridge automation in a ChromeWorker (which is a type of SharedWorker)
 	// in Zotero 7. To run those, Zotero needs permissions to automate Word. However, macOS does not
 	// prompt for those permissions when trying to automate Word from the ChromeWorker.
