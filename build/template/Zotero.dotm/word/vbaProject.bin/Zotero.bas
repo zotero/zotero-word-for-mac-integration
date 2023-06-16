@@ -59,10 +59,10 @@ If zoteroUrl = "" Then
     zoteroUrl = "http://127.0.0.1:23119/integration/macWordCommand?"
     FileNum = FreeFile()
     On Error GoTo customUrlNotSet
-        Open Application.StartupPath & Application.PathSeparator & "ZoteroUrl.txt" For Input As #FileNum
+        Open Application.StartupPath & Application.PathSeparator & "ZoteroPort.txt" For Input As #FileNum
         If Not EOF(FileNum) Then
             Line Input #FileNum, DataLine
-            zoteroUrl = DataLine & "/integration/macWordCommand?"
+            zoteroUrl = "http://127.0.0.1:" & DataLine & "/integration/macWordCommand?"
         End If
 End If
 
