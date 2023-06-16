@@ -160,6 +160,7 @@ async function checkM1OSAndShowWarning() {
 
 async function initializePipes() {
 	if (pipesInitialized) return;
+	pipesInitialized = true;
 	await Zotero.initializationPromise;
 	let macOSVersion = await Zotero.getOSVersion();
 	if (Zotero.Utilities.semverCompare('13.999', macOSVersion.split(' ')[1]) <= 0) {
@@ -168,7 +169,6 @@ async function initializePipes() {
 	}
 	Zotero.debug("ZoteroMacWordIntegration: Initializing integration pipes");
 	init2016Pipe();
-	pipesInitialized = true;
 }
 
 async function init2016Pipe() {
