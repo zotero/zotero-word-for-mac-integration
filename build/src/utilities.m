@@ -34,18 +34,18 @@ dispatch_queue_t _mainQueue;
 // Gets a FILE for the temporary file, truncating it to zero length
 FILE* getTemporaryFile(document_t *doc) {
 	if(tempFile == NULL) {
-        const char *tempFileTemplate;
-        if(doc->wordVersion == 2016 || doc->wordVersion >= 16 && doc->wordVersion < 2000) {
-            tempFileTemplate = [[NSTemporaryDirectory()
-                                             stringByAppendingPathComponent:
-                                             @"com.microsoft.Word/zotero.XXXXXX.rtf"]
-                                            fileSystemRepresentation];
-        } else {
-            tempFileTemplate = [[NSTemporaryDirectory()
-                                             stringByAppendingPathComponent:
-                                             @"zotero.XXXXXX.rtf"]
-                                            fileSystemRepresentation];
-        }
+		NSString *tempFileFolder = [NSHomeDirectory()
+										 stringByAppendingPathComponent:
+										 @"Library/Group Containers/UBF8T346G9.Office/org.zotero.zotero"];
+		const char *tempFileTemplate;
+		tempFileTemplate = [[NSHomeDirectory()
+										 stringByAppendingPathComponent:
+										 @"Library/Group Containers/UBF8T346G9.Office/org.zotero.zotero/zotero.XXXXXX.rtf"]
+										fileSystemRepresentation];
+		if (![[NSFileManager defaultManager] fileExistsAtPath:tempFileFolder]) {
+			[[NSFileManager defaultManager] createDirectoryAtPath:tempFileFolder
+									  withIntermediateDirectories:TRUE attributes:NULL error:NULL];
+		}
 		size_t tempFileLength = strlen(tempFileTemplate)+1;
 		tempFileString = (char *)malloc(tempFileLength);
 		strlcpy(tempFileString, tempFileTemplate, tempFileLength);
@@ -54,6 +54,9 @@ FILE* getTemporaryFile(document_t *doc) {
 					  stringWithFileSystemRepresentation:tempFileString
 					  length:strlen(tempFileString)];
 		[tempFileStringNS retain];
+		if (tempFileDescriptor == -1) {
+			return tempFile;
+		}
 		tempFile = fdopen(tempFileDescriptor, "w");
 	}
 	rewind(tempFile);

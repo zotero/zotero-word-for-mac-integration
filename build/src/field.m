@@ -430,6 +430,9 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		WordTextRange* insertRange;
 		
 		FILE* temporaryFile = getTemporaryFile(field->doc);
+		if (temporaryFile == NULL) {
+			DIE(([NSString stringWithFormat:@"Could not create a temporary file at %@", getTemporaryFilePath()]));
+		}
 		
 		// Word 16.9 and higher has changed the way [application insertFile]
 		// works. Instead of inserting text into specified range it inserts
