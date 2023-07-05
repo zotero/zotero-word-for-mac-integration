@@ -1162,6 +1162,9 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	CHECK_STATUS_LOCKED(doc)
 	
 	FILE* temporaryFile = getTemporaryFile(doc);
+	if (temporaryFile == NULL) {
+		DIE(([NSString stringWithFormat:@"Could not create a temporary file at %@", getTemporaryFilePath()]));
+	}
 	
 	// Write HTML to a file
 	fprintf(temporaryFile, "%s", htmlString);
