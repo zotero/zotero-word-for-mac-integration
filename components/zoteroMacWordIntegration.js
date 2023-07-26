@@ -324,7 +324,7 @@ var Field = function(doc, fieldId) {
 	this.doc = doc;
 	this.id = fieldId;
 }
-for (let method of ["delete", "removeCode", "selectField", "setText", "getText", "setCode", "getCode",
+for (let method of ["delete", "removeCode", "select", "setText", "getText", "setCode", "getCode",
 		"getNoteIndex", "isAdjacentToNextField"]) {
 	Field.prototype[method] = function (...args) {
 		return Messaging.sendMessage(method, [this.doc.id, this.id, ...args]);

@@ -278,7 +278,7 @@ function init(libPath) {
 		return doc.convert(fields, ...args.slice(2));
 	});
 	// Field handlers
-	for (let func of ['delete', 'removeCode', 'selectField', 'setText', 'getText', 'setCode', 'getCode',
+	for (let func of ['delete', 'removeCode', 'select', 'setText', 'getText', 'setCode', 'getCode',
 			'getNoteIndex', 'isAdjacentToNextField']) {
 		Messaging.addMessageListener(func, (...args) => {
 			let doc = docs[args[0]];
