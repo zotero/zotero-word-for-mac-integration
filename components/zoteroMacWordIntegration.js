@@ -347,8 +347,15 @@ async function initializePipes() {
 	// If library had been initialized then so have the pipes
 	if (lib) return;
 	await Zotero.initializationPromise;
-	let macOSVersion = await Zotero.getOSVersion();
-	if (Zotero.Utilities.semverCompare('13.999', macOSVersion.split(' ')[1]) <= 0) {
+	var macOSVersion;
+	try {
+		macOSVersion = f.getMacOSVersion().readString().trim();
+	}
+	catch (e) {
+		Zotero.debug("Error checking macOS version");
+		Zotero.logError(e);
+	}
+	if (!macOSVersion || Zotero.Utilities.semverCompare('13.999', macOSVersion) <= 0) {
 		Zotero.debug(`ZoteroMacWordIntegration: ${macOSVersion} detected -- not initializing pipes`);
 		return
 	}
