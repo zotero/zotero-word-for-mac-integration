@@ -71,7 +71,16 @@ nl$ = Chr$(10)
 templateVersion$ = "2"
 wordVersion$ = "MacWord2016"
 onFailMessage$ = "Word could not communicate with Zotero. Please ensure that Zotero is open and try again."
-wordAppPath$ = Replace(MacScript("POSIX path of (path to current application)"), " ", "%20")
+
+On Error GoTo catchWordPath
+    wordAppPath$ = AppleScriptTask("Zotero.scpt", "getPath", "")
+    GoTo okWordPath
+catchWordPath:
+    wordAppPath$ = MacScript("POSIX path of (path to current application)")
+    
+okWordPath:
+On Error GoTo -1
+wordAppPath$ = Replace(wordAppPath$, " ", "%20")
 #If VBA6 Then
      Dim majorVersion As Integer
      majorVersion = Split(Application.Version, ".")(0)
@@ -79,11 +88,29 @@ wordAppPath$ = Replace(MacScript("POSIX path of (path to current application)"),
          wordVersion$ = "MacWord16"
      End If
 #End If
-On Error GoTo catch
-    MacScript "try" & nl$ & "do shell script ""curl -s -o /dev/null -I -w '%{http_code}' -X GET '" & zoteroUrl & "agent=" & wordVersion$ & "&command=" & func & "&document=" & wordAppPath$ & "&templateVersion=" & templateVersion$ & "' | grep -q '200' || exit 1""" & nl$ & "on error" & nl$ & "display alert """ & onFailMessage$ & """  as critical" & nl$ & "end try"
-    GoTo endSub
-catch:
+
+httpShellScript$ = "curl -s -o /dev/null -I -w '%{http_code}' -X GET '" & zoteroUrl & "agent=" & wordVersion$ & "&command=" & func & "&document=" & wordAppPath$ & "&templateVersion=" & templateVersion$ & "' | grep -q '200' || exit 1"
+
+On Error GoTo catchMacScriptHttp
+    MacScript "try" & nl$ & "do shell script """ & httpShellScript$ & """" & nl$ & "on error" & nl$ & "display alert """ & onFailMessage$ & """  as critical" & nl$ & "end try"
+Exit Sub
+
+catchMacScriptHttp:
+On Error GoTo -1
+On Error GoTo catchAppleScriptTaskHttp
+    Result$ = AppleScriptTask("Zotero.scpt", "callZotero", httpShellScript$)
+Exit Sub
+    
+catchAppleScriptTaskHttp:
+On Error GoTo -1
+On Error GoTo catchMacScriptPipeWrite
     pipeLocation$ = "PIPE=\""$CFFIXED_USER_HOME/.zoteroIntegrationPipe\""; if [ ! -e \""$PIPE\"" ]; then PIPE=\""/Users/$USER/Library/Containers/com.microsoft.Word/Data/.zoteroIntegrationPipe\""; fi; if [ ! -e \""$PIPE\"" ]; then PIPE=.zoteroIntegrationPipe; fi"
     MacScript "try" & nl$ & "do shell script """ & pipeLocation$ & "; if [ -e \""$PIPE\"" ]; then echo '" & wordVersion$ & " " & func & " "" & POSIX path of (path to current application) & "" " & templateVersion & "' > \""$PIPE\""; else exit 1; fi;""" & nl$ & "on error" & nl$ & "display alert """ & onFailMessage$ & """  as critical" & nl$ & "end try"
-endSub:
+Exit Sub
+
+catchMacScriptPipeWrite:
+On Error GoTo -1
+    pipeLocation$ = "PIPE=""$HOME/.zoteroIntegrationPipe""; if [ ! -e ""$PIPE"" ]; then PIPE=""$HOME/Library/Containers/com.microsoft.Word/Data/.zoteroIntegrationPipe""; fi"
+    shellScript$ = pipeLocation$ & "; if [ -e ""$PIPE"" ]; then echo '" & wordVersion$ & " " & func & " " & Application.Path & Application.PathSeparator & Application.Name & ".app/ " & templateVersion & "' > ""$PIPE""; else exit 1; fi;"
+    Result$ = AppleScriptTask("Zotero.scpt", "callZotero", shellScript$)
 End Sub
