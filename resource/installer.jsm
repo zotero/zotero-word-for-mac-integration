@@ -38,7 +38,7 @@ var Plugin = new function() {
 	this.VERSION_FILE = 'resource://zotero-macword-integration/version.txt';
 
 	// Bump to make Zotero update the template (Zotero.dotm) for existing installs. Do not remove "pre"
-	this.LAST_INSTALLED_FILE_UPDATE = "7.0.3pre";
+	this.LAST_INSTALLED_FILE_UPDATE = "7.0.4pre";
 	
 	var zoteroPluginInstaller;
 	
