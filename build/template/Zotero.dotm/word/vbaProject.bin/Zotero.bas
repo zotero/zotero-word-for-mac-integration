@@ -67,6 +67,7 @@ If zoteroUrl = "" Then
 End If
 
 customUrlNotSet:
+On Error GoTo -1
 nl$ = Chr$(10)
 templateVersion$ = "2"
 wordVersion$ = "MacWord2016"
