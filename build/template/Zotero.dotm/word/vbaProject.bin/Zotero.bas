@@ -37,6 +37,10 @@ Sub ZoteroAddEditCitation()
 CallZotero ("addEditCitation")
 End Sub
 
+Sub ZoteroCitationExplorer()
+CallZotero ("citationExplorer")
+End Sub
+
 Sub ZoteroAddEditBibliography()
 CallZotero ("addEditBibliography")
 End Sub
