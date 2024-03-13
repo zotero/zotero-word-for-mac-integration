@@ -361,6 +361,7 @@ statusCode setFieldAdjacency(field_t *fieldA, field_t *fieldB) {
 	HANDLE_EXCEPTIONS_BEGIN
 	// Mac Word appears to maintain some fake 1-char wide character between field codes in Word.
 	fieldA->adjacent = fieldA->noteType == fieldB->noteType && [fieldA->sbContentRange endOfContent] + 2 - [fieldB->sbCodeRange startOfContent] >= 0;
+	return STATUS_OK;
 	HANDLE_EXCEPTIONS_END
 }
 
@@ -1286,6 +1287,7 @@ statusCode complete(document_t *doc) {
 		[doc->sbDoc setTrackRevisions:YES];
 		CHECK_STATUS_LOCKED(doc);
 	}
+	return STATUS_OK;
 	HANDLE_EXCEPTIONS_END
 }
 
