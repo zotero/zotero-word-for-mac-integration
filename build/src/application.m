@@ -109,11 +109,12 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 		// Show appropriate error if there is no document to initialize, or if VBA
 		// is not installed
 		displayAlert(doc,
-					 "Zotero could not perform this action. Please ensure "
-					 "that a document is open. If you have performed a "
-					 "custom installation of Office, you may need to run "
-					 "the installer again, ensuring that \"Visual Basic "
-					 "for Applications\" is selected.", DIALOG_ICON_STOP,
+					 "Zotero could not perform this action.\n\n"
+					 "In your Applications folder, select Microsoft Word, "
+					 "go to File → Get Info, and make sure “Open in Rosetta” "
+					 "is unchecked.\n\n"
+					 "If you continue to have trouble, it may help to delete "
+					 "Microsoft Word and reinstall it.", DIALOG_ICON_STOP,
 					 DIALOG_BUTTONS_OK, NULL);
 		[doc->sbApp release];
 		free(doc);
@@ -124,21 +125,6 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	CHECK_STATUS
 	
 	NSArray* documentNames = [sbDocuments valueForKey:@"name"];
-	if(errorHasOccurred()) {
-		// This can fail due to an incomplete Office installation.
-		displayAlert(doc,
-					 "Zotero has detected an incomplete or malfunctioning "
-					 "Microsoft Office installation. This is typically caused "
-					 "an incompatibility between Office and Apple's Migration "
-					 "Assistant. To resolve this issue, manually copy the "
-					 "Microsoft Office folder from your previous system, or "
-					 "reinstall Office from the original disc.", DIALOG_ICON_STOP,
-					 DIALOG_BUTTONS_OK, NULL);
-		[doc->sbApp release];
-		clearError();
-		free(doc);
-		return STATUS_EXCEPTION_ALREADY_DISPLAYED;
-	}
 	
 	NSUInteger foundDocuments = 0;
 	for(NSString* documentName in documentNames) {
