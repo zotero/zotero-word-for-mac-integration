@@ -1,13 +1,2 @@
-content		zotero-macword-integration chrome/
+content		zotero-macword-integration components/
 resource	zotero-macword-integration resource/
-
-component	{aa56c6c0-95f0-48c2-b223-b11b96b9c9e5}							components/zoteroMacWordIntegration.js
-contract	@zotero.org/Zotero/integration/installer?agent=MacWord;1	 	{aa56c6c0-95f0-48c2-b223-b11b96b9c9e5}
-component	{0a5ec6de-f9eb-11e7-8c3f-9a214cf093ae}							components/zoteroMacWordIntegration.js
-contract    @zotero.org/Zotero/integration/application?agent=MacWord16;1    {0a5ec6de-f9eb-11e7-8c3f-9a214cf093ae}
-component   {9c6e787b-27d7-4567-98d4-b57d0afa3d8c}                          components/zoteroMacWordIntegration.js
-contract    @zotero.org/Zotero/integration/application?agent=MacWord2016;1  {9c6e787b-27d7-4567-98d4-b57d0afa3d8c}
-component   {ea584d70-2797-4cd1-8015-1a5f5fb85af7}                          components/zoteroMacWordIntegration.js
-contract	@zotero.org/Zotero/integration/application?agent=MacWord2008;1 	{ea584d70-2797-4cd1-8015-1a5f5fb85af7}
-component	{b063dd87-5615-45c5-ac3d-4b0583034616}							components/zoteroMacWordIntegration.js
-contract	@zotero.org/Zotero/integration/application?agent=MacWord2004;1 	{b063dd87-5615-45c5-ac3d-4b0583034616}

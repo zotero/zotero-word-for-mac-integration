@@ -23,7 +23,7 @@
 */
 
 var EXPORTED_SYMBOLS = ["Installer"];
-var Zotero = Components.classes["@zotero.org/Zotero;1"].getService(Components.interfaces.nsISupports).wrappedJSObject;
+const { Zotero } = ChromeUtils.importESModule("chrome://zotero/content/zotero.mjs");
 var ZoteroPluginInstaller = Components.utils.import("resource://zotero/word-processor-plugin-installer.js").ZoteroPluginInstaller;
 var Installer = function(failSilently=true, force) {
 	return new ZoteroPluginInstaller(Plugin, failSilently, force);
@@ -42,20 +42,18 @@ var Plugin = new function() {
 	
 	var zoteroPluginInstaller;
 	
-	this.install = function(zpi) {
+	this.install = async function(zpi) {
 		zoteroPluginInstaller = zpi;
 		
 		Zotero.debug("Installing ZoteroMacWordIntegration");
 		try {
-			var installer = Components.classes["@zotero.org/Zotero/integration/installer?agent=MacWord;1"].
-				createInstance(Components.interfaces.nsISupports).wrappedJSObject;
-			installer.run();
+			const { Installer } = ChromeUtils.importESModule('chrome://zotero-macword-integration/content/zoteroMacWordIntegration.mjs');
+			var installer = new Installer();
+			await installer.run();
 			zoteroPluginInstaller.success();
 		} catch(e) {
 			if(e.toString().indexOf("ExceptionAlreadyDisplayed") !== -1) {
-				Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
-					.getService(Components.interfaces.nsIPromptService)
-					.alert(null, this.EXTENSION_STRING,
+				Services.prompt.alert(null, this.EXTENSION_STRING,
 					"You cancelled installation of Zotero Word for Mac Integration. To install later, visit the Cite pane in the Zotero preferences.");
 				zoteroPluginInstaller.cancelled();
 			} else {

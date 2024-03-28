@@ -26,13 +26,8 @@ Components.utils.import("resource://gre/modules/ComponentUtils.jsm");
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://gre/modules/FileUtils.jsm");
 
-var Zotero = Components.classes["@zotero.org/Zotero;1"]
-			.getService(Components.interfaces.nsISupports)
-			.wrappedJSObject;
-
-Components.classes["@mozilla.org/moz/jssubscript-loader;1"]
-	.getService(Components.interfaces.mozIJSSubScriptLoader)
-	.loadSubScript('resource://zotero-macword-integration/messagingGeneric.js');
+const { Zotero } = ChromeUtils.importESModule("chrome://zotero/content/zotero.mjs");
+const { MessagingGeneric } = Components.utils.import("resource://zotero-macword-integration/messagingGeneric.js");
 
 var fn, worker, pipesInitialized = false;
 var m1OSOSVersionChecked = false;
@@ -199,12 +194,7 @@ async function init2016Pipe() {
 /**
  * Handles installation of Zotero Word for Mac Integration scripts and template file.
  */
-var Installer = function() {
-	initializePipes();
-	var Integration = Components.utils.import("resource://zotero-macword-integration/integration.js").MacWordIntegration;
-	Integration.init();
-	this.wrappedJSObject = this;
-};
+var Installer = function() {};
 Installer.prototype = {
 	classDescription: "Zotero Word for Mac Integration Installer",
 	classID:		Components.ID("{aa56c6c0-95f0-48c2-b223-b11b96b9c9e5}"),
@@ -226,45 +216,9 @@ Installer.prototype = {
 	}
 };
 
-var Application2016 = function() {
-	this.wrappedJSObject = this;
-};
-Application2016.prototype = {
-	classDescription: "Zotero Word 2016 for Mac Integration Application",
-	classID:		Components.ID("{9c6e787b-27d7-4567-98d4-b57d0afa3d8c}"),
-	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord2016;1",
-	QueryInterface: ChromeUtils.generateQI([Components.interfaces.nsISupports]),
-	service: 		true,
-	getDocument: async function(path) {
-		await init();
-		await promptForAutomationPermission();
-		let docId = Messaging.sendMessage('getDocument', [2016, path])
-		await fn.preventAppNap();
-		return new Document(docId);
-	},
-	getActiveDocument: async function() {
-		return this.getDocument(null);
-	},
-	primaryFieldType: "Field",
-	secondaryFieldType: "Bookmark",
-	supportedNotes: ['footnotes', 'endnotes'],
-	supportsImportExport: true,
-	supportsTextInsertion: true,
-	outputFormat: "rtf",
-	processorName: "Word"
-};
-
-
 // Word 16.0 and higher
-var Application16 = function() {
-	this.wrappedJSObject = this;
-};
+var Application16 = function() {};
 Application16.prototype = {
-	classDescription: "Zotero Word 16.xx for Mac Integration Application",
-	classID:		Components.ID("{0a5ec6de-f9eb-11e7-8c3f-9a214cf093ae}"),
-	contractID:		"@zotero.org/Zotero/integration/application?agent=MacWord16;1",
-	QueryInterface: ChromeUtils.generateQI([Components.interfaces.nsISupports]),
-	service: 		true,
 	getDocument: async function(path) {
 		await init();
 		await checkM1OSAndShowWarning();
@@ -334,8 +288,13 @@ Field.prototype.equals = function (other) {
 	return Messaging.sendMessage('equals', [this.doc.id, this.id, other.id]);
 }
 
-const NSGetFactory = ComponentUtils.generateNSGetFactory([
-	Installer,
-	Application2016,
-	Application16
-]);
+
+function initIntegration() {
+	initializePipes();
+	// start plug-in installer
+	var Installer = Components.utils.import("resource://zotero-macword-integration/installer.jsm").Installer;
+	new Installer();
+}
+
+
+export { Installer, Application16 as Application, initIntegration as init };

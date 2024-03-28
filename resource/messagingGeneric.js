@@ -23,7 +23,8 @@
 	***** END LICENSE BLOCK *****
 */
 
-let MessagingGeneric = class {
+var EXPORTED_SYMBOLS = ["MessagingGeneric"];
+class MessagingGeneric {
 	/**
 	 * Set up messaging between two isolated JS contexts (frames, context scripts, background pages,
 	 * web workers or anything else).
