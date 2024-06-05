@@ -162,7 +162,7 @@ typedef struct Document {
 	BOOL restoreTrackRevisions;
 	BOOL statusTrackRevisions;
 	
-	WordE160 restoreNoteType;
+	WordWdStoryType restoreNoteType;
 	NSInteger restoreNote, restoreCursorEnd, restoreFieldIdx;
 	BOOL cursorMoved, shouldRestoreCursor;
 	NSInteger insertTextIntoNote;

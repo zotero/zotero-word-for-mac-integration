@@ -185,21 +185,12 @@ statusCode canInsertField(document_t *doc, const char fieldType[],
 	
 	ENSURE_OK_LOCKED(doc, restoreCursor(doc))
 
-	if([doc->sbView viewType] == WordE202WordNoteView) {
-		displayAlert(doc,
-					 "Zotero cannot insert a citation here because Word does "
-					 "not support inserting fields in Notebook Layout.",
-					 DIALOG_ICON_STOP, DIALOG_BUTTONS_OK, NULL);
-		RETURN_STATUS_LOCKED(doc, STATUS_EXCEPTION_ALREADY_DISPLAYED)
-	}
-	CHECK_STATUS_LOCKED(doc)
-	
-	WordE160 position = [[doc->sbApp selection] storyType];
+	WordWdStoryType position = [[doc->sbApp selection] storyType];
 	CHECK_STATUS_LOCKED(doc)
 	*returnCode = (strcmp(fieldType, "Bookmark") != 0
-				   && (position == WordE160FootnotesStory
-					   || position == WordE160EndnotesStory))
-					   || position == WordE160MainTextStory;
+				   && (position == WordWdStoryTypeFootnotesStory
+					   || position == WordWdStoryTypeEndnotesStory))
+					   || position == WordWdStoryTypeMainTextStory;
 	RETURN_STATUS_LOCKED(doc, STATUS_OK)
 	HANDLE_EXCEPTIONS_END
 }
@@ -334,11 +325,11 @@ statusCode insertField(document_t *doc, const char fieldType[],
 	WordTextRange* sbWhere = [[doc->sbApp selection] textObject];
 	CHECK_STATUS_LOCKED(doc)
 	
-	WordE160 storyType = [sbWhere storyType];
-	if (storyType == WordE160FootnotesStory) {
+	WordWdStoryType storyType = [sbWhere storyType];
+	if (storyType == WordWdStoryTypeFootnotesStory) {
 		doc->insertTextIntoNote = NOTE_FOOTNOTE;
 	}
-	else if (storyType == WordE160EndnotesStory) {
+	else if (storyType == WordWdStoryTypeEndnotesStory) {
 		doc->insertTextIntoNote = NOTE_ENDNOTE;
 	}
 	
@@ -737,7 +728,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				status = insertFieldRaw(doc, toFieldType, toNoteType,
 										[[sbNote noteReference]
 										 collapseRangeDirection:
-										 WordE132CollapseStart], nil,
+										 WordWdCollapseDirectionCollapseStart], nil,
 										&newField);
 				ENSURE_OK_LOCKED(doc, status)
 				[newField->sbContentRange setContent:[field->sbContentRange content]];
@@ -840,10 +831,10 @@ statusCode setBibliographyStyle(document_t* doc, long firstLineIndent,
 							 @"Bibliography"]
 				 forKeyword:'2499'];
 		[reco setDescriptor:[NSAppleEventDescriptor
-							 descriptorWithEnumCode:WordE128StyleTypeParagraph]
+							 descriptorWithEnumCode:WordWdStyleTypeStyleTypeParagraph]
 				 forKeyword:'2504'];
 		[reco setDescriptor:[NSAppleEventDescriptor
-							 descriptorWithEnumCode:WordE184StyleNormal]
+							 descriptorWithEnumCode:WordWdBuiltinStyleStyleNormal]
 				 forKeyword:'2501'];
 		sbBibliographyStyle = [doc->sbApp sendEvent:'core' id:'crel'
 										 parameters:'kocl',
@@ -870,10 +861,10 @@ statusCode setBibliographyStyle(document_t* doc, long firstLineIndent,
 		// tab leader: tab leader spaces, tab stop position:%@}
 		NSAppleEventDescriptor* reco = [NSAppleEventDescriptor recordDescriptor];
 		[reco setDescriptor:[NSAppleEventDescriptor
-							 descriptorWithEnumCode:WordE145AlignTabLeft]
+							 descriptorWithEnumCode:WordWdTabAlignmentAlignTabLeft]
 				 forKeyword:'1918'];
 		[reco setDescriptor:[NSAppleEventDescriptor
-							 descriptorWithEnumCode:WordE170TabLeaderSpaces]
+							 descriptorWithEnumCode:WordWdTabLeaderTabLeaderSpaces]
 				 forKeyword:'2007'];
 		[reco setDescriptor:[NSAppleEventDescriptor descriptorWithInt32:
 							 ((int32_t) (((double) tabStops[i])/20))]
@@ -906,7 +897,7 @@ statusCode exportDocument(document_t *doc,
 		// Inserting at char 1 replaces the field. This is the only way to make this code work.
 		WordTextRange *insertRange = [[[field->sbField resultRange] characters] objectAtIndex:0];
 		CHECK_STATUS_LOCKED(doc);
-		[doc->sbApp createNewFieldTextRange:insertRange fieldType:WordE183FieldHyperlink fieldText:IMPORT_LINK_URL preserveFormatting:NO];
+		[doc->sbApp createNewFieldTextRange:insertRange fieldType:WordWdFieldTypeFieldHyperlink fieldText:IMPORT_LINK_URL preserveFormatting:NO];
 		CHECK_STATUS_LOCKED(doc);
 		[[field->sbField resultRange] setContent:[NSString stringWithUTF8String:field->code]];
 		CHECK_STATUS_LOCKED(doc);
@@ -920,25 +911,25 @@ statusCode exportDocument(document_t *doc,
 	importDocData = [importDocData stringByAppendingString:[NSString stringWithUTF8String:docData]];
 	free(docData);
 	WordTextRange *range = [doc->sbDoc textObject];
-	range = [range collapseRangeDirection:WordE132CollapseEnd];
+	range = [range collapseRangeDirection:WordWdCollapseDirectionCollapseEnd];
 	[doc->sbApp insertParagraphAt:range];
-	range = [[doc->sbDoc textObject] collapseRangeDirection:WordE132CollapseEnd];
-	[doc->sbApp createNewFieldTextRange:range fieldType:WordE183FieldHyperlink fieldText:IMPORT_LINK_URL preserveFormatting:NO];
+	range = [[doc->sbDoc textObject] collapseRangeDirection:WordWdCollapseDirectionCollapseEnd];
+	[doc->sbApp createNewFieldTextRange:range fieldType:WordWdFieldTypeFieldHyperlink fieldText:IMPORT_LINK_URL preserveFormatting:NO];
 	WordField *insertedHyperlink = [[doc->sbDoc fields] lastObject];
 	[[insertedHyperlink resultRange] setContent:importDocData];
 	CHECK_STATUS_LOCKED(doc)
 
 	// Import instructions
 	range = [doc->sbDoc textObject];
-	range = [range collapseRangeDirection:WordE132CollapseStart];
+	range = [range collapseRangeDirection:WordWdCollapseDirectionCollapseStart];
 	[doc->sbApp insertParagraphAt:range];
-	range = [range collapseRangeDirection:WordE132CollapseStart];
+	range = [range collapseRangeDirection:WordWdCollapseDirectionCollapseStart];
 	[doc->sbApp insertParagraphAt:range];
 	[doc->sbApp insertText:[NSString stringWithUTF8String:importInstructions] at:range];
 	// Export marker
-	range = [range collapseRangeDirection:WordE132CollapseStart];
+	range = [range collapseRangeDirection:WordWdCollapseDirectionCollapseStart];
 	[doc->sbApp insertParagraphAt:range];
-	range = [range collapseRangeDirection:WordE132CollapseStart];
+	range = [range collapseRangeDirection:WordWdCollapseDirectionCollapseStart];
 	[doc->sbApp insertParagraphAt:range];
 	[doc->sbApp insertText:EXPORTED_DOCUMENT_MARKER[0] at:range];
 	CHECK_STATUS_LOCKED(doc)
@@ -985,8 +976,8 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 		for (long i = fieldCollectionSize-1; i >= 0; i--) {
 			WordField *link = [fieldCollections[noteType] objectAtIndex:(i)];
 			CHECK_STATUS_LOCKED(doc);
-			WordE183 sbFieldType = [link fieldType];
-			if (sbFieldType != WordE183FieldHyperlink) {
+			WordWdFieldType sbFieldType = [link fieldType];
+			if (sbFieldType != WordWdFieldTypeFieldHyperlink) {
 				continue;
 			}
 			CHECK_STATUS_LOCKED(doc);
@@ -1000,14 +991,14 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 									 MAIN_FIELD_PREFIX,
 									 linkText];
 				[[link fieldCode] setContent:rawCode];
-				[linkRange setStyle:WordE184StyleDefaultParagraphFont];
+				[linkRange setStyle:WordWdBuiltinStyleStyleDefaultParagraphFont];
 				CHECK_STATUS_LOCKED(doc);
 				if (noteType == 1) {
-					[linkRange setStyle:WordE184StyleFootnoteText];
+					[linkRange setStyle:WordWdBuiltinStyleStyleFootnoteText];
 					CHECK_STATUS_LOCKED(doc);
 				}
 				else if (noteType == 2) {
-					[linkRange setStyle:WordE184StyleEndnoteText];
+					[linkRange setStyle:WordWdBuiltinStyleStyleEndnoteText];
 					CHECK_STATUS_LOCKED(doc);
 				}
 			}
@@ -1024,8 +1015,8 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 	
 	// Remove 3 paragraphs: export marker, empty paragraph, import instructions and another empty paragraph
 	WordTextRange *range = [doc->sbDoc textObject];
-	range = [range collapseRangeDirection:WordE132CollapseStart];
-	range = [range moveEndOfRangeBy:WordE129AParagraphItem count:4];
+	range = [range collapseRangeDirection:WordWdCollapseDirectionCollapseStart];
+	range = [range moveEndOfRangeBy:WordWdUnitsAParagraphItem count:4];
 	[range setContent:@""];
 	CHECK_STATUS_LOCKED(doc);
 	
@@ -1075,8 +1066,8 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	WordFont* font = [selectionRange fontObject];
 	NSString* oldFontName = [font name];
 	NSString* oldFontOtherName = [font otherName];
-	WordE110 oldColorIndex = [font colorIndex];
-	WordE113 oldUnderline = [font underline];
+	WordWdColorIndex oldColorIndex = [font colorIndex];
+	WordWdUnderline oldUnderline = [font underline];
 	IGNORING_SB_ERRORS_END
 	
 	// Insert a temp bookmark into which we'll insert the HTML
@@ -1179,8 +1170,8 @@ statusCode convertPlaceholdersToFields(document_t *doc, const char* placeholders
 		for (long i = fieldCollectionSize-1; i >= 0; i--) {
 			WordField *link = [fieldCollections[noteType] objectAtIndex:(i)];
 			CHECK_STATUS_LOCKED(doc);
-			WordE183 sbFieldType = [link fieldType];
-			if (sbFieldType != WordE183FieldHyperlink) {
+			WordWdFieldType sbFieldType = [link fieldType];
+			if (sbFieldType != WordWdFieldTypeFieldHyperlink) {
 				continue;
 			}
 			CHECK_STATUS_LOCKED(doc);
@@ -1216,17 +1207,17 @@ statusCode convertPlaceholdersToFields(document_t *doc, const char* placeholders
 		field_t *newField;
 		WordTextRange *linkRange = [link resultRange];
 		CHECK_STATUS_LOCKED(doc)
-		WordE160 storyType = [linkRange storyType];
+		WordWdStoryType storyType = [linkRange storyType];
 		CHECK_STATUS_LOCKED(doc)
 		
-		if ((noteType == 0 || storyType != WordE160MainTextStory) && strcmp(fieldType, "Field") == 0) {
+		if ((noteType == 0 || storyType != WordWdStoryTypeMainTextStory) && strcmp(fieldType, "Field") == 0) {
 			NSString* rawCode = [NSString stringWithFormat:@"%@%@ ",
 								 MAIN_FIELD_PREFIX,
 								 @"TEMP"];
 			[[link fieldCode] setContent:rawCode];
 			WordFont *font = [linkRange fontObject];
-			[font setColorIndex:WordE110Auto];
-			[font setUnderline:WordE113UnderlineNone];
+			[font setColorIndex:WordWdColorIndexAuto];
+			[font setUnderline:WordWdUnderlineUnderlineNone];
 			
 			CHECK_STATUS_LOCKED(doc)
 			ENSURE_OK_LOCKED(doc, initField(doc, link, -1, -1, false, &newField))
@@ -1303,11 +1294,11 @@ statusCode getFieldCollections(document_t *doc, NSArray** fieldCollections) {
 										 &fieldCollections[2]));
 	} else {
 		fieldCollections[1] = [[doc->sbDoc
-								getStoryRangeStoryType:WordE160FootnotesStory]
+								getStoryRangeStoryType:WordWdStoryTypeFootnotesStory]
 							   fields];
 		CHECK_STATUS;
 		fieldCollections[2] = [[doc->sbDoc
-								getStoryRangeStoryType:WordE160EndnotesStory]
+								getStoryRangeStoryType:WordWdStoryTypeEndnotesStory]
 							   fields];
 		CHECK_STATUS;
 	}
@@ -1344,10 +1335,10 @@ statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 	if(doc->wordVersion == 2004) {
 		// footnote_convert() and endnote_convert() crash Word 2004
 		WordTextRange* sbReferenceRange = [[sbNote noteReference]
-							moveEndOfRangeBy:WordE129ACharacterItem count:0];
+							moveEndOfRangeBy:WordWdUnitsACharacterItem count:0];
 		CHECK_STATUS
 		WordTextRange* sbCreateRange = [[sbNote noteReference] 
-										collapseRangeDirection:WordE132CollapseEnd];
+										collapseRangeDirection:WordWdCollapseDirectionCollapseEnd];
 		CHECK_STATUS
 		
 		if(noteType == NOTE_FOOTNOTE) {
@@ -1571,12 +1562,12 @@ statusCode setProperty(document_t *doc, NSString* propertyName,
 statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 						  unsigned short noteType, WordTextRange *sbWhere,
 						  NSString* bookmarkName, field_t** returnValue) {
-	WordE160 storyType = [sbWhere storyType];
+	WordWdStoryType storyType = [sbWhere storyType];
 	CHECK_STATUS
 	
 	WordFootnote* sbNote = nil;
 	NSInteger fieldStart;
-	if(noteType && storyType == WordE160MainTextStory) {
+	if(noteType && storyType == WordWdStoryTypeMainTextStory) {
 		// Create new note
 		NSAppleEventDescriptor* noteTypeCode;
 		if(noteType == NOTE_FOOTNOTE) {
@@ -1616,10 +1607,10 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		CHECK_STATUS
 		
 		sbWhere = [sbNote textObject];
-	} else if(storyType == WordE160FootnotesStory) {
+	} else if(storyType == WordWdStoryTypeFootnotesStory) {
 		sbNote = [[sbWhere footnotes] objectAtIndex:0];
 		noteType = NOTE_FOOTNOTE;
-	} else if(storyType == WordE160EndnotesStory) {
+	} else if(storyType == WordWdStoryTypeEndnotesStory) {
 		sbNote = [[sbWhere endnotes] objectAtIndex:0];
 		noteType = NOTE_ENDNOTE;
 	}
@@ -1637,7 +1628,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		NSAppleEventDescriptor* wFtP = [NSAppleEventDescriptor
 										recordDescriptor];
 		[wFtP setDescriptor:[NSAppleEventDescriptor
-							 descriptorWithEnumCode:WordE183FieldPrintDate]
+							 descriptorWithEnumCode:WordWdFieldTypeFieldPrintDate]
 				 forKeyword:'wFtP'];
 		
 		// The above version works for most users of 16.9+, but some report

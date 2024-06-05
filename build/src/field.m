@@ -37,17 +37,17 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 	// so reusing this code tends to go haywire if you move the cursor somewhere
 	// Thus we get the sbField from the document fields collection here
 	if(noteType == -1) {
-		WordE160 storyType = [[sbField resultRange] storyType];
+		WordWdStoryType storyType = [[sbField resultRange] storyType];
 		CHECK_STATUS
 		entryIndex = getEntryIndex(doc, sbField);
 		CHECK_STATUS
-		if(storyType == WordE160FootnotesStory) {
+		if(storyType == WordWdStoryTypeFootnotesStory) {
 			noteType = NOTE_FOOTNOTE;
-			sbField = [[[doc->sbDoc getStoryRangeStoryType:WordE160FootnotesStory] fields]
+			sbField = [[[doc->sbDoc getStoryRangeStoryType:WordWdStoryTypeFootnotesStory] fields]
 					   objectAtIndex:(entryIndex-1)];
-		} else if(storyType == WordE160EndnotesStory) {
+		} else if(storyType == WordWdStoryTypeEndnotesStory) {
 			noteType = NOTE_ENDNOTE;
-			sbField = [[[doc->sbDoc getStoryRangeStoryType:WordE160EndnotesStory] fields]
+			sbField = [[[doc->sbDoc getStoryRangeStoryType:WordWdStoryTypeEndnotesStory] fields]
 					   objectAtIndex:(entryIndex-1)];
 		} else {
 			noteType = 0;
@@ -165,10 +165,10 @@ statusCode checkFieldIntegrity(field_t *field) {
 	[field->sbContentRange release];
 
 	if (field->noteType == NOTE_FOOTNOTE) {
-		field->sbField = [[[field->doc->sbDoc getStoryRangeStoryType:WordE160FootnotesStory] fields]
+		field->sbField = [[[field->doc->sbDoc getStoryRangeStoryType:WordWdStoryTypeFootnotesStory] fields]
 						  objectAtIndex:(field->entryIndex-1)];
 	} else {
-		field->sbField = [[[field->doc->sbDoc getStoryRangeStoryType:WordE160EndnotesStory] fields]
+		field->sbField = [[[field->doc->sbDoc getStoryRangeStoryType:WordWdStoryTypeEndnotesStory] fields]
 				   objectAtIndex:(field->entryIndex-1)];
 	}
 	field->sbCodeRange = [field->sbField fieldCode];
@@ -259,11 +259,11 @@ statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark,
 		field->sbContentRange = field->sbCodeRange;
 		
 		if(noteType == -1) {
-			WordE160 storyType = [field->sbContentRange storyType];
+			WordWdStoryType storyType = [field->sbContentRange storyType];
 			CHECK_STATUS
-			if(storyType == WordE160FootnotesStory) {
+			if(storyType == WordWdStoryTypeFootnotesStory) {
 				field->noteType = NOTE_FOOTNOTE;
-			} else if(storyType == WordE160EndnotesStory) {
+			} else if(storyType == WordWdStoryTypeEndnotesStory) {
 				field->noteType = NOTE_ENDNOTE;
 			} else {
 				field->noteType = 0;
@@ -315,9 +315,9 @@ statusCode deleteField(field_t* field) {
 				== [field->sbCodeRange startOfContent]-offset)
 				&& ([[note textObject] endOfContent]
 					== [field->sbContentRange endOfContent]+offset)) {
-			WordE160 storyType = [[field->doc->sbApp selection] storyType];
+			WordWdStoryType storyType = [[field->doc->sbApp selection] storyType];
 			CHECK_STATUS
-			if (storyType == WordE160FootnotesStory) {
+			if (storyType == WordWdStoryTypeFootnotesStory) {
 				[[field->doc->sbDoc createRangeStart:[[note noteReference] endOfContent] end:[[note noteReference] endOfContent]] sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 				CHECK_STATUS
 				storeCursorLocation(field->doc);
@@ -335,9 +335,9 @@ statusCode deleteField(field_t* field) {
 				== [field->sbCodeRange startOfContent]-offset)
 			   && ([[note textObject] endOfContent]
 				   == [field->sbContentRange endOfContent]+offset)) {
-			WordE160 storyType = [[field->doc->sbApp selection] storyType];
+			WordWdStoryType storyType = [[field->doc->sbApp selection] storyType];
 			CHECK_STATUS
-			if (storyType == WordE160EndnotesStory) {
+			if (storyType == WordWdStoryTypeEndnotesStory) {
 				[[field->doc->sbDoc createRangeStart:[[note noteReference] endOfContent] end:[[note noteReference] endOfContent]] sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 				CHECK_STATUS
 				storeCursorLocation(field->doc);
@@ -422,7 +422,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		double oldFontSize = [font fontSize];
 		NSString* oldFontName = [font name];
 		NSString* oldFontOtherName = [font otherName];
-		WordE110 oldColorIndex = [font colorIndex];
+		WordWdColorIndex oldColorIndex = [font colorIndex];
 		IGNORING_SB_ERRORS_END
 		
 		WordBookmark* tempBookmark;
@@ -451,7 +451,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 			// Bibl fails to insert if insert range is not collapsed.
 			// Notes fail to insert with collapsed range. Sigh.
 			if (!field->noteType) {
-				insertRange = [insertRange collapseRangeDirection:WordE132CollapseEnd];
+				insertRange = [insertRange collapseRangeDirection:WordWdCollapseDirectionCollapseEnd];
 			}
 			CHECK_STATUS_LOCKED(field->doc)
 			

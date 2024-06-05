@@ -100,10 +100,10 @@ void storeCursorLocation(document_t* doc) {
 	IGNORING_SB_ERRORS_BEGIN
 	if (doc->wordVersion >= 16 && doc->wordVersion < 2000) {
 		doc->restoreCursorEnd = doc->restoreNote = -1;
-		WordE160 storyType = [[doc->sbApp selection] storyType];
-		if (storyType == WordE160EndnotesStory || storyType == WordE160FootnotesStory) {
+		WordWdStoryType storyType = [[doc->sbApp selection] storyType];
+		if (storyType == WordWdStoryTypeEndnotesStory || storyType == WordWdStoryTypeFootnotesStory) {
 			doc->restoreNoteType = storyType;
-			if (storyType == WordE160FootnotesStory) {
+			if (storyType == WordWdStoryTypeFootnotesStory) {
 				doc->restoreNote = getEntryIndex(doc, [[[doc->sbApp selection] footnotes] objectAtIndex:0])-1;
 			} else {
 				doc->restoreNote = getEntryIndex(doc, [[[doc->sbApp selection] endnotes] objectAtIndex:0])-1;
@@ -122,10 +122,10 @@ void storeCursorLocation(document_t* doc) {
 
 statusCode moveCursorOutOfNote(document_t* doc) {
 	if (doc->wordVersion >= 16 && doc->wordVersion < 2000) {
-		WordE160 storyType = [[doc->sbApp selection] storyType];
-		if (storyType == WordE160EndnotesStory || storyType == WordE160FootnotesStory) {
+		WordWdStoryType storyType = [[doc->sbApp selection] storyType];
+		if (storyType == WordWdStoryTypeEndnotesStory || storyType == WordWdStoryTypeFootnotesStory) {
 			WordTextRange* noteSelection;
-			if (storyType == WordE160FootnotesStory) {
+			if (storyType == WordWdStoryTypeFootnotesStory) {
 				noteSelection = [[[[doc->sbApp selection] footnotes] objectAtIndex:0] noteReference];
 			} else {
 				noteSelection = [[[[doc->sbApp selection] endnotes] objectAtIndex:0] noteReference];
@@ -146,7 +146,7 @@ statusCode restoreCursor(document_t* doc) {
 		return STATUS_OK;
 	}
 	if (doc->restoreNote != -1) {
-		if (doc->restoreNoteType == WordE160FootnotesStory) {
+		if (doc->restoreNoteType == WordWdStoryTypeFootnotesStory) {
 			[[[[doc->sbDoc footnotes] objectAtIndex:doc->restoreNote] textObject]
 			 	sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 		} else {
