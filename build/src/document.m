@@ -810,7 +810,7 @@ statusCode setBibliographyStyle(document_t* doc, long firstLineIndent,
 	NSString* sanityCheck = nil;
 	
 	sbBibliographyStyle = [[doc->sbDoc WordStyles]
-						   objectWithName:@"Bibliography"];
+						   objectWithID:@(WordWdBuiltinStyleStyleBibliography)];
 	if(!errorHasOccurred()) {
 		sanityCheck = [sbBibliographyStyle nameLocal];
 		if(sanityCheck && !errorHasOccurred()) {
