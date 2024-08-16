@@ -317,6 +317,9 @@ function init(libPath) {
 	Messaging.addMessageListener('getMacOSVersion', (...args) => {
 		return fn.getMacOSVersion(...args).readString();
 	});
+	Messaging.addMessageListener('getLastError', () => {
+		return getLastError();
+	});
 	
 }
 

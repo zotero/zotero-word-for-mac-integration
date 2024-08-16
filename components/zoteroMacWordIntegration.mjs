@@ -29,6 +29,10 @@ Components.utils.import("resource://gre/modules/FileUtils.jsm");
 const { Zotero } = ChromeUtils.importESModule("chrome://zotero/content/zotero.mjs");
 const { MessagingGeneric } = Components.utils.import("resource://zotero-macword-integration/messagingGeneric.js");
 
+const STATUS_EXCEPTION = 1;
+const STATUS_EXCEPTION_ALREADY_DISPLAYED = 2;
+const STATUS_EXCEPTION_SB_DENIED = 3;
+
 var fn, worker, pipesInitialized = false;
 var m1OSOSVersionChecked = false;
 var hasPromptedForAutomationPermission = false;
@@ -64,7 +68,7 @@ async function init() {
 	Messaging.addMessageListener('displayMoreInformationAlert', (...args) => displayMoreInformationAlert(...args))
 	
 	fn = {}
-	for (let method of ["preventAppNap", "allowAppNap",
+	for (let method of ["preventAppNap", "allowAppNap", "getLastError",
 			"install", "isWordArm", "getMacOSVersion", "isZoteroRosetta"]) {
 		fn[method] = (...args) => Messaging.sendMessage(method, args);
 	}
@@ -192,6 +196,32 @@ async function init2016Pipe() {
 }
 
 /**
+ * Checks the return status of a function to verify that no error occurred.
+ * @param {Integer} status The return status code of a C function
+ */
+async function checkStatus(status) {
+	if(!status) return;
+
+	if (status === STATUS_EXCEPTION) {
+		throw new Error(await fn.getLastError());
+	} else {
+		if (status === STATUS_EXCEPTION_SB_DENIED) {
+			(async () => {
+				let message = await Zotero.getString('integration.error.macWordSBPermissionsMissing');
+				let index = await Messaging.sendMessage('displayMoreInformationAlert', [
+					await Zotero.getString('integration.error.macWordSBPermissionsMissing.title'),
+					message
+				]);
+				if (index == 1) {
+					Zotero.launchURL('https://www.zotero.org/support/kb/mac_word_permissions_missing')
+				}
+			})();
+		}
+		throw new Error("ExceptionAlreadyDisplayed");
+	}
+}
+
+/**
  * Handles installation of Zotero Word for Mac Integration scripts and template file.
  */
 var Installer = function() {};
@@ -212,7 +242,8 @@ Installer.prototype = {
 		zoteroDot.append("Zotero.dot");
 		zoteroDotm.append("Zotero.dotm");
 		zoteroScpt.append("Zotero.scpt");
-		await fn.install(zoteroDot.path, zoteroDotm.path, zoteroScpt.path);
+		const status = await fn.install(zoteroDot.path, zoteroDotm.path, zoteroScpt.path);
+		await checkStatus(status);
 	}
 };
 
