@@ -170,26 +170,30 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[], cons
 	}
 	
 	if(wordIsRunning) {
-		NSAlert *alert = [NSAlert alertWithMessageText:@"The Zotero Word "
-						  "plugin has been successfully installed, but "
-						  "Word must be restarted before it can be used."
-										 defaultButton:nil
-									   alternateButton:nil
-										   otherButton:nil
-							 informativeTextWithFormat:@"Please restart Word "
-						  "before continuing."];
-		[alert runModal];
+		dispatch_sync(dispatch_get_main_queue(), ^{
+			NSAlert *alert = [NSAlert alertWithMessageText:@"The Zotero Word "
+							  "plugin has been successfully installed, but "
+							  "Word must be restarted before it can be used."
+											 defaultButton:nil
+										   alternateButton:nil
+											   otherButton:nil
+								 informativeTextWithFormat:@"Please restart Word "
+							  "before continuing."];
+			[alert runModal];
+		});
 	}
 	if (shouldPromptAboutWordUpdate) {
-		NSAlert *alert = [NSAlert alertWithMessageText:@"The Zotero Word "
-						  "plugin has been successfully installed, but "
-						  "Word 2016 must be updated before the plugin can be used."
-										 defaultButton:nil
-									   alternateButton:nil
-										   otherButton:nil
-							 informativeTextWithFormat:@"Please update Word 2016 to "
-						  "version 16.16.27 or later."];
-		[alert runModal];
+		dispatch_sync(dispatch_get_main_queue(), ^{
+			NSAlert *alert = [NSAlert alertWithMessageText:@"The Zotero Word "
+							  "plugin has been successfully installed, but "
+							  "Word 2016 must be updated before the plugin can be used."
+											 defaultButton:nil
+										   alternateButton:nil
+											   otherButton:nil
+								 informativeTextWithFormat:@"Please update Word 2016 to "
+							  "version 16.16.27 or later."];
+			[alert runModal];
+		});
 	}
 	
 	return STATUS_OK;
@@ -231,15 +235,17 @@ statusCode installContainerTemplate(NSString* dotmPathNS) {
 			DIE([err localizedDescription]);
 		}
 
-		NSAlert *alert = [NSAlert alertWithMessageText:@"The Zotero Word "
-						  "plugin has been successfully installed, but "
-						  "Zotero must be restarted before it can be used."
-										 defaultButton:nil
-									   alternateButton:nil
-										   otherButton:nil
-							 informativeTextWithFormat:@"Please restart Zotero "
-						                                "before continuing."];
-		[alert runModal];
+		dispatch_sync(dispatch_get_main_queue(), ^{
+			NSAlert *alert = [NSAlert alertWithMessageText:@"The Zotero Word "
+							  "plugin has been successfully installed, but "
+							  "Zotero must be restarted before it can be used."
+											 defaultButton:nil
+										   alternateButton:nil
+											   otherButton:nil
+								 informativeTextWithFormat:@"Please restart Zotero "
+							  "before continuing."];
+			[alert runModal];
+		});
 	}
 	if([fm fileExistsAtPath:newTemplatePath]) {
 		if(![fm removeItemAtPath:newTemplatePath error:&err]) {
