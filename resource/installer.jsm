@@ -52,11 +52,17 @@ var Plugin = new function() {
 			await installer.run();
 			zoteroPluginInstaller.success();
 		} catch(e) {
-			if(e.toString().indexOf("ExceptionAlreadyDisplayed") !== -1) {
+			const message = e.toString();
+			if (message.includes("ExceptionAlreadyDisplayed")) {
 				Services.prompt.alert(null, this.EXTENSION_STRING,
 					"You cancelled installation of Zotero Word for Mac Integration. To install later, visit the Cite pane in the Zotero preferences.");
 				zoteroPluginInstaller.cancelled();
-			} else {
+			}
+			else if (!zpi.force && message.includes("Word does not appear to be installed on this computer.")) {
+				// Do not display this as an error if not installing via the preferences window
+				zoteroPluginInstaller.success();
+			}
+			else {
 				zoteroPluginInstaller.error("Installation could not be completed because an error occurred.\n\n"+e);
 				throw e;
 			}
