@@ -36,6 +36,7 @@ var Plugin = new function() {
 	this.EXTENSION_DIR = "zotero-macword-integration";
 	this.APP = 'Microsoft Word';
 	this.VERSION_FILE = 'resource://zotero-macword-integration/version.txt';
+	this.DISABLE_PROGRESS_WINDOW = true;
 
 	// Bump to make Zotero update the template (Zotero.dotm) for existing installs. Do not remove "pre"
 	this.LAST_INSTALLED_FILE_UPDATE = "7.0.5pre";
@@ -51,10 +52,18 @@ var Plugin = new function() {
 			const installer = new Installer();
 			const isWordInstalled = await installer.isWordInstalled();
 			if (!isWordInstalled) return;
-			let macOSVersion = (await Zotero.getOSVersion()).split(' ')[1];
-			if (!zpi.force && Zotero.Utilities.semverCompare(macOSVersion, "15.0.0")) {
+			const macOSVersion = (await Zotero.getOSVersion()).split(' ')[1];
+			const dontAskAgainVersion = zpi.prefBranch.getCharPref('installationWarning.dontAskAgainVersion')
+			const isSequoia = Zotero.Utilities.semverCompare(macOSVersion, "15.0.0") >= 0
+			const userDoesNotWantToBeAskedAgain = Zotero.Utilities.semverCompare(dontAskAgainVersion, this.LAST_INSTALLED_FILE_UPDATE) >= 0;
+			if (!zpi.force && isSequoia) {
+				if (userDoesNotWantToBeAskedAgain) return;
 				const shouldProceed = await this.displayPermissionWarningBanner();
 				if (!shouldProceed) return;
+				// Since the user confirmed that they want to install the plugin
+				// we should never fail silently here, especially since they might then
+				// deny access to required file location
+				zpi.failSilently = false
 			}
 			await installer.run();
 			zoteroPluginInstaller.success();
@@ -73,16 +82,22 @@ var Plugin = new function() {
 	}
 	
 	this.displayPermissionWarningBanner = async function() {
+		zoteroPluginInstaller.debug('Displaying a permission warning banner');
 		const remindInterval = 60 * 60 * 24 * 7; // Remind every 7 days
-		const lastDisplayed = Zotero.Prefs.get('installationWarning.lastDisplayed') ?? 0;
+		const lastDisplayed = zoteroPluginInstaller.prefBranch.getIntPref('installationWarning.lastDisplayed');
 		if (lastDisplayed > Math.round(Date.now() / 1000) - remindInterval) {
 			return false;
 		}
 		let zp = Zotero.getActiveZoteroPane()
 		let result = await zp.showMacWordPluginInstallWarning()
+		zoteroPluginInstaller.debug('User closed banner with ' + JSON.stringify(result));
 		if (result.install) return true;
 		else if (result.dismiss) return false;
+		else if (result.dontAskAgain) {
+			zoteroPluginInstaller.prefBranch.setCharPref('installationWarning.dontAskAgainVersion', zoteroPluginInstaller._currentPluginVersion)
+			return false;
+		}
 		// Dismissed with remind later.
-		Zotero.Prefs.set(`installationWarning.lastDisplayed`, Math.round(Date.now() / 1000));
+		zoteroPluginInstaller.prefBranch.setIntPref(`installationWarning.lastDisplayed`, Math.round(Date.now() / 1000));
 	}
 }
