@@ -347,6 +347,7 @@ statusCode ensureNoteLocationSet(field_t* field);
 
 // install.m
 statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[], const char zoteroScptPath[]);
+statusCode isWordInstalled(bool *returnValue);
 statusCode getScriptItemsDirectory(char** scriptFolder);
 statusCode writeScript(char* scriptPath, char* scriptContent);
 

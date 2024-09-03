@@ -200,6 +200,73 @@ statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[], cons
 	HANDLE_EXCEPTIONS_END
 }
 
+statusCode isWordInstalled(bool *returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
+	NSFileManager *fm = [NSFileManager defaultManager];
+	FinderApplication* finder = nil;
+	
+	// Get directories
+	NSArray *temp = NSSearchPathForDirectoriesInDomains(NSApplicationDirectory,
+														NSLocalDomainMask, YES);
+	if(!temp || ![temp count]) DIE(@"Could not find applications directory");
+	NSString* applicationsFolder = [temp objectAtIndex:0];
+	
+	// Look for Word in obvious places
+	NSMutableSet* wordLocations = [NSMutableSet setWithCapacity:1];
+	[wordLocations addObject:[applicationsFolder stringByAppendingPathComponent:
+							  @"Microsoft Word.app"]];
+	
+	// Look for Word bundle
+	NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
+	NSString* testPath = [workspace absolutePathForAppBundleWithIdentifier:
+						  @"com.Microsoft.Word"];
+	if(testPath) [wordLocations addObject:testPath];
+	
+	// Look for Word by creator code
+	CFURLRef testURL;
+	if(!LSFindApplicationForInfo('MSWD', NULL, NULL, NULL, &testURL) && testURL) {
+		[wordLocations addObject:[(NSURL*)testURL path]];
+	}
+	
+	for(NSString* path in wordLocations) {
+		BOOL isDirectory;
+		NSString* version;
+		
+		// Obviously, skip if app doesn't exist
+		if(![fm fileExistsAtPath:path isDirectory:&isDirectory]) continue;
+		if(isDirectory) {
+			// A bundle, so get the version using NSBundle
+			version = [[[NSBundle bundleWithPath:path] infoDictionary]
+					   objectForKey:(NSString*)kCFBundleVersionKey];
+		} else {
+			// Use Finder to get version of CFM app
+			if(!finder) {
+				finder = [SBApplication applicationWithBundleIdentifier:
+						  @"com.apple.Finder"];
+			}
+			FinderFile* file = [[finder files]
+								objectWithName:posixPathToHFSPath(path)];
+			version = [file version];
+		}
+		
+		if (!version) continue;
+		NSUInteger dotIndex = [version rangeOfString:@"."].location;
+		if (dotIndex == NSNotFound) continue;
+		NSUInteger secondDotIndex = [version rangeOfString:@"." options:NSLiteralSearch range:NSMakeRange(dotIndex, [version length] - dotIndex)].location;
+		
+		NSInteger majorVersion = [[version substringToIndex:dotIndex] intValue];
+		NSInteger minorVersion = 0;
+		if (secondDotIndex != NSNotFound) {
+			minorVersion = [[version substringWithRange:NSMakeRange(dotIndex+1, secondDotIndex)] intValue];
+		}
+		
+		// Do not consider versions older that Word 2016 (not supported)
+		*returnValue = *returnValue || majorVersion >= 15;
+	}
+	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
+}
+
 // Sets the type and creator code on the template
 statusCode setTemplateTypeCreator(NSString* templatePath, bool dieOnError) {
     NSError *err = nil;

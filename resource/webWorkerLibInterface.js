@@ -216,6 +216,9 @@ function init(libPath) {
 		// 					  const char zoteroScptPath[]);
 		install: lib.declare("install", ctypes.default_abi, statusCode, ctypes.char.ptr,
 			ctypes.char.ptr, ctypes.char.ptr),
+
+		// statusCode canInsertField(bool* returnValue);
+		isWordInstalled: lib.declare("isWordInstalled", ctypes.default_abi, statusCode, ctypes.bool.ptr),
 		
 		// statusCode freeData(void* ptr);
 		freeData: lib.declare("freeData", ctypes.default_abi, statusCode, ctypes.void_t.ptr),
@@ -314,6 +317,11 @@ function init(libPath) {
 			return fn[func](...args);
 		});
 	}
+	Messaging.addMessageListener('isWordInstalled', () => {
+		var returnValue = new ctypes.bool();
+		checkStatus(fn.isWordInstalled(returnValue.address()));
+		return returnValue.value;
+	});
 	Messaging.addMessageListener('getMacOSVersion', (...args) => {
 		return fn.getMacOSVersion(...args).readString();
 	});

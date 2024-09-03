@@ -69,7 +69,7 @@ async function init() {
 	
 	fn = {}
 	for (let method of ["preventAppNap", "allowAppNap", "getLastError",
-			"install", "isWordArm", "getMacOSVersion", "isZoteroRosetta"]) {
+			"install", "isWordArm", "isWordInstalled", "getMacOSVersion", "isZoteroRosetta"]) {
 		fn[method] = (...args) => Messaging.sendMessage(method, args);
 	}
 	
@@ -244,6 +244,10 @@ Installer.prototype = {
 		zoteroScpt.append("Zotero.scpt");
 		const status = await fn.install(zoteroDot.path, zoteroDotm.path, zoteroScpt.path);
 		await checkStatus(status);
+	},
+	isWordInstalled: async function() {
+		await init();
+		return fn.isWordInstalled()
 	}
 };
 

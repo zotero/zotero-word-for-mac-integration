@@ -48,7 +48,14 @@ var Plugin = new function() {
 		Zotero.debug("Installing ZoteroMacWordIntegration");
 		try {
 			const { Installer } = ChromeUtils.importESModule('chrome://zotero-macword-integration/content/zoteroMacWordIntegration.mjs');
-			var installer = new Installer();
+			const installer = new Installer();
+			const isWordInstalled = await installer.isWordInstalled();
+			if (!isWordInstalled) return;
+			let macOSVersion = (await Zotero.getOSVersion()).split(' ')[1];
+			if (!zpi.force && Zotero.Utilities.semverCompare(macOSVersion, "15.0.0")) {
+				const shouldProceed = await this.displayPermissionWarningBanner();
+				if (!shouldProceed) return;
+			}
 			await installer.run();
 			zoteroPluginInstaller.success();
 		} catch(e) {
@@ -58,14 +65,24 @@ var Plugin = new function() {
 					"You cancelled installation of Zotero Word for Mac Integration. To install later, visit the Cite pane in the Zotero preferences.");
 				zoteroPluginInstaller.cancelled();
 			}
-			else if (!zpi.force && message.includes("Word does not appear to be installed on this computer.")) {
-				// Do not display this as an error if not installing via the preferences window
-				zoteroPluginInstaller.success();
-			}
 			else {
 				zoteroPluginInstaller.error("Installation could not be completed because an error occurred.\n\n"+e);
 				throw e;
 			}
 		}
+	}
+	
+	this.displayPermissionWarningBanner = async function() {
+		const remindInterval = 60 * 60 * 24 * 7; // Remind every 7 days
+		const lastDisplayed = Zotero.Prefs.get('installationWarning.lastDisplayed') ?? 0;
+		if (lastDisplayed > Math.round(Date.now() / 1000) - remindInterval) {
+			return false;
+		}
+		let zp = Zotero.getActiveZoteroPane()
+		let result = await zp.showMacWordPluginInstallWarning()
+		if (result.install) return true;
+		else if (result.dismiss) return false;
+		// Dismissed with remind later.
+		Zotero.Prefs.set(`installationWarning.lastDisplayed`, Math.round(Date.now() / 1000));
 	}
 }
