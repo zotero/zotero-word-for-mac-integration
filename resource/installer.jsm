@@ -83,7 +83,7 @@ var Plugin = new function() {
 	
 	this.displayPermissionWarningBanner = async function() {
 		zoteroPluginInstaller.debug('Displaying a permission warning banner');
-		const remindInterval = 60 * 60 * 24 * 7; // Remind every 7 days
+		const remindInterval = 60 * 60 * 24; // Remind again in 24 hours
 		const lastDisplayed = zoteroPluginInstaller.prefBranch.getIntPref('installationWarning.lastDisplayed');
 		if (lastDisplayed > Math.round(Date.now() / 1000) - remindInterval) {
 			return false;
