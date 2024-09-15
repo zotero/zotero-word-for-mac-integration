@@ -53,8 +53,8 @@ var Plugin = new function() {
 			const isWordInstalled = await installer.isWordInstalled();
 			if (!isWordInstalled) return;
 			const macOSVersion = (await Zotero.getOSVersion()).split(' ')[1];
-			const dontAskAgainVersion = zpi.prefBranch.getCharPref('installationWarning.dontAskAgainVersion')
-			const isSequoia = Zotero.Utilities.semverCompare(macOSVersion, "15.0.0") >= 0
+			const dontAskAgainVersion = zpi.prefBranch.getCharPref('installationWarning.dontAskAgainVersion');
+			const isSequoia = Zotero.Utilities.semverCompare(macOSVersion, "15.0.0") >= 0;
 			const userDoesNotWantToBeAskedAgain = Zotero.Utilities.semverCompare(dontAskAgainVersion, this.LAST_INSTALLED_FILE_UPDATE) >= 0;
 			if (!zpi.force && isSequoia) {
 				if (userDoesNotWantToBeAskedAgain) return;
@@ -63,7 +63,7 @@ var Plugin = new function() {
 				// Since the user confirmed that they want to install the plugin
 				// we should never fail silently here, especially since they might then
 				// deny access to required file location
-				zpi.failSilently = false
+				zpi.failSilently = false;
 			}
 			await installer.run();
 			zoteroPluginInstaller.success();
