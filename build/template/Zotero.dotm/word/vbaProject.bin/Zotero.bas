@@ -90,7 +90,7 @@ wordAppPath$ = Replace(wordAppPath$, " ", "%20")
      End If
 #End If
 
-httpShellScript$ = "curl -s -o /dev/null -I -w '%{http_code}' -X GET '" & zoteroUrl & "agent=" & wordVersion$ & "&command=" & func & "&document=" & wordAppPath$ & "&templateVersion=" & templateVersion$ & "' | grep -q '200' || exit 1"
+httpShellScript$ = "curl -s -o /dev/null -I -m 2 -w '%{http_code}' -X GET '" & zoteroUrl & "agent=" & wordVersion$ & "&command=" & func & "&document=" & wordAppPath$ & "&templateVersion=" & templateVersion$ & "' | grep -q '200' || exit 1"
 
 On Error GoTo catchMacScriptHttp
     MacScript "try" & nl$ & "do shell script """ & httpShellScript$ & """" & nl$ & "on error" & nl$ & "display alert """ & onFailMessage$ & """  as critical" & nl$ & "end try"
