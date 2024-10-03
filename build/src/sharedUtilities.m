@@ -129,7 +129,7 @@ void freeData(void* ptr) {
 
 // From https://developer.apple.com/forums/thread/653009 (https://archive.is/etgKB)
 // Checks if Zotero is running as translated Rosetta 2 app (on an M1 Apple)
-int isZoteroRosetta() {
+int isZoteroRosetta(void) {
 	int ret = 0;
 	size_t size = sizeof(ret);
 	// Call the sysctl and if successful return the result
@@ -141,7 +141,7 @@ int isZoteroRosetta() {
 	return -1;
 }
 
-char *getMacOSVersion() {
+char *getMacOSVersion(void) {
 	NSTask *task = [[NSTask alloc] init];
 	@try {
 		NSPipe *stdoutPipe = [NSPipe pipe];
@@ -188,7 +188,7 @@ void flushBundleCache(const char wordPath[]) {
 	}
 }
 
-bool isWordArm() {
+bool isWordArm(void) {
 	NSArray *runningApplications = [[NSWorkspace sharedWorkspace] runningApplications];
 	for (NSRunningApplication* app in runningApplications) {
 		if ([[app bundleIdentifier] isEqual:(@"com.microsoft.Word")]) {

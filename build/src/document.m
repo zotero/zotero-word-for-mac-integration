@@ -1067,8 +1067,6 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	WordFont* font = [selectionRange fontObject];
 	NSString* oldFontName = [font name];
 	NSString* oldFontOtherName = [font otherName];
-	WordWdColorIndex oldColorIndex = [font colorIndex];
-	WordWdUnderline oldUnderline = [font underline];
 	IGNORING_SB_ERRORS_END
 	
 	// Insert a temp bookmark into which we'll insert the HTML

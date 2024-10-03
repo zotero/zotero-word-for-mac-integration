@@ -585,7 +585,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich) {
 // Gets text inside this field
 statusCode getText(field_t* field, char** returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
-	if(true || !field->text) {
+	if (!field->text) {
 		[(field->doc)->lock lock];
 		statusCode status = prepareReadFieldCode(field->doc);
 		[(field->doc)->lock unlock];

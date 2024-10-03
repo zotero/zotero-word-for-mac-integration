@@ -53,7 +53,6 @@ statusCode performAuthorizedCopy(NSString* templatePath, NSString* path1,
 statusCode install(const char zoteroDotPath[], const char zoteroDotmPath[], const char zoteroScptPath[]) {
 	HANDLE_EXCEPTIONS_BEGIN
 	NSFileManager *fm = [NSFileManager defaultManager];
-	NSString* dotPathNS = [NSString stringWithUTF8String:zoteroDotPath];
 	NSString* dotmPathNS = [NSString stringWithUTF8String:zoteroDotmPath];
 	NSString* scptPathNS = [NSString stringWithUTF8String:zoteroScptPath];
 	FinderApplication* finder = nil;
