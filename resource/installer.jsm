@@ -54,7 +54,7 @@ var Plugin = new function() {
 			if (!isWordInstalled) return;
 			const macOSVersion = (await Zotero.getOSVersion()).split(' ')[1];
 			const dontAskAgainVersion = zpi.prefBranch.getCharPref('installationWarning.dontAskAgainVersion');
-			const isSequoia = Zotero.Utilities.semverCompare(macOSVersion, "15.0.0") >= 0;
+			const isSequoia = macOSVersion.split('.')[0] >= 15;
 			const userDoesNotWantToBeAskedAgain = Zotero.Utilities.semverCompare(dontAskAgainVersion, this.LAST_INSTALLED_FILE_UPDATE) >= 0;
 			if (!zpi.force && isSequoia) {
 				if (userDoesNotWantToBeAskedAgain) return;
