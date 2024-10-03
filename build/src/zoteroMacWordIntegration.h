@@ -232,9 +232,10 @@ void storeCursorLocation(document_t* doc);
 statusCode moveCursorOutOfNote(document_t* doc);
 statusCode restoreCursor(document_t* doc);
 
-FILE* getTemporaryFile(document_t *doc);
-void deleteTemporaryFile(void);
-NSString* getTemporaryFilePath(void);
+void storePasteboardItems(void);
+void restorePasteboardContents(void);
+void replacePasteboardContentsWithRTF(const char *rtfString);
+void replacePasteboardContentsWithHTML(const char *htmlString);
 
 NSString* generateRandomString(NSUInteger length);
 NSInteger getEntryIndex(document_t* x, SBObject* y);
@@ -340,8 +341,7 @@ statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark, short noteTyp
 statusCode compareFields(field_t* a, field_t* b, short *returnValue);
 statusCode equals(field_t *a, field_t *b, bool *returnValue);
 int compareFieldsQsort(void* statusCode, const void* a, const void* b);
-statusCode setTextRaw(field_t* field, const char string[], bool isRich,
-					  BOOL deleteBM);
+statusCode setTextRaw(field_t* field, const char string[], bool isRich);
 statusCode ensureTextLocationSet(field_t* field);
 statusCode ensureNoteLocationSet(field_t* field);
 

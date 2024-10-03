@@ -27,61 +27,74 @@
 FILE* tempFile = NULL;
 char* tempFileString = NULL;
 NSString* tempFileStringNS = nil;
+NSArray *savedPasteboardItems = nil;
 id <NSObject> _appNapPreventingActivity;
 dispatch_queue_t _mainQueue;
 
-
-// Gets a FILE for the temporary file, truncating it to zero length
-FILE* getTemporaryFile(document_t *doc) {
-	if(tempFile == NULL) {
-		NSString *tempFileFolder = [NSHomeDirectory()
-										 stringByAppendingPathComponent:
-										 @"Library/Group Containers/UBF8T346G9.Office/org.zotero.zotero"];
-		const char *tempFileTemplate;
-		tempFileTemplate = [[NSHomeDirectory()
-										 stringByAppendingPathComponent:
-										 @"Library/Group Containers/UBF8T346G9.Office/org.zotero.zotero/zotero.XXXXXX.rtf"]
-										fileSystemRepresentation];
-		if (![[NSFileManager defaultManager] fileExistsAtPath:tempFileFolder]) {
-			[[NSFileManager defaultManager] createDirectoryAtPath:tempFileFolder
-									  withIntermediateDirectories:TRUE attributes:NULL error:NULL];
-		}
-		size_t tempFileLength = strlen(tempFileTemplate)+1;
-		tempFileString = (char *)malloc(tempFileLength);
-		strlcpy(tempFileString, tempFileTemplate, tempFileLength);
-		int tempFileDescriptor = mkstemps(tempFileString, 4);
-		tempFileStringNS = [[NSFileManager defaultManager]
-					  stringWithFileSystemRepresentation:tempFileString
-					  length:strlen(tempFileString)];
-		[tempFileStringNS retain];
-		if (tempFileDescriptor == -1) {
-			return tempFile;
-		}
-		tempFile = fdopen(tempFileDescriptor, "w");
-	}
-	rewind(tempFile);
-	ftruncate(fileno(tempFile), 0);
-	return tempFile;
-}
-
-// Deletes the temp file
-void deleteTemporaryFile(void) {
-	if(tempFile == NULL) return;
-	unlink(tempFileString);
-	fclose(tempFile);
+void storePasteboardItems(void) {
+	NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+	NSArray *items = [pasteboard pasteboardItems];
 	
-	tempFile = NULL;
-	tempFileString = NULL;
-	[tempFileStringNS release];
-	tempFileStringNS = nil;
+	NSMutableArray *copiedItems = [NSMutableArray arrayWithCapacity:[items count]];
+	
+	for (NSPasteboardItem *item in items) {
+		NSPasteboardItem *itemCopy = [[NSPasteboardItem alloc] init];
+		for (NSString *type in [item types]) {
+			NSData *data = [item dataForType:type];
+			[itemCopy setData:[data copy] forType:type];
+		}
+		[copiedItems addObject:itemCopy];
+	}
+	
+	savedPasteboardItems = [copiedItems copy];
 }
 
-// Gets an NSString representing the temp file
-NSString* getTemporaryFilePath(void) {
-	return tempFileStringNS;
+void restorePasteboardContents(void) {
+	NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+	if (savedPasteboardItems) {
+		[pasteboard clearContents];
+		[pasteboard writeObjects:savedPasteboardItems];
+	}
 }
 
-void preventAppNap() {
+void replacePasteboardContentsWithRTF(const char *rtfString) {
+	NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+	[pasteboard clearContents];
+	
+	
+	NSString *nsRtfString = [NSString stringWithUTF8String:rtfString];
+	NSData *rtfData = [nsRtfString dataUsingEncoding:NSUTF8StringEncoding];
+	NSAttributedString *attributedString = [[NSAttributedString alloc] initWithRTF:rtfData documentAttributes:nil];
+	
+	[pasteboard writeObjects:@[attributedString]];
+}
+
+void replacePasteboardContentsWithHTML(const char *htmlString) {
+	NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+	[pasteboard clearContents];
+	
+	NSString *nsHtmlString = [NSString stringWithUTF8String:htmlString];
+	
+	// Create an NSAttributedString from the HTML
+	NSData *htmlData = [nsHtmlString dataUsingEncoding:NSUTF8StringEncoding];
+	NSDictionary *options = @{NSDocumentTypeDocumentAttribute: NSHTMLTextDocumentType,
+							  NSCharacterEncodingDocumentAttribute: @(NSUTF8StringEncoding)};
+	NSAttributedString *attributedString = [[NSAttributedString alloc] initWithData:htmlData
+																			options:options
+																 documentAttributes:nil
+																			  error:nil];
+	
+	// Write both HTML and RTF representations to the pasteboard
+	[pasteboard writeObjects:@[nsHtmlString, attributedString]];
+	
+	// Explicitly set the types for better compatibility
+	[pasteboard setString:attributedString.string forType:NSPasteboardTypeString];
+	[pasteboard setPropertyList:nsHtmlString forType:NSPasteboardTypeHTML];
+	[pasteboard setData:[attributedString RTFFromRange:NSMakeRange(0, attributedString.length) documentAttributes:@{}]
+				forType:NSPasteboardTypeRTF];
+}
+
+void preventAppNap(void) {
 	if (_appNapPreventingActivity != nil) return;
 	NSActivityOptions options = NSActivityUserInitiatedAllowingIdleSystemSleep;
 	NSString *reason = @"Zotero App Nap is disabled during a Word Integration operation";

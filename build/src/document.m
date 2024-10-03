@@ -706,8 +706,11 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				status = insertFieldRaw(doc, toFieldType, toNoteType, sbWhere,
 										nil, &newField);
 				ENSURE_OK_LOCKED(doc, status)
-				// Copy text for in-text to note conversions
-				if (strcmp(toFieldType, "Bookmark") != 0) {
+				if (toBookmark) {
+					ENSURE_OK_LOCKED(doc, setText(newField, FIELD_PLACEHOLDER, false));
+				}
+				else {
+					// Copy text for in-text to note conversions
 					[newField->sbContentRange setContent:[field->sbContentRange content]];
 					CHECK_STATUS_LOCKED(doc)
 					[field->sbField delete];
@@ -726,12 +729,10 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 			} else {
 				// Convert note to inline
 				status = insertFieldRaw(doc, toFieldType, toNoteType,
-										[[sbNote noteReference]
-										 collapseRangeDirection:
-										 WordWdCollapseDirectionCollapseStart], nil,
+										[sbNote noteReference], nil,
 										&newField);
 				ENSURE_OK_LOCKED(doc, status)
-				[newField->sbContentRange setContent:[field->sbContentRange content]];
+				ENSURE_OK_LOCKED(doc, setText(newField, FIELD_PLACEHOLDER, false));
 				CHECK_STATUS_LOCKED(doc)
 				// Delete old note
 				[[sbNote noteReference] setContent:@""];
@@ -1084,22 +1085,16 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	[[doc->sbApp selection] setSelectionEnd: [[doc->sbApp selection] selectionEnd]-1];
 	CHECK_STATUS_LOCKED(doc)
 	
-	FILE* temporaryFile = getTemporaryFile(doc);
-	if (temporaryFile == NULL) {
-		DIE(([NSString stringWithFormat:@"Could not create a temporary file at %@", getTemporaryFilePath()]));
-	}
+	// Write HTML to a clipboard
+	storePasteboardItems();
+	replacePasteboardContentsWithHTML(htmlString);
 	
-	// Write HTML to a file
-	fprintf(temporaryFile, "%s", htmlString);
-	fflush(temporaryFile);
+	// Paste HTML
+	[selectionRange pasteObject];
+	// Restore clipboard contents and only then check for errors
+	restorePasteboardContents();
+	CHECK_STATUS_LOCKED(doc)
 	
-	// Insert file
-	NSString* temporaryFilePath = getTemporaryFilePath();
-	[doc->sbApp insertFileAt:selectionRange
-							 fileName:posixPathToHFSPath(temporaryFilePath)
-							fileRange:nil
-				   confirmConversions:NO
-								 link:NO];
 	// Set style
 	IGNORING_SB_ERRORS_BEGIN
 	// Set properties back to saved
@@ -1262,8 +1257,6 @@ statusCode cleanup(document_t *doc) {
 		CHECK_STATUS_LOCKED(doc)
 		doc->statusFormatChanges = YES;
 	}
-	
-	deleteTemporaryFile();
 	
 	RETURN_STATUS_LOCKED(doc, restoreCursor(doc))
 	HANDLE_EXCEPTIONS_END

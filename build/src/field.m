@@ -391,17 +391,22 @@ statusCode selectField(field_t* field) {
 statusCode setText(field_t* field, const char string[], bool isRich) {
 	HANDLE_EXCEPTIONS_BEGIN
 	ENSURE_OK(checkFieldIntegrity(field));
-	return setTextRaw(field, string, isRich, YES);
+	return setTextRaw(field, string, isRich);
 	HANDLE_EXCEPTIONS_END
 }
 
 // Raw version of setText that allows the bookmark not to be deleted after
 // citation insert
-statusCode setTextRaw(field_t* field, const char string[], bool isRich,
-					  BOOL deleteBM) {
+statusCode setTextRaw(field_t* field, const char string[], bool isRich) {
 	BOOL locked = field->sbBookmark || isRich;
 	BOOL restoreSelectionToEnd = NO;
-	if(locked) {
+	WordTextRange* insertRange;
+	WordFont* font;
+	double oldFontSize;
+	NSString *oldFontName, *oldFontOtherName;
+	WordWdColorIndex oldColorIndex;
+	
+	if (locked) {
 		[(field->doc)->lock lock];
 	}
 	
@@ -411,145 +416,138 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		CHECK_STATUS_LOCKED(field->doc);
 	}
 	
-	if(isRich) {
+	// Store font info
+	if (isRich) {
 		IGNORING_SB_ERRORS_BEGIN
 		// Make sure temp bookmark is gone
 		[[[(field->doc)->sbDoc bookmarks] objectWithName:@ RTF_TEMP_BOOKMARK]
 		 delete];
 		
 		// Save properties
-		WordFont* font = [field->sbContentRange fontObject];
-		double oldFontSize = [font fontSize];
-		NSString* oldFontName = [font name];
-		NSString* oldFontOtherName = [font otherName];
-		WordWdColorIndex oldColorIndex = [font colorIndex];
+		font = [field->sbContentRange fontObject];
+		oldFontSize = [font fontSize];
+		oldFontName = [font name];
+		oldFontOtherName = [font otherName];
+		oldColorIndex = [font colorIndex];
 		IGNORING_SB_ERRORS_END
-		
-		WordBookmark* tempBookmark;
-		const char* bookmarkName;
-		WordTextRange* insertRange;
-		
-		FILE* temporaryFile = getTemporaryFile(field->doc);
-		if (temporaryFile == NULL) {
-			DIE(([NSString stringWithFormat:@"Could not create a temporary file at %@", getTemporaryFilePath()]));
-		}
-		
-		// Word 16.9 and higher has changed the way [application insertFile]
-		// works. Instead of inserting text into specified range it inserts
-		// the text after the range, which requires some additional magic to
-		// get the inserted text back into the range.
-		if (field->doc->wordVersion >= 16 && field->doc->wordVersion < 2000 && field->sbField) {
-			WordTextRange* insertedTextRange;
-			
-			bookmarkName = RTF_TEMP_BOOKMARK;
+	} else {
+		// Clear any superscripting. Unlike other font parameters,
+		// superscripted fields are far more likely to come from a style change
+		// than to be desired by the user.
+		IGNORING_SB_ERRORS_BEGIN
+		WordFont* font = [field->sbContentRange fontObject];
+		[font setSuperscript:NO];
+		IGNORING_SB_ERRORS_END
+	}
+	
+	// Set text
+	if (field->sbField) {
+		if (isRich) {
 			insertRange = field->sbContentRange;
 			
 			// Footnote text doesn't get properly replaced otherwise
 			[insertRange setContent:@" "];
 			CHECK_STATUS_LOCKED(field->doc)
 			
-			// Bibl fails to insert if insert range is not collapsed.
-			// Notes fail to insert with collapsed range. Sigh.
-			if (!field->noteType) {
-				insertRange = [insertRange collapseRangeDirection:WordWdCollapseDirectionCollapseEnd];
-			}
+			// Put RTF into the clipboard
+			storePasteboardItems();
+			replacePasteboardContentsWithRTF(string);
+			
+			// Paste RTF
+			[insertRange pasteObject];
+			// Restore clipboard contents and only then check for errors
+			restorePasteboardContents();
 			CHECK_STATUS_LOCKED(field->doc)
-			
-			// Write RTF to a file
-			size_t newStringSize = strlen(string)-6;
-			char* newString = (char*) malloc(newStringSize);
-			strlcpy(newString, string+6, newStringSize);
-			fprintf(temporaryFile, "{\\rtf {\\bkmkstart %s}%s{\\bkmkend %s}}",
-					bookmarkName, newString, bookmarkName);
-			fflush(temporaryFile);
-			free(newString);
-			
-			// Insert file
-			NSString* temporaryFilePath = getTemporaryFilePath();
-			[(field->doc)->sbApp insertFileAt:insertRange
-									 fileName:posixPathToHFSPath(temporaryFilePath)
-									fileRange:[NSString
-											   stringWithUTF8String:bookmarkName]
-						   confirmConversions:NO
-										 link:NO];
+		}
+		else {
+			[field->sbContentRange
+			 setContent:[NSString stringWithUTF8String:string]];
 			CHECK_STATUS_LOCKED(field->doc)
-			
-			// This moves the cursor so we mark it for restoration
-			field->doc->cursorMoved = YES;
-			
-			// Copy out the rich text from the inserted bookmark into the field range
-			tempBookmark = [[(field->doc)->sbDoc bookmarks]
-							objectWithName:@ RTF_TEMP_BOOKMARK];
+		}
+	}
+	else {
+		// Find a reference point in the appropriate story
+		WordTextRange* referenceRange;
+		if(field->noteType == NOTE_FOOTNOTE) {
+			referenceRange = [[[(field->doc)->sbDoc footnotes]
+							   objectAtIndex:
+								   getEntryIndex(field->doc,
+												 [[field->sbContentRange
+												   footnotes]
+												  objectAtIndex:0])-1]
+							  textObject];
 			CHECK_STATUS_LOCKED(field->doc)
-			insertedTextRange = [tempBookmark textObject];
-			[field->sbContentRange setFormattedText:insertedTextRange];
-			CHECK_STATUS_LOCKED(field->doc)
-			
-			// Remove inserted RTF
-			[insertedTextRange setContent:@""];
+		} else if(field->noteType == NOTE_ENDNOTE) {
+			referenceRange = [[[(field->doc)->sbDoc endnotes]
+							   objectAtIndex:
+								   getEntryIndex(field->doc,
+												 [[field->sbContentRange
+												   endnotes]
+												  objectAtIndex:0])-1]
+							  textObject];
 			CHECK_STATUS_LOCKED(field->doc)
 		} else {
-			if(field->sbBookmark) {
-				// Check if cursor is at end of citation
-				CHECK_STATUS_LOCKED(field->doc)
-				
-				// Rename bookmark to a temporary name
-				statusCode status = insertFieldRaw(field->doc, "Bookmark", 0,
-												   field->sbCodeRange,
-												   @ RTF_TEMP_BOOKMARK, NULL);
-				if(status) return status;
-				[field->sbBookmark delete];
-				CHECK_STATUS_LOCKED(field->doc)
-				tempBookmark = [[(field->doc)->sbDoc bookmarks]
-								objectWithName:@ RTF_TEMP_BOOKMARK];
-				CHECK_STATUS_LOCKED(field->doc)
-				
-				// We are going to insert bookmark with the proper name
-				bookmarkName = field->bookmarkName;
-				insertRange = [tempBookmark textObject];
-				CHECK_STATUS_LOCKED(field->doc)
-			} else {
-				// We are going to insert a temporary bookmark
-				bookmarkName = RTF_TEMP_BOOKMARK;
-				insertRange = field->sbContentRange;
-				
-				// Clear content range
-				[field->sbContentRange setContent:@""];
-				CHECK_STATUS_LOCKED(field->doc)
-			}
+			referenceRange = [(field->doc)->sbDoc textObject];
+			CHECK_STATUS_LOCKED(field->doc)
+		}
+		
+		// Get positions
+		NSInteger oldStart = [field->sbBookmark startOfBookmark];
+		CHECK_STATUS_LOCKED(field->doc)
+		NSInteger oldEnd = [field->sbBookmark endOfBookmark];
+		CHECK_STATUS_LOCKED(field->doc)
+		NSInteger oldStoryEnd = [referenceRange endOfContent];
+		CHECK_STATUS_LOCKED(field->doc)
+		
+		// Set text (deletes bookmark)
+		if (isRich) {
+			// Put RTF into the clipboard
+			storePasteboardItems();
+			replacePasteboardContentsWithRTF(string);
 			
-			// Write RTF to a file
-			size_t newStringSize = strlen(string)-6;
-			char* newString = (char*) malloc(newStringSize);
-			strlcpy(newString, string+6, newStringSize);
-			fprintf(temporaryFile, "{\\rtf {\\bkmkstart %s}%s{\\bkmkend %s}}",
-					bookmarkName, newString, bookmarkName);
-			fflush(temporaryFile);
-			free(newString);
-			
-			// Insert file
-			NSString* temporaryFilePath = getTemporaryFilePath();
-			[(field->doc)->sbApp insertFileAt:insertRange
-									 fileName:posixPathToHFSPath(temporaryFilePath)
-									fileRange:[NSString
-											   stringWithUTF8String:bookmarkName]
-						   confirmConversions:NO
-										 link:NO];
+			// Paste RTF
+			[field->sbContentRange pasteObject];
+			// Restore clipboard contents and only then check for errors
+			restorePasteboardContents();
+			CHECK_STATUS_LOCKED(field->doc)
+		}
+		else {
+			[field->sbContentRange
+			 setContent:[NSString stringWithUTF8String:string]];
 			CHECK_STATUS_LOCKED(field->doc)
 			
-			if(field->sbBookmark) {
-				// Delete temporary bookmark text
-				[[tempBookmark textObject] setContent:@""];
-			}
 		}
-		
-		if(deleteBM) {
-			IGNORING_SB_ERRORS_BEGIN
-			[[[field->sbContentRange bookmarks]
-			  objectWithName:@ RTF_TEMP_BOOKMARK] delete];
-			IGNORING_SB_ERRORS_END
+			
+		// Fix bookmark start and end
+		NSInteger newEnd = oldEnd + [referenceRange endOfContent]
+		- oldStoryEnd;
+		CHECK_STATUS_LOCKED(field->doc)
+		if (field->noteType) {
+			// This approach to resetting the bookmark works everywhere,
+			// but may have trouble with tables
+			ENSURE_OK_LOCKED(field->doc,
+							 insertFieldRaw(field->doc, "Bookmark", 0,
+											referenceRange,
+											field->bookmarkNameNS, NULL));
+			[field->sbBookmark setStartOfBookmark:oldStart];
+			CHECK_STATUS_LOCKED(field->doc)
+			[field->sbBookmark setEndOfBookmark:newEnd];
+			CHECK_STATUS_LOCKED(field->doc)
+		} else {
+			// This is a more appropriate way of setting range text, but
+			// only works within the main story
+			WordTextRange* newRange = [(field->doc)->sbDoc
+									   createRangeStart:oldStart
+									   end:newEnd];
+			ENSURE_OK_LOCKED(field->doc,
+							 insertFieldRaw(field->doc, "Bookmark", 0,
+											newRange,
+											field->bookmarkNameNS, NULL));
 		}
-		
+	}
+	
+	// Restore font info
+	if (isRich) {
 		// Set style
 		IGNORING_SB_ERRORS_BEGIN
 		if(strncmp(field->code, "BIBL", 4) == 0) {
@@ -563,85 +561,6 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich,
 		[font setOtherName:oldFontOtherName];
 		[font setColorIndex:oldColorIndex];
 		IGNORING_SB_ERRORS_END
-	} else {
-		// Clear any superscripting. Unlike other font parameters,
-		// superscripted fields are far more likely to come from a style change
-		// than to be desired by the user.
-		IGNORING_SB_ERRORS_BEGIN
-		WordFont* font = [field->sbContentRange fontObject];
-		[font setSuperscript:NO];
-		IGNORING_SB_ERRORS_END
-		
-		if(field->sbBookmark) {
-			// Find a reference point in the appropriate story
-			WordTextRange* referenceRange;
-			if(field->noteType == NOTE_FOOTNOTE) {
-				referenceRange = [[[(field->doc)->sbDoc footnotes]
-								   objectAtIndex:
-								   getEntryIndex(field->doc,
-												 [[field->sbContentRange
-												   footnotes]
-												  objectAtIndex:0])-1]
-								  textObject];
-				CHECK_STATUS_LOCKED(field->doc)
-			} else if(field->noteType == NOTE_ENDNOTE) {
-				referenceRange = [[[(field->doc)->sbDoc endnotes]
-								   objectAtIndex:
-								   getEntryIndex(field->doc,
-												 [[field->sbContentRange
-												   endnotes]
-												  objectAtIndex:0])-1]
-								  textObject];
-				CHECK_STATUS_LOCKED(field->doc)
-			} else {
-				referenceRange = [(field->doc)->sbDoc textObject];
-				CHECK_STATUS_LOCKED(field->doc)
-			}
-			
-			// Get some data about this bookmark
-			NSInteger oldStart = [field->sbBookmark startOfBookmark];
-			CHECK_STATUS_LOCKED(field->doc)
-			NSInteger oldEnd = [field->sbBookmark endOfBookmark];
-			CHECK_STATUS_LOCKED(field->doc)
-			NSInteger oldStoryEnd = [referenceRange endOfContent];
-			CHECK_STATUS_LOCKED(field->doc)
-			
-			// Set text (deletes bookmark)
-			[field->sbContentRange
-			 setContent:[NSString stringWithUTF8String:string]];
-			CHECK_STATUS_LOCKED(field->doc)
-			
-			// Fix bookmark start and end
-			NSInteger newEnd = oldEnd + [referenceRange endOfContent]
-				- oldStoryEnd;
-			CHECK_STATUS_LOCKED(field->doc)
-			if(field->noteType) {
-				// This approach to resetting the bookmark works everywhere,
-				// but may have trouble with tables
-				ENSURE_OK_LOCKED(field->doc,
-								 insertFieldRaw(field->doc, "Bookmark", 0,
-												referenceRange,
-												field->bookmarkNameNS, NULL));
-				[field->sbBookmark setStartOfBookmark:oldStart];
-				CHECK_STATUS_LOCKED(field->doc)
-				[field->sbBookmark setEndOfBookmark:newEnd];
-				CHECK_STATUS_LOCKED(field->doc)
-			} else {
-				// This is a more appropriate way of setting range text, but
-				// only works within the main story
-				WordTextRange* newRange = [(field->doc)->sbDoc
-										  createRangeStart:oldStart
-										  end:newEnd];
-				ENSURE_OK_LOCKED(field->doc,
-								 insertFieldRaw(field->doc, "Bookmark", 0,
-												newRange,
-												field->bookmarkNameNS, NULL));
-			}
-		} else {
-			[field->sbContentRange
-			 setContent:[NSString stringWithUTF8String:string]];
-			CHECK_STATUS_LOCKED(field->doc)
-		}
 	}
 	
 	// If selection was at end of mark, put it there again
