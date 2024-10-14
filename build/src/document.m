@@ -1088,7 +1088,7 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	replacePasteboardContentsWithHTML(htmlString);
 	
 	// Paste HTML
-	[selectionRange pasteObject];
+	[selectionRange pasteSpecialLink:NO placement:WordWdOLEPlacementInLine displayAsIcon:NO dataType:WordWdPasteDataTypePasteHtml iconLabel:nil];
 	// Restore clipboard contents and only then check for errors
 	restorePasteboardContents();
 	CHECK_STATUS_LOCKED(doc)
@@ -1103,7 +1103,7 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	
 	// Remove the previously added empty paragraph
 	[bookmarkRange sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
-	[[doc->sbApp selection] setSelectionEnd: [[doc->sbApp selection] selectionStart]+1];
+	[[doc->sbApp selection] setSelectionStart: [[doc->sbApp selection] selectionEnd]-1];
 	[[doc->sbApp selection] setContent:@""];
 	CHECK_STATUS_LOCKED(doc)
 	

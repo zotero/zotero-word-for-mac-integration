@@ -454,7 +454,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich) {
 			replacePasteboardContentsWithRTF(string);
 			
 			// Paste RTF
-			[insertRange pasteObject];
+			[insertRange pasteSpecialLink:NO placement:WordWdOLEPlacementInLine displayAsIcon:NO dataType:WordWdPasteDataTypePasteRtf iconLabel:nil];
 			// Restore clipboard contents and only then check for errors
 			restorePasteboardContents();
 			CHECK_STATUS_LOCKED(field->doc)

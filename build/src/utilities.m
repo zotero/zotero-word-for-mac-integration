@@ -64,9 +64,7 @@ void replacePasteboardContentsWithRTF(const char *rtfString) {
 	
 	NSString *nsRtfString = [NSString stringWithUTF8String:rtfString];
 	NSData *rtfData = [nsRtfString dataUsingEncoding:NSUTF8StringEncoding];
-	NSAttributedString *attributedString = [[NSAttributedString alloc] initWithRTF:rtfData documentAttributes:nil];
-	
-	[pasteboard writeObjects:@[attributedString]];
+	[pasteboard setData:rtfData forType:@"public.rtf"];
 }
 
 void replacePasteboardContentsWithHTML(const char *htmlString) {
