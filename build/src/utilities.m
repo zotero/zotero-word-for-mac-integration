@@ -61,10 +61,8 @@ void replacePasteboardContentsWithRTF(const char *rtfString) {
 	NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
 	[pasteboard clearContents];
 	
-	
 	NSString *nsRtfString = [NSString stringWithUTF8String:rtfString];
-	NSData *rtfData = [nsRtfString dataUsingEncoding:NSUTF8StringEncoding];
-	[pasteboard setData:rtfData forType:@"public.rtf"];
+	[pasteboard setString:nsRtfString forType:NSPasteboardTypeRTF];
 }
 
 void replacePasteboardContentsWithHTML(const char *htmlString) {
@@ -72,24 +70,7 @@ void replacePasteboardContentsWithHTML(const char *htmlString) {
 	[pasteboard clearContents];
 	
 	NSString *nsHtmlString = [NSString stringWithUTF8String:htmlString];
-	
-	// Create an NSAttributedString from the HTML
-	NSData *htmlData = [nsHtmlString dataUsingEncoding:NSUTF8StringEncoding];
-	NSDictionary *options = @{NSDocumentTypeDocumentAttribute: NSHTMLTextDocumentType,
-							  NSCharacterEncodingDocumentAttribute: @(NSUTF8StringEncoding)};
-	NSAttributedString *attributedString = [[NSAttributedString alloc] initWithData:htmlData
-																			options:options
-																 documentAttributes:nil
-																			  error:nil];
-	
-	// Write both HTML and RTF representations to the pasteboard
-	[pasteboard writeObjects:@[nsHtmlString, attributedString]];
-	
-	// Explicitly set the types for better compatibility
-	[pasteboard setString:attributedString.string forType:NSPasteboardTypeString];
-	[pasteboard setPropertyList:nsHtmlString forType:NSPasteboardTypeHTML];
-	[pasteboard setData:[attributedString RTFFromRange:NSMakeRange(0, attributedString.length) documentAttributes:@{}]
-				forType:NSPasteboardTypeRTF];
+	[pasteboard setString:nsHtmlString forType:NSPasteboardTypeHTML];
 }
 
 void preventAppNap(void) {

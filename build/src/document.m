@@ -1088,7 +1088,7 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	replacePasteboardContentsWithHTML(htmlString);
 	
 	// Paste HTML
-	[selectionRange pasteSpecialLink:NO placement:WordWdOLEPlacementInLine displayAsIcon:NO dataType:WordWdPasteDataTypePasteHtml iconLabel:nil];
+	[selectionRange pasteObject];
 	// Restore clipboard contents and only then check for errors
 	restorePasteboardContents();
 	CHECK_STATUS_LOCKED(doc)
