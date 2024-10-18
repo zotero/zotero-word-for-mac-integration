@@ -445,16 +445,13 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich) {
 		if (isRich) {
 			insertRange = field->sbContentRange;
 			
-			// Footnote text doesn't get properly replaced otherwise
-			[insertRange setContent:@" "];
-			CHECK_STATUS_LOCKED(field->doc)
-			
 			// Put RTF into the clipboard
 			storePasteboardItems();
 			replacePasteboardContentsWithRTF(string);
 			
 			// Paste RTF
-			[insertRange pasteObject];
+			ENSURE_OK_LOCKED(field->doc, pasteStupid(field->doc, insertRange))
+			
 			// Restore clipboard contents and only then check for errors
 			restorePasteboardContents();
 			CHECK_STATUS_LOCKED(field->doc)
@@ -506,7 +503,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich) {
 			replacePasteboardContentsWithRTF(string);
 			
 			// Paste RTF
-			[field->sbContentRange pasteObject];
+			ENSURE_OK_LOCKED(field->doc, pasteStupid(field->doc, field->sbContentRange))
 			// Restore clipboard contents and only then check for errors
 			restorePasteboardContents();
 			CHECK_STATUS_LOCKED(field->doc)

@@ -1762,6 +1762,16 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 	DIE(([NSString stringWithFormat:@"Unimplemented field type %s", fieldType]))
 }
 
+// Word has "smart paste" settings that add spacing to pastes we perform
+// so we have to temporarily disable these
+statusCode pasteStupid(document_t *doc, WordTextRange *range) {
+	bool setting = [[doc->sbApp settings] pasteAdjustWordSpacing];
+	[[doc->sbApp settings] setPasteAdjustWordSpacing:NO];
+	[range pasteObject];
+	[[doc->sbApp settings] setPasteAdjustWordSpacing:setting];
+	return STATUS_OK;
+}
+
 // Adds a field to a field list
 void addValueToList(void* value, listNode_t** listStart,
 					listNode_t** listEnd) {

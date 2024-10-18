@@ -317,6 +317,7 @@ statusCode prepareReadFieldCode(document_t *doc);
 statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 						  unsigned short noteType, WordTextRange *sbWhere,
 						  NSString* bookmarkName, field_t** returnValue);
+statusCode pasteStupid(document_t *doc, WordTextRange *range);
 void addValueToList(void* value, listNode_t** listStart, listNode_t** listEnd);
 
 // field.m

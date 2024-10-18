@@ -40,6 +40,20 @@ void storePasteboardItems(void) {
 	for (NSPasteboardItem *item in items) {
 		NSPasteboardItem *itemCopy = [[NSPasteboardItem alloc] init];
 		for (NSString *type in [item types]) {
+			// Workaround for when clipboard contains content copied from Word.
+			//
+			// Pasteboard doesn't like if we run hasPrefix on the type string
+			// and weird stuff happens, so we make a copy.
+			NSString *copiedType = [NSString stringWithString: type];
+			// Making a copy of these inserts a OLE_LINK bookmark into Word.
+			// Also means every pasteboard manager does this when copying from Word
+			// which is a pretty crazy bug.
+			if ([copiedType hasPrefix:@"com.microsoft.Link"]) continue;
+			if ([copiedType hasPrefix:@"com.microsoft.ObjectLink"]) continue;
+			// If we keep this type without the above two, somehow the RTF text
+			// we put in the pasteboard and pasted programatically is then pasted
+			// into word if you try to paste.
+			if ([copiedType hasPrefix:@"com.microsoft.ole"]) continue;
 			NSData *data = [item dataForType:type];
 			[itemCopy setData:[data copy] forType:type];
 		}
