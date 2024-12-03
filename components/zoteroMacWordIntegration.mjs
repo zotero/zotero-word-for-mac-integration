@@ -23,7 +23,6 @@
 */
 
 Components.utils.import("resource://gre/modules/ComponentUtils.jsm");
-Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://gre/modules/FileUtils.jsm");
 
 const { Zotero } = ChromeUtils.importESModule("chrome://zotero/content/zotero.mjs");
