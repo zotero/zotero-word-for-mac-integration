@@ -1171,6 +1171,7 @@ statusCode convertPlaceholdersToFields(document_t *doc, const char* placeholders
 			WordTextRange *linkRange = [link resultRange];
 			CHECK_STATUS_LOCKED(doc);
 			NSString *linkUrl = [[[linkRange hyperlinkObjects] objectAtIndex:0] hyperlinkAddress];
+			if (linkUrl == nil) continue;
 			CHECK_STATUS_LOCKED(doc);
 			NSString *placeholder = [linkUrl substringFromIndex:[IMPORT_LINK_URL length]+1];
 			for (long j = 0; j < nPlaceholders; j++) {
