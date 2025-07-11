@@ -35,7 +35,7 @@
  * Loads libZoteroMacWordIntegration.dylib and initializes js-ctypes functions
  */
 
-self.importScripts('resource://zotero-macword-integration/messagingGeneric.js');
+import { MessagingGeneric } from "./messagingGeneric.mjs";
 
 var field_t, document_t, fieldListNode_t, progressFunction_t, lib, fn, fieldPtr;
 var docs = {};

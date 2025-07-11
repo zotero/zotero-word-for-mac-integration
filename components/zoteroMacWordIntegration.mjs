@@ -22,11 +22,10 @@
     ***** END LICENSE BLOCK *****
 */
 
-Components.utils.import("resource://gre/modules/ComponentUtils.jsm");
-Components.utils.import("resource://gre/modules/FileUtils.jsm");
+const { FileUtils } = ChromeUtils.importESModule("resource://gre/modules/FileUtils.sys.mjs");
 
 const { Zotero } = ChromeUtils.importESModule("chrome://zotero/content/zotero.mjs");
-const { MessagingGeneric } = Components.utils.import("resource://zotero-macword-integration/messagingGeneric.js");
+const { MessagingGeneric } = ChromeUtils.importESModule("resource://zotero-macword-integration/messagingGeneric.mjs");
 
 const STATUS_EXCEPTION = 1;
 const STATUS_EXCEPTION_ALREADY_DISPLAYED = 2;
@@ -49,7 +48,7 @@ async function init() {
 	libPath.append('word-for-mac');
 	libPath.append("libZoteroWordIntegration.dylib");
 	
-	worker = new ChromeWorker("resource://zotero-macword-integration/webWorkerLibInterface.js")
+	worker = new ChromeWorker("resource://zotero-macword-integration/webWorkerLibInterface.js", { type: "module" });
 	
 	Messaging = new MessagingGeneric({
 		sendMessage: (...args) => worker.postMessage(args),

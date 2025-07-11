@@ -22,14 +22,15 @@
     ***** END LICENSE BLOCK *****
 */
 
-var EXPORTED_SYMBOLS = ["Installer"];
-const { Zotero } = ChromeUtils.importESModule("chrome://zotero/content/zotero.mjs");
-var ZoteroPluginInstaller = Components.utils.import("resource://zotero/word-processor-plugin-installer.js").ZoteroPluginInstaller;
-var Installer = function(failSilently=true, force) {
-	return new ZoteroPluginInstaller(Plugin, failSilently, force);
-}
+import { Zotero } from "chrome://zotero/content/zotero.mjs";
 
-var Plugin = new function() {
+const { ZoteroPluginInstaller } = ChromeUtils.importESModule("resource://zotero/word-processor-plugin-installer.mjs");
+
+export var Installer = function(failSilently=true, force) {
+	return new ZoteroPluginInstaller(Plugin, failSilently, force);
+};
+
+var Plugin = new (function() {
 	this.EXTENSION_STRING = "Zotero Word for Mac Integration";
 	this.EXTENSION_ID = "zoteroMacWordIntegration@zotero.org";
 	this.EXTENSION_PREF_BRANCH = "extensions.zoteroMacWordIntegration.";
@@ -100,4 +101,4 @@ var Plugin = new function() {
 		// Dismissed with remind later.
 		zoteroPluginInstaller.prefBranch.setIntPref(`installationWarning.lastDisplayed`, Math.round(Date.now() / 1000));
 	}
-}
+})
