@@ -325,7 +325,9 @@ Field.prototype.equals = function (other) {
 function initIntegration() {
 	initializePipes();
 	// start plug-in installer
-	var Installer = Components.utils.import("resource://zotero-macword-integration/installer.jsm").Installer;
+	let { Installer } = ChromeUtils.importESModule(
+		"resource://zotero-macword-integration/installer.mjs"
+	);
 	new Installer();
 }
 
