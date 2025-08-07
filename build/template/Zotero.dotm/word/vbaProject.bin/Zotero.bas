@@ -29,6 +29,10 @@ Sub ZoteroAddNote()
 CallZotero ("addNote")
 End Sub
 
+Sub ZoteroAddAnnotation()
+CallZotero ("addAnnotation")
+End Sub
+
 Sub ZoteroEditCitation()
 CallZotero ("editCitation")
 End Sub
