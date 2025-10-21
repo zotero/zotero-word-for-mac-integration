@@ -38,7 +38,7 @@ void storePasteboardItems(void) {
 	NSMutableArray *copiedItems = [NSMutableArray arrayWithCapacity:[items count]];
 	
 	for (NSPasteboardItem *item in items) {
-		NSPasteboardItem *itemCopy = [[NSPasteboardItem alloc] init];
+		NSPasteboardItem *itemCopy = [[[NSPasteboardItem alloc] init] autorelease];
 		for (NSString *type in [item types]) {
 			// Workaround for when clipboard contains content copied from Word.
 			//
@@ -72,6 +72,8 @@ void restorePasteboardContents(void) {
 	if (savedPasteboardItems) {
 		[pasteboard clearContents];
 		[pasteboard writeObjects:savedPasteboardItems];
+        [savedPasteboardItems release];
+        savedPasteboardItems = nil;
 	}
 }
 
