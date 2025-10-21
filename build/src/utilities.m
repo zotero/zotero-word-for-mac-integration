@@ -55,6 +55,10 @@ void storePasteboardItems(void) {
 			// into word if you try to paste.
 			if ([copiedType hasPrefix:@"com.microsoft.ole"]) continue;
 			NSData *data = [item dataForType:type];
+			// Apparently pasteboard data types can be provided in an async way by the
+			// app that wrote to the pasteboard, and when the app is no longer available
+			// or fails to provide the data nil is returned here and causes issues
+			if (!data) continue;
 			[itemCopy setData:[data copy] forType:type];
 		}
 		[copiedItems addObject:itemCopy];
