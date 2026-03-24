@@ -40,7 +40,7 @@ var Plugin = new (function() {
 	this.DISABLE_PROGRESS_WINDOW = true;
 
 	// Bump to make Zotero update the template (Zotero.dotm) for existing installs. Do not remove "pre"
-	this.LAST_INSTALLED_FILE_UPDATE = "7.0.7pre";
+	this.LAST_INSTALLED_FILE_UPDATE = "9.0.0pre";
 	
 	var zoteroPluginInstaller;
 	
