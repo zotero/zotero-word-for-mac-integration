@@ -315,7 +315,7 @@ statusCode deleteField(field_t* field) {
 				== [field->sbCodeRange startOfContent]-offset)
 				&& ([[note textObject] endOfContent]
 					== [field->sbContentRange endOfContent]+offset)) {
-			WordWdStoryType storyType = [[field->doc->sbApp selection] storyType];
+			WordWdStoryType storyType = [[field->doc->sbWindow selection] storyType];
 			CHECK_STATUS
 			if (storyType == WordWdStoryTypeFootnotesStory) {
 				[[field->doc->sbDoc createRangeStart:[[note noteReference] endOfContent] end:[[note noteReference] endOfContent]] sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
@@ -335,7 +335,7 @@ statusCode deleteField(field_t* field) {
 				== [field->sbCodeRange startOfContent]-offset)
 			   && ([[note textObject] endOfContent]
 				   == [field->sbContentRange endOfContent]+offset)) {
-			WordWdStoryType storyType = [[field->doc->sbApp selection] storyType];
+			WordWdStoryType storyType = [[field->doc->sbWindow selection] storyType];
 			CHECK_STATUS
 			if (storyType == WordWdStoryTypeEndnotesStory) {
 				[[field->doc->sbDoc createRangeStart:[[note noteReference] endOfContent] end:[[note noteReference] endOfContent]] sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
@@ -411,7 +411,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich) {
 	}
 	
 	if(field->sbBookmark) {
-		restoreSelectionToEnd = [[(field->doc)->sbApp selection]
+		restoreSelectionToEnd = [[field->doc->sbWindow selection]
 								 selectionEnd] == [field->sbCodeRange endOfContent];
 		CHECK_STATUS_LOCKED(field->doc);
 	}
@@ -562,10 +562,10 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich) {
 	
 	// If selection was at end of mark, put it there again
 	if (restoreSelectionToEnd) {
-		[[(field->doc)->sbApp selection] setSelectionStart:
+		[[field->doc->sbWindow selection] setSelectionStart:
 		 [field->sbCodeRange endOfContent]];
 		CHECK_STATUS_LOCKED(field->doc)
-		[[[(field->doc)->sbApp selection] fontObject] reset];
+		[[[field->doc->sbWindow selection] fontObject] reset];
 		CHECK_STATUS_LOCKED(field->doc)
 		field->doc->cursorMoved = NO;
 	}

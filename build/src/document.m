@@ -62,6 +62,7 @@ void freeDocument(document_t* doc) {
 	// Free document
 	[doc->sbApp release];
 	[doc->sbDoc release];
+	[doc->sbWindow release];
 	[doc->sbView release];
 	[doc->sbProperties release];
 	[doc->lock unlock];
@@ -185,7 +186,7 @@ statusCode canInsertField(document_t *doc, const char fieldType[],
 	
 	ENSURE_OK_LOCKED(doc, restoreCursor(doc))
 
-	WordWdStoryType position = [[doc->sbApp selection] storyType];
+	WordWdStoryType position = [[doc->sbWindow selection] storyType];
 	CHECK_STATUS_LOCKED(doc)
 	*returnCode = (strcmp(fieldType, "Bookmark") != 0
 				   && (position == WordWdStoryTypeFootnotesStory
@@ -202,7 +203,7 @@ statusCode cursorInField(document_t *doc, const char fieldType[],
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
-	WordSelectionObject* sbSelection = [doc->sbApp selection];
+	WordSelectionObject* sbSelection = [doc->sbWindow selection];
 	CHECK_STATUS_LOCKED(doc)
 	
 	ENSURE_OK_LOCKED(doc, restoreCursor(doc))
@@ -322,7 +323,7 @@ statusCode insertField(document_t *doc, const char fieldType[],
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
-	WordTextRange* sbWhere = [[doc->sbApp selection] textObject];
+	WordTextRange* sbWhere = [[doc->sbWindow selection] textObject];
 	CHECK_STATUS_LOCKED(doc)
 	
 	WordWdStoryType storyType = [sbWhere storyType];
@@ -334,7 +335,7 @@ statusCode insertField(document_t *doc, const char fieldType[],
 	}
 	
 	if(strcmp(fieldType, "Bookmark") == 0 && !noteType) {
-		[[doc->sbApp selection] setContent:@ FIELD_PLACEHOLDER];
+		[[doc->sbWindow selection] setContent:@ FIELD_PLACEHOLDER];
 		CHECK_STATUS_LOCKED(doc)
 	}
 	
@@ -1052,9 +1053,9 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	}
 	
 	// Insert empty paragraph before rich text since inserting it messes up footnote formatting
-	WordTextRange* selectionRange = [[doc->sbApp selection] textObject];
+	WordTextRange* selectionRange = [[doc->sbWindow selection] textObject];
 	CHECK_STATUS_LOCKED(doc)
-	[[doc->sbApp selection] setContent:@"\n "];
+	[[doc->sbWindow selection] setContent:@"\n "];
 	CHECK_STATUS_LOCKED(doc)
 	
 	IGNORING_SB_ERRORS_BEGIN
@@ -1080,7 +1081,7 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	CHECK_STATUS_LOCKED(doc)
 	WordTextRange *bookmarkRange = [tempBookmark textObject];
 	CHECK_STATUS_LOCKED(doc)
-	[[doc->sbApp selection] setSelectionEnd: [[doc->sbApp selection] selectionEnd]-1];
+	[[doc->sbWindow selection] setSelectionEnd: [[doc->sbWindow selection] selectionEnd]-1];
 	CHECK_STATUS_LOCKED(doc)
 	
 	// Write HTML to a clipboard
@@ -1103,14 +1104,14 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	
 	// Remove the previously added empty paragraph
 	[bookmarkRange sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
-	[[doc->sbApp selection] setSelectionStart: [[doc->sbApp selection] selectionEnd]-1];
-	[[doc->sbApp selection] setContent:@""];
+	[[doc->sbWindow selection] setSelectionStart: [[doc->sbWindow selection] selectionEnd]-1];
+	[[doc->sbWindow selection] setContent:@""];
 	CHECK_STATUS_LOCKED(doc)
 	
 	// Put the cursor at the end of inserted text
 	[bookmarkRange sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
-	[[doc->sbApp selection] setSelectionStart: [[doc->sbApp selection] selectionEnd]-1];
-	[[doc->sbApp selection] setContent:@""];
+	[[doc->sbWindow selection] setSelectionStart: [[doc->sbWindow selection] selectionEnd]-1];
+	[[doc->sbWindow selection] setContent:@""];
 	CHECK_STATUS_LOCKED(doc)
 	storeCursorLocation(doc);
 	doc->cursorMoved = NO;
@@ -1572,15 +1573,13 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 			DIE(@"Invalid field type");
 		}
 		
-		// Select range, because otherwise we won't insert at the right
-		// place. If we could pass properties {text object:sbWhere} to 
-		// the make command, that would also take care of this, but alas,
-		// we can't construct them with Scripting Bridge.
-		[sbWhere sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
-		
-		// make new footnote/endnote at sbDoc
+		// Create the note at sbWhere
+		NSDictionary *properties = [NSDictionary
+								 dictionaryWithObject:sbWhere
+								 forKey:@"textObject"];
 		sbNote = [doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
-				  noteTypeCode, 'insh', doc->sbDoc, nil];
+				  noteTypeCode, 'insh', doc->sbDoc, 'prdt', properties, nil];
+		CHECK_STATUS
 		
 		// Clear range content
 		sbWhere = [sbNote textObject];
@@ -1589,7 +1588,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		CHECK_STATUS
 		
 		// Move selection end past new footnote if necessary
-		WordSelectionObject *sbSelection = [doc->sbApp selection];
+		WordSelectionObject *sbSelection = [doc->sbWindow selection];
 		CHECK_STATUS
 		WordTextRange *sbNoteReference = [sbNote noteReference];
 		CHECK_STATUS

@@ -148,6 +148,7 @@ typedef struct Document {
 	int wordVersion;
 	WordApplication* sbApp;
 	WordDocument* sbDoc;
+	WordWindow* sbWindow;
 	WordView* sbView;
 	SBElementArray* sbProperties;
 	

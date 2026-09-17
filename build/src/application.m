@@ -144,9 +144,13 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	
 	[doc->sbDoc retain];
 	
-	WordWindow* sbWindow = [doc->sbDoc activeWindow];
+	// Retain active window so that in split-view we perform selection
+	// changes in the correct view (which are internally represented as windows
+	// opened for the same doc)
+	doc->sbWindow = [doc->sbDoc activeWindow];
 	CHECK_STATUS
-	doc->sbView = [sbWindow view];
+	[doc->sbWindow retain];
+	doc->sbView = [doc->sbWindow view];
 	CHECK_STATUS
 	[doc->sbView retain];
 	doc->sbProperties = [doc->sbDoc customDocumentProperties];
