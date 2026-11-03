@@ -67,7 +67,8 @@ async function init() {
 	
 	fn = {}
 	for (let method of ["preventAppNap", "allowAppNap", "getLastError",
-			"install", "isWordArm", "isWordInstalled", "getMacOSVersion", "isZoteroRosetta"]) {
+			"install", "isWordArm", "isWordInstalled", "selectFolder", "getMacOSVersion",
+			"isZoteroRosetta"]) {
 		fn[method] = (...args) => Messaging.sendMessage(method, args);
 	}
 	
@@ -246,6 +247,17 @@ Installer.prototype = {
 	isWordInstalled: async function() {
 		await init();
 		return fn.isWordInstalled()
+	},
+	/**
+	 * Shows a native folder-selection dialog opened to the given folder
+	 * @param {String} initialPath
+	 * @param {String} title
+	 * @param {String} buttonLabel
+	 * @returns {Promise<String|null>} The selected folder's path, or null if cancelled
+	 */
+	selectFolder: async function(initialPath, title, buttonLabel) {
+		await init();
+		return fn.selectFolder(initialPath, title, buttonLabel);
 	}
 };
 

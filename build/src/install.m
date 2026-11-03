@@ -266,6 +266,47 @@ statusCode isWordInstalled(bool *returnValue) {
 	HANDLE_EXCEPTIONS_END
 }
 
+// Shows a folder-selection panel opened to initialPath and sets *returnValue to the path of the
+// selected folder, or to NULL if the user cancelled. The returned path must be freed with
+// freeData().
+//
+// Selecting a folder in the panel grants the app access to it even if it's in another app's
+// container. The panel is shown natively so that it opens to the folder even when the folder
+// can't otherwise be read, which the Gecko file picker doesn't allow.
+statusCode selectFolder(const char initialPath[], const char title[], const char buttonLabel[],
+		char** returnValue) {
+	HANDLE_EXCEPTIONS_BEGIN
+	*returnValue = NULL;
+	NSString* initialPathNS = [NSString stringWithUTF8String:initialPath];
+	NSString* titleNS = [NSString stringWithUTF8String:title];
+	NSString* buttonLabelNS = [NSString stringWithUTF8String:buttonLabel];
+	__block char* selectedPath = NULL;
+	void (^showPanel)(void) = ^{
+		@autoreleasepool {
+			NSOpenPanel* panel = [NSOpenPanel openPanel];
+			[panel setCanChooseDirectories:YES];
+			[panel setCanChooseFiles:NO];
+			[panel setAllowsMultipleSelection:NO];
+			[panel setCanCreateDirectories:NO];
+			[panel setTitle:titleNS];
+			[panel setPrompt:buttonLabelNS];
+			[panel setDirectoryURL:[NSURL fileURLWithPath:initialPathNS isDirectory:YES]];
+			if ([panel runModal] == NSModalResponseOK) {
+				selectedPath = copyNSString([[panel URL] path]);
+			}
+		}
+	};
+	if ([NSThread isMainThread]) {
+		showPanel();
+	}
+	else {
+		dispatch_sync(dispatch_get_main_queue(), showPanel);
+	}
+	*returnValue = selectedPath;
+	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
+}
+
 // Sets the type and creator code on the template
 statusCode setTemplateTypeCreator(NSString* templatePath, bool dieOnError) {
     NSError *err = nil;

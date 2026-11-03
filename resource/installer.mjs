@@ -75,7 +75,7 @@ var Plugin = new (function() {
 			// Get com.apple.macl access to the Word startup folder via a folder-selection
 			// dialog before running the installer
 			if (isGoldenGateOrLater && !hasStartupFolderAccess
-					&& !(await this.requestStartupFolderAccess())) {
+					&& !(await this.requestStartupFolderAccess(installer))) {
 				throw new Error("ExceptionAlreadyDisplayed");
 			}
 			await installer.run();
@@ -128,30 +128,28 @@ var Plugin = new (function() {
 	// were being regenerated on restart, which invalidated the grants. Testing on Golden Gate
 	// Developer Beta 1 shows continued access after a system restart, though, so grants appear to
 	// again be permanent.
-	this.requestStartupFolderAccess = async function() {
+	//
+	// The dialog is shown natively, since the Gecko file picker won't open to a folder that Zotero
+	// can't read.
+	this.requestStartupFolderAccess = async function(installer) {
 		zoteroPluginInstaller.debug('Requesting Word startup folder access via folder-selection dialog');
-		const { FilePicker } = ChromeUtils.importESModule('chrome://zotero/content/modules/filePicker.mjs');
 		const startupDir = this.getWordStartupFolder();
 		while (true) {
-			let fp = new FilePicker();
-			fp.init(
-				Zotero.getMainWindow(),
+			let selectedDir = await installer.selectFolder(
+				startupDir,
 				// The title isn't displayed in panels on modern macOS, but it may still be read
 				// via VoiceOver
 				Zotero.getString('mac-word-plugin-install-folder-dialog-title'),
-				fp.modeGetFolder
+				Zotero.getString('mac-word-plugin-install-folder-dialog-button')
 			);
-			fp.okButtonLabel = Zotero.getString('mac-word-plugin-install-folder-dialog-button');
-			fp.displayDirectory = startupDir;
-			let returnValue = await fp.show();
-			if (returnValue != fp.returnOK) {
+			if (!selectedDir) {
 				zoteroPluginInstaller.debug('User cancelled the folder-selection dialog');
 				return false;
 			}
-			if (fp.file == startupDir) {
+			if (selectedDir == startupDir) {
 				return true;
 			}
-			zoteroPluginInstaller.debug(`Folder-selection dialog returned ${fp.file} instead of ${startupDir}`);
+			zoteroPluginInstaller.debug(`Folder-selection dialog returned ${selectedDir} instead of ${startupDir}`);
 			const ps = Services.prompt;
 			const buttonFlags = ps.BUTTON_POS_0 * ps.BUTTON_TITLE_OK
 				+ ps.BUTTON_POS_1 * ps.BUTTON_TITLE_CANCEL;

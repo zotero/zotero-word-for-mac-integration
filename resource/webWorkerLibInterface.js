@@ -220,6 +220,11 @@ function init(libPath) {
 		// statusCode canInsertField(bool* returnValue);
 		isWordInstalled: lib.declare("isWordInstalled", ctypes.default_abi, statusCode, ctypes.bool.ptr),
 		
+		// statusCode selectFolder(const char initialPath[], const char title[],
+		// 						   const char buttonLabel[], char** returnValue);
+		selectFolder: lib.declare("selectFolder", ctypes.default_abi, statusCode, ctypes.char.ptr,
+			ctypes.char.ptr, ctypes.char.ptr, ctypes.char.ptr.ptr),
+		
 		// statusCode freeData(void* ptr);
 		freeData: lib.declare("freeData", ctypes.default_abi, statusCode, ctypes.void_t.ptr),
 
@@ -321,6 +326,16 @@ function init(libPath) {
 		var returnValue = new ctypes.bool();
 		checkStatus(fn.isWordInstalled(returnValue.address()));
 		return returnValue.value;
+	});
+	Messaging.addMessageListener('selectFolder', (initialPath, title, buttonLabel) => {
+		let returnValue = new ctypes.char.ptr();
+		checkStatus(fn.selectFolder(initialPath, title, buttonLabel, returnValue.address()));
+		if (returnValue.isNull()) {
+			return null;
+		}
+		let path = returnValue.readString();
+		fn.freeData(returnValue);
+		return path;
 	});
 	Messaging.addMessageListener('getMacOSVersion', (...args) => {
 		return fn.getMacOSVersion(...args).readString();
