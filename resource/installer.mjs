@@ -58,10 +58,9 @@ var Plugin = new (function() {
 			const isSequoiaOrLater = macOSVersion.split('.')[0] >= 15;
 			const isGoldenGateOrLater = macOSVersion.split('.')[0] >= 27;
 			const userDoesNotWantToBeAskedAgain = Zotero.Utilities.semverCompare(dontAskAgainVersion, this.LAST_INSTALLED_FILE_UPDATE) >= 0;
-			// On macOS 27 (Golden Gate) and later, writing into another app's group container
-			// is denied by default and no longer triggers a permission prompt, but a folder
-			// grant from a previous install persists, so check whether we can already write to
-			// the startup folder and skip all prompting if so
+			// On macOS 27 (Golden Gate) and later, access to another app's group container is
+			// denied by default, but a folder grant from a previous install persists, so check
+			// whether the startup folder was already granted and skip all prompting if so
 			const hasStartupFolderAccess = isGoldenGateOrLater && await this.checkStartupFolderAccess();
 			if (!zpi.force && isSequoiaOrLater && !hasStartupFolderAccess) {
 				if (userDoesNotWantToBeAskedAgain) return;
@@ -88,6 +87,8 @@ var Plugin = new (function() {
 				zoteroPluginInstaller.cancelled();
 			}
 			else {
+				// If a recorded folder grant no longer works, request a new one next time
+				zpi.prefBranch.clearUserPref('startupFolderGrantCreationTime');
 				zoteroPluginInstaller.error("Installation could not be completed because an error occurred.\n\n"+e);
 				throw e;
 			}
@@ -102,21 +103,33 @@ var Plugin = new (function() {
 		);
 	}
 
-	// Check whether we can already write to the Word startup folder (e.g., from a folder
-	// grant during a previous install). Unlike on Sequoia through Tahoe, a denied write on
-	// macOS 27 and later fails silently rather than triggering a permission prompt, so this
-	// is safe to do without warning the user first.
+	// Check whether the Word startup folder was granted in the folder-selection dialog during a
+	// previous install. Reading or writing the folder's contents without a grant shows a "Data
+	// Access Blocked" notification, but reading the folder's own metadata doesn't, so the grant is
+	// recorded along with the folder's creation time, which changes if Word or the user recreates
+	// the folder.
 	this.checkStartupFolderAccess = async function() {
-		const testPath = PathUtils.join(this.getWordStartupFolder(), '.zotero-install-test');
-		try {
-			await IOUtils.writeUTF8(testPath, '');
-			await IOUtils.remove(testPath);
-			return true;
-		}
-		catch (e) {
-			zoteroPluginInstaller.debug(`Word startup folder write check failed -- assuming no access (${e.message})`);
+		const grantCreationTime = zoteroPluginInstaller.prefBranch.getCharPref('startupFolderGrantCreationTime');
+		if (!grantCreationTime) {
 			return false;
 		}
+		let creationTime;
+		try {
+			creationTime = await this.getStartupFolderCreationTime();
+		}
+		catch (e) {
+			zoteroPluginInstaller.debug(`Couldn't get Word startup folder creation time -- assuming no access (${e.message})`);
+			return false;
+		}
+		if (creationTime != grantCreationTime) {
+			zoteroPluginInstaller.debug('Word startup folder was recreated since it was granted');
+			return false;
+		}
+		return true;
+	}
+	
+	this.getStartupFolderCreationTime = async function() {
+		return String((await IOUtils.stat(this.getWordStartupFolder())).creationTime);
 	}
 
 	// Access to a folder that the user has picked in a folder-selection dialog is allowed even when
@@ -147,6 +160,10 @@ var Plugin = new (function() {
 				return false;
 			}
 			if (selectedDir == startupDir) {
+				zoteroPluginInstaller.prefBranch.setCharPref(
+					'startupFolderGrantCreationTime',
+					await this.getStartupFolderCreationTime()
+				);
 				return true;
 			}
 			zoteroPluginInstaller.debug(`Folder-selection dialog returned ${selectedDir} instead of ${startupDir}`);
