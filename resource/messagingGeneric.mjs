@@ -122,7 +122,7 @@ export class MessagingGeneric {
 						args = await messageConfig.handler.postReceive(args);
 					}
 					result = fn(...args);
-					if (typeof result === 'object' && result.then) {
+					if (result && typeof result === 'object' && result.then) {
 						result = await result;
 					}
 				}
@@ -150,7 +150,7 @@ export class MessagingGeneric {
 				let result;
 				try {
 					result = this._messageListeners[message](...payload);
-					if (typeof result === 'object' && result.then) result = await result;
+					if (result && typeof result === 'object' && result.then) result = await result;
 				} catch (e) {
 					if (this._options.supportsError) {
 						result = e;
