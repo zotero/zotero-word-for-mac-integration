@@ -71,11 +71,23 @@ var Plugin = new (function() {
 				// deny access to required file location
 				zpi.failSilently = false;
 			}
-			// Get com.apple.macl access to the Word startup folder via a folder-selection
-			// dialog before running the installer
-			if (isGoldenGateOrLater && !hasStartupFolderAccess
-					&& !(await this.requestStartupFolderAccess(installer))) {
-				throw new Error("ExceptionAlreadyDisplayed");
+			if (isGoldenGateOrLater && !hasStartupFolderAccess) {
+				// Word creates its startup folder when it launches, and Zotero can't create it in
+				// Word's container
+				if (!(await IOUtils.exists(this.getWordStartupFolder()))) {
+					zoteroPluginInstaller.debug('Word startup folder does not exist');
+					Services.prompt.alert(null, this.EXTENSION_STRING,
+						Zotero.ftl.formatValueSync('mac-word-plugin-install-folder-missing', {
+							source: zpi.force ? 'settings' : 'other'
+						}));
+					zoteroPluginInstaller.cancelled(true);
+					return;
+				}
+				// Get com.apple.macl access to the Word startup folder via a folder-selection
+				// dialog before running the installer
+				if (!(await this.requestStartupFolderAccess(installer))) {
+					throw new Error("ExceptionAlreadyDisplayed");
+				}
 			}
 			await installer.run();
 			zoteroPluginInstaller.success();
