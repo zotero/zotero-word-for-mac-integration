@@ -173,6 +173,10 @@ typedef struct Document {
 	listNode_t* allocatedFieldListsStart;
 	listNode_t* allocatedFieldListsEnd;
 	
+	// Incremented whenever fields or notes may have been added or removed, which invalidates
+	// note indices cached on fields
+	NSInteger fieldGeneration;
+	
 	NSRecursiveLock* lock;
 } document_t;
 
@@ -223,6 +227,11 @@ typedef struct Field {
 	
 	// The raw field code for fields only
 	NSString* rawCode;
+	
+	// The note index read by readFieldsWithMacro(), or -1, valid while fieldGeneration matches
+	// the document's
+	NSInteger noteIndex;
+	NSInteger fieldGeneration;
 } field_t;
 
 // utilities.m
@@ -336,6 +345,8 @@ statusCode isAdjacentToNextField(field_t* field, bool *returnValue);
 statusCode initField(document_t *doc, WordField* sbField, short noteType,
 					 NSInteger entryIndex, BOOL ignoreCode,
 					 field_t **returnValue);
+field_t* initFieldWithRawCode(document_t *doc, WordField* sbField, short noteType,
+							  NSInteger entryIndex, NSString* rawCode);
 statusCode checkFieldIntegrity(field_t *field);
 statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark, short noteType,
 						NSString* bookmarkName, BOOL ignoreCode,

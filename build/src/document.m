@@ -35,6 +35,8 @@ statusCode noteSwap(document_t *doc, WordFootnote* sbNote,
 					unsigned short noteType,
 					WordFootnote **returnValue);
 statusCode setFieldAdjacency(field_t *fieldA, field_t *fieldB);
+statusCode readFieldsWithMacro(document_t *doc, listNode_t** fieldListStart,
+							   listNode_t** fieldListEnd, BOOL* usedMacro);
 
 // Frees a document struct.
 void freeDocument(document_t* doc) {
@@ -357,6 +359,208 @@ statusCode setFieldAdjacency(field_t *fieldA, field_t *fieldB) {
 	HANDLE_EXCEPTIONS_END
 }
 
+// Field data written by the ZoteroGetFieldData macro in the Zotero template
+#define FIELD_DATA_MACRO @"ZoteroGetFieldData"
+#define CLEAR_FIELD_DATA_MACRO @"ZoteroClearFieldData"
+#define FIELD_DATA_VARIABLE_PREFIX @"ZOTERO_BATCH_"
+#define FIELD_DATA_FORMAT_VERSION 1
+
+typedef struct FieldData {
+	short noteType;
+	NSInteger entryIndex;
+	NSInteger codeStart;
+	NSInteger resultStart;
+	NSInteger resultEnd;
+	NSInteger textLocation;
+	NSInteger noteIndex;
+	NSString* rawCode;
+	NSString* text;
+	field_t* field;
+} fieldData_t;
+
+// Reads "<number>;" from the field data
+static BOOL scanFieldDataNumber(NSString* data, NSUInteger* position,
+								NSInteger* returnValue) {
+	NSUInteger length = [data length];
+	if(*position >= length) return NO;
+	NSRange end = [data rangeOfString:@";" options:NSLiteralSearch
+								range:NSMakeRange(*position, length - *position)];
+	if(end.location == NSNotFound) return NO;
+	*returnValue = [[data substringWithRange:
+					 NSMakeRange(*position, end.location - *position)] integerValue];
+	*position = end.location + 1;
+	return YES;
+}
+
+// Reads "<length>:<string>" from the field data
+static BOOL scanFieldDataString(NSString* data, NSUInteger* position,
+								NSString** returnValue) {
+	NSUInteger length = [data length];
+	if(*position >= length) return NO;
+	NSRange separator = [data rangeOfString:@":" options:NSLiteralSearch
+									  range:NSMakeRange(*position, length - *position)];
+	if(separator.location == NSNotFound) return NO;
+	NSInteger stringLength = [[data substringWithRange:
+							   NSMakeRange(*position, separator.location - *position)]
+							  integerValue];
+	NSUInteger stringStart = separator.location + 1;
+	if(stringLength < 0 || stringStart + stringLength > length) return NO;
+	*returnValue = [data substringWithRange:NSMakeRange(stringStart, stringLength)];
+	*position = stringStart + stringLength;
+	return YES;
+}
+
+// Orders fields the same way as the merge in getFields()
+static int compareFieldData(const void* a, const void* b) {
+	field_t* fieldA = ((fieldData_t*) a)->field;
+	field_t* fieldB = ((fieldData_t*) b)->field;
+	if(fieldA->textLocation != fieldB->textLocation) {
+		return fieldA->textLocation < fieldB->textLocation ? -1 : 1;
+	}
+	if(fieldA->noteType && fieldB->noteType
+			&& fieldA->noteLocation != fieldB->noteLocation) {
+		return fieldA->noteLocation < fieldB->noteLocation ? -1 : 1;
+	}
+	return fieldA->noteType - fieldB->noteType;
+}
+
+// Reads the field data stored in document variables by the macro, or returns nil
+static NSString* readFieldDataVariables(document_t *doc) {
+	SBElementArray* sbVariables = [doc->sbDoc variables];
+	NSString* countString = [[sbVariables objectWithName:
+							  [FIELD_DATA_VARIABLE_PREFIX stringByAppendingString:@"COUNT"]]
+							 variableValue];
+	if(errorHasOccurred() || !countString) {
+		clearError();
+		return nil;
+	}
+	NSInteger chunkCount = [countString integerValue];
+	NSMutableString* data = [NSMutableString string];
+	for(NSInteger i=1; i<=chunkCount; i++) {
+		NSString* chunk = [[sbVariables objectWithName:
+							[NSString stringWithFormat:@"%@%ld",
+							 FIELD_DATA_VARIABLE_PREFIX, (long) i]]
+						   variableValue];
+		if(errorHasOccurred() || !chunk) {
+			clearError();
+			return nil;
+		}
+		[data appendString:chunk];
+	}
+	return data;
+}
+
+// Reads all Zotero fields by running a macro from the Zotero template, which reads
+// them inside Word and stores the results in document variables. Reading fields
+// individually takes several Apple Events per field, each of which Word handles
+// slowly in large documents. Leaves *usedMacro set to NO if the macro isn't
+// available, so that the caller can read fields individually instead.
+statusCode readFieldsWithMacro(document_t *doc, listNode_t** fieldListStart,
+							   listNode_t** fieldListEnd, BOOL* usedMacro) {
+	*usedMacro = NO;
+	if(doc->wordVersion < 16 || doc->wordVersion >= 2000) {
+		return STATUS_OK;
+	}
+	
+	// The macro reads the active document
+	NSString* activeDocumentName = [[doc->sbApp activeDocument] name];
+	CHECK_STATUS
+	NSString* documentName = [doc->sbDoc name];
+	CHECK_STATUS
+	if(![activeDocumentName isEqualToString:documentName]) return STATUS_OK;
+	
+	ENSURE_OK(prepareReadFieldCode(doc));
+	
+	// Word returns an error if the installed template predates the macro
+	[doc->sbApp runVBMacroMacroName:FIELD_DATA_MACRO];
+	if(errorHasOccurred()) {
+		clearError();
+		return STATUS_OK;
+	}
+	NSString* data = readFieldDataVariables(doc);
+	IGNORING_SB_ERRORS_BEGIN
+	[doc->sbApp runVBMacroMacroName:CLEAR_FIELD_DATA_MACRO];
+	IGNORING_SB_ERRORS_END
+	if(!data) return STATUS_OK;
+	
+	// Parse all records before creating any fields, so that malformed data
+	// leaves nothing behind
+	NSUInteger position = 0;
+	NSInteger version, fieldCount;
+	if(!scanFieldDataNumber(data, &position, &version)
+			|| version != FIELD_DATA_FORMAT_VERSION
+			|| !scanFieldDataNumber(data, &position, &fieldCount)
+			|| fieldCount < 0) {
+		return STATUS_OK;
+	}
+	NSMutableData* recordStorage = [NSMutableData
+									dataWithLength:sizeof(fieldData_t) * MAX(fieldCount, 1)];
+	fieldData_t* records = (fieldData_t*) [recordStorage mutableBytes];
+	for(NSInteger i=0; i<fieldCount; i++) {
+		fieldData_t* record = &records[i];
+		NSInteger noteType;
+		if(!scanFieldDataNumber(data, &position, &noteType)
+				|| !scanFieldDataNumber(data, &position, &record->entryIndex)
+				|| !scanFieldDataNumber(data, &position, &record->codeStart)
+				|| !scanFieldDataNumber(data, &position, &record->resultStart)
+				|| !scanFieldDataNumber(data, &position, &record->resultEnd)
+				|| !scanFieldDataNumber(data, &position, &record->textLocation)
+				|| !scanFieldDataNumber(data, &position, &record->noteIndex)
+				|| !scanFieldDataString(data, &position, &record->rawCode)
+				|| !scanFieldDataString(data, &position, &record->text)
+				|| noteType < 0 || noteType > NOTE_ENDNOTE
+				|| record->entryIndex < 1) {
+			return STATUS_OK;
+		}
+		record->noteType = (short) noteType;
+	}
+	
+	// Fields are referenced by index within their story, which doesn't send
+	// an Apple Event until the field is used
+	SBElementArray* sbStoryFields[3] = {nil, nil, nil};
+	NSInteger nFields = 0;
+	for(NSInteger i=0; i<fieldCount; i++) {
+		fieldData_t* record = &records[i];
+		short noteType = record->noteType;
+		if(!sbStoryFields[noteType]) {
+			if(noteType == 0) {
+				sbStoryFields[0] = [doc->sbDoc fields];
+			} else {
+				sbStoryFields[noteType] = [[doc->sbDoc getStoryRangeStoryType:
+											(noteType == NOTE_FOOTNOTE
+											 ? WordWdStoryTypeFootnotesStory
+											 : WordWdStoryTypeEndnotesStory)]
+										   fields];
+			}
+			CHECK_STATUS
+		}
+		field_t* field = initFieldWithRawCode(doc,
+			[sbStoryFields[noteType] objectAtIndex:(record->entryIndex - 1)],
+			noteType, record->entryIndex, record->rawCode);
+		if(!field) continue;
+		field->text = copyNSString(record->text);
+		field->textLocation = record->textLocation;
+		field->noteLocation = record->resultStart;
+		field->noteIndex = record->noteIndex;
+		record->field = field;
+		records[nFields++] = *record;
+	}
+	
+	mergesort(records, nFields, sizeof(fieldData_t), compareFieldData);
+	
+	for(NSInteger i=0; i<nFields; i++) {
+		if(i + 1 < nFields) {
+			// Same test as setFieldAdjacency()
+			records[i].field->adjacent = records[i].noteType == records[i + 1].noteType
+				&& records[i].resultEnd + 2 - records[i + 1].codeStart >= 0;
+		}
+		addValueToList(records[i].field, fieldListStart, fieldListEnd);
+	}
+	
+	*usedMacro = YES;
+	return STATUS_OK;
+}
+
 // Gets fields
 statusCode getFields(document_t *doc, const char fieldType[],
 					 listNode_t** returnNode) {
@@ -366,7 +570,16 @@ statusCode getFields(document_t *doc, const char fieldType[],
 	listNode_t* fieldListStart = NULL;
 	listNode_t* fieldListEnd = NULL;
 	
+	BOOL readWithMacro = NO;
 	if(strcmp(fieldType, "Field") == 0) {
+		statusCode status = readFieldsWithMacro(doc, &fieldListStart,
+												&fieldListEnd, &readWithMacro);
+		ENSURE_OK_LOCKED(doc, status)
+	}
+	
+	if(readWithMacro) {
+		// Fields were read by the template macro
+	} else if(strcmp(fieldType, "Field") == 0) {
 		// Get fields in main body, footnotes, and endnotes
 		NSArray* fieldCollections[3];
 		statusCode status = getFieldCollections(doc, fieldCollections);
@@ -520,6 +733,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				   const char toFieldType[], unsigned short toNoteTypes[]) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
+	doc->fieldGeneration++;
 	
 	statusCode status = prepareReadFieldCode(doc);
 	ENSURE_OK_LOCKED(doc, status)
@@ -947,6 +1161,7 @@ statusCode exportDocument(document_t *doc,
 statusCode importDocument(document_t *doc, const char fieldType[], bool *returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
+	doc->fieldGeneration++;
 	*returnValue = false;
 	
 	NSArray* fieldCollections[3];
@@ -1033,6 +1248,7 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 statusCode insertText(document_t *doc, const char htmlString[]) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
+	doc->fieldGeneration++;
 	
 	if (doc->insertTextIntoNote != 0) {
 		// Create new note
@@ -1555,6 +1771,7 @@ statusCode setProperty(document_t *doc, NSString* propertyName,
 statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 						  unsigned short noteType, WordTextRange *sbWhere,
 						  NSString* bookmarkName, field_t** returnValue) {
+	doc->fieldGeneration++;
 	WordWdStoryType storyType = [sbWhere storyType];
 	CHECK_STATUS
 	

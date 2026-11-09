@@ -27,6 +27,12 @@
 NSString* FIELD_PREFIXES[] = {MAIN_FIELD_PREFIX, @" CSL_", NULL};
 NSString* BOOKMARK_PREFIXES[] = {@"ZOTERO_", @"CSL_", NULL};
 
+static NSRange findFieldPrefix(NSString* rawCode);
+static field_t* allocField(document_t *doc, WordField* sbField,
+						   WordTextRange* sbCodeRange, short noteType,
+						   NSInteger entryIndex);
+static void setFieldRawCode(field_t* field, NSString* rawCode);
+
 // Allocates a field structure based on a WordField, optionally checking to make
 // sure that the field code actually matches a Zotero field.
 statusCode initField(document_t *doc, WordField* sbField, short noteType,
@@ -59,9 +65,7 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 	
 	field_t *field = nil;
 	if(ignoreCode) {
-		field = (field_t*) malloc(sizeof(field_t));
-		field->code = NULL;
-		field->rawCode = nil;
+		field = allocField(doc, sbField, sbCodeRange, noteType, entryIndex);
 	} else {
 		// Read code
 		statusCode readCodeStatus = prepareReadFieldCode(doc);
@@ -70,78 +74,104 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 		NSString* rawCode = [sbCodeRange content];
 		CHECK_STATUS
 		
-		if(rawCode && [rawCode isNotEqualTo:[NSNull null]]) {
-			// Check that this field is a valid Zotero field
-			for(unsigned short i=0; FIELD_PREFIXES[i] != NULL; i++) {
-				NSRange range = [rawCode rangeOfString:FIELD_PREFIXES[i]];
-				if(range.location != NSNotFound) {
-					field = (field_t*) malloc(sizeof(field_t));
-					
-					// If field code is all caps, make sure text object isn't in
-					// all caps mode
-					if([rawCode isEqualToString:[rawCode uppercaseString]]) {
-						IGNORING_SB_ERRORS_BEGIN
-						WordFont *sbFontObject = [sbCodeRange fontObject];
-						if([sbFontObject allCaps]) {
-							[sbFontObject setAllCaps:NO];
-							rawCode = [sbCodeRange content];
-						}
-						IGNORING_SB_ERRORS_END
-					}
-					
-					// Get code
-					NSUInteger rawCodeLength = [rawCode length];
-					NSUInteger codeStart = range.location+range.length;
-					NSUInteger codeLength = rawCodeLength-codeStart;
-					
-					// Sometimes there is a space at the end of the code, which
-					// we ignore here
-					if([rawCode characterAtIndex:(rawCodeLength-1)] == ' ') {
-						codeLength--;
-					}
-					field->rawCode = rawCode;
-					[rawCode retain];
-					field->code = copyNSString([rawCode substringWithRange:
-												NSMakeRange(codeStart,
-															codeLength)]);
-					
-					break;
+		if(rawCode && [rawCode isNotEqualTo:[NSNull null]]
+				&& findFieldPrefix(rawCode).location != NSNotFound) {
+			// If field code is all caps, make sure text object isn't in
+			// all caps mode
+			if([rawCode isEqualToString:[rawCode uppercaseString]]) {
+				IGNORING_SB_ERRORS_BEGIN
+				WordFont *sbFontObject = [sbCodeRange fontObject];
+				if([sbFontObject allCaps]) {
+					[sbFontObject setAllCaps:NO];
+					rawCode = [sbCodeRange content];
 				}
+				IGNORING_SB_ERRORS_END
 			}
+			
+			field = allocField(doc, sbField, sbCodeRange, noteType, entryIndex);
+			setFieldRawCode(field, rawCode);
 		}
 	}
+	CHECK_STATUS;
 	
-	if(field) {
-		field->text = NULL;
-		field->bookmarkName = NULL;
-		field->bookmarkNameNS = nil;
-		field->sbBookmark = nil;
-		field->textLocation = -1;
-		field->noteLocation = -1;
-		field->entryIndex = entryIndex;
-		field->noteType = noteType;
-		field->adjacent = false;
-		
-		field->doc = doc;
-		field->sbField = sbField;
-		field->sbCodeRange = sbCodeRange;
-		field->sbContentRange = [sbField resultRange];
-		CHECK_STATUS;
-		
-		[field->sbField retain];
-		[field->sbCodeRange retain];
-		[field->sbContentRange retain];
-		
-		// Add field to field list for document
-		addValueToList(field, &(doc->allocatedFieldsStart),
-					   &(doc->allocatedFieldsEnd));
-		
-		*returnValue = field;
-		return STATUS_OK;
-	}
-	
-	*returnValue = NULL;
+	*returnValue = field;
 	return STATUS_OK;
+}
+
+// Allocates a field structure for a field whose raw code has already been read,
+// or returns NULL if the code doesn't match a Zotero field
+field_t* initFieldWithRawCode(document_t *doc, WordField* sbField, short noteType,
+							  NSInteger entryIndex, NSString* rawCode) {
+	if(findFieldPrefix(rawCode).location == NSNotFound) return NULL;
+	field_t* field = allocField(doc, sbField, [sbField fieldCode], noteType,
+								entryIndex);
+	setFieldRawCode(field, rawCode);
+	return field;
+}
+
+// Returns the range of the first Zotero field prefix in a raw field code
+static NSRange findFieldPrefix(NSString* rawCode) {
+	for(unsigned short i=0; FIELD_PREFIXES[i] != NULL; i++) {
+		NSRange range = [rawCode rangeOfString:FIELD_PREFIXES[i]];
+		if(range.location != NSNotFound) return range;
+	}
+	return NSMakeRange(NSNotFound, 0);
+}
+
+// Allocates a field structure without a code and adds it to the document's
+// field list
+static field_t* allocField(document_t *doc, WordField* sbField,
+						   WordTextRange* sbCodeRange, short noteType,
+						   NSInteger entryIndex) {
+	field_t *field = (field_t*) malloc(sizeof(field_t));
+	field->code = NULL;
+	field->rawCode = nil;
+	field->text = NULL;
+	field->bookmarkName = NULL;
+	field->bookmarkNameNS = nil;
+	field->sbBookmark = nil;
+	field->textLocation = -1;
+	field->noteLocation = -1;
+	field->noteIndex = -1;
+	field->fieldGeneration = doc->fieldGeneration;
+	field->entryIndex = entryIndex;
+	field->noteType = noteType;
+	field->adjacent = false;
+	
+	field->doc = doc;
+	field->sbField = sbField;
+	field->sbCodeRange = sbCodeRange;
+	field->sbContentRange = [sbField resultRange];
+	
+	[field->sbField retain];
+	[field->sbCodeRange retain];
+	[field->sbContentRange retain];
+	
+	// Add field to field list for document
+	addValueToList(field, &(doc->allocatedFieldsStart),
+				   &(doc->allocatedFieldsEnd));
+	return field;
+}
+
+// Stores a raw field code and the Zotero code within it
+static void setFieldRawCode(field_t* field, NSString* rawCode) {
+	NSRange range = findFieldPrefix(rawCode);
+	
+	// Get code
+	NSUInteger rawCodeLength = [rawCode length];
+	NSUInteger codeStart = range.location+range.length;
+	NSUInteger codeLength = rawCodeLength-codeStart;
+	
+	// Sometimes there is a space at the end of the code, which
+	// we ignore here
+	if([rawCode characterAtIndex:(rawCodeLength-1)] == ' ') {
+		codeLength--;
+	}
+	field->rawCode = rawCode;
+	[rawCode retain];
+	field->code = copyNSString([rawCode substringWithRange:
+								NSMakeRange(codeStart,
+											codeLength)]);
 }
 
 // Unfortunately after starting to update fields in reverse order in
@@ -246,6 +276,8 @@ statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark,
 		field->textLocation = -1;
 		field->noteLocation = -1;
 		field->rawCode = nil;
+		field->noteIndex = -1;
+		field->fieldGeneration = doc->fieldGeneration;
 		field->adjacent = false;
 		
 		field->bookmarkNameNS = resolvedBookmarkName;
@@ -307,6 +339,7 @@ void freeField(field_t* field) {
 statusCode deleteField(field_t* field) {
 	HANDLE_EXCEPTIONS_BEGIN
 	ENSURE_OK(checkFieldIntegrity(field));
+	field->doc->fieldGeneration++;
 	short offset = field->sbField ? 1 : 0;
 	if(field->noteType == NOTE_FOOTNOTE) {
 		WordFootnote* note = [[field->sbContentRange footnotes]
@@ -657,6 +690,11 @@ statusCode setCode(field_t *field, const char code[]) {
 // Returns the index of the note in which this field resides
 statusCode getNoteIndex(field_t* field, unsigned long *returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
+	if(field->noteIndex != -1
+			&& field->fieldGeneration == field->doc->fieldGeneration) {
+		*returnValue = field->noteIndex;
+		return STATUS_OK;
+	}
 	ENSURE_OK(checkFieldIntegrity(field));
 	if(field->noteType == NOTE_FOOTNOTE) {
 		WordFootnote* note = [[field->sbContentRange footnotes]

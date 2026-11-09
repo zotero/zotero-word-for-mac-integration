@@ -41,6 +41,7 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	doc->cursorMoved = NO;
 	doc->shouldRestoreCursor = YES;
 	doc->insertTextIntoNote = 0;
+	doc->fieldGeneration = 0;
 	
 	// Get application by path if a path has been specified
 	NSString* wordPathNS;
