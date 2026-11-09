@@ -169,6 +169,16 @@ function init(libPath) {
 		convert: lib.declare("convert", ctypes.default_abi, statusCode, document_t.ptr,
 			field_t.ptr, ctypes.unsigned_long, ctypes.char.ptr, ctypes.unsigned_short.ptr),
 		
+		// statusCode setFieldTexts(document_t *doc, field_t* fields[], const char* texts[],
+		//						 bool isRich[], unsigned long nFields);
+		setFieldTexts: lib.declare("setFieldTexts", ctypes.default_abi, statusCode, document_t.ptr,
+			field_t.ptr, ctypes.char.ptr.ptr, ctypes.bool.ptr, ctypes.unsigned_long),
+		
+		// statusCode setFieldCodes(document_t *doc, field_t* fields[], const char* codes[],
+		//						 unsigned long nFields);
+		setFieldCodes: lib.declare("setFieldCodes", ctypes.default_abi, statusCode, document_t.ptr,
+			field_t.ptr, ctypes.char.ptr.ptr, ctypes.unsigned_long),
+		
 		// statusCode cleanup(Document *doc);
 		cleanup: lib.declare("cleanup", ctypes.default_abi, statusCode, document_t.ptr),
 		
@@ -276,15 +286,17 @@ function init(libPath) {
 			return fields.map(field => field.id);
 		});
 	}
-	// Document handler where a field array is the first argument
-	Messaging.addMessageListener('convert', async (...args) => {
-		let doc = docs[args[0]];
-		if (!doc) {
-			throw new Error(`Document ${args[0]} not found`);
-		}
-		let fields = args[1].map(id => doc.fields[id]);
-		return doc.convert(fields, ...args.slice(2));
-	});
+	// Document handlers where a field array is the first argument
+	for (let func of ['convert', 'setFieldTexts', 'setFieldCodes']) {
+		Messaging.addMessageListener(func, async (...args) => {
+			let doc = docs[args[0]];
+			if (!doc) {
+				throw new Error(`Document ${args[0]} not found`);
+			}
+			let fields = args[1].map(id => doc.fields[id]);
+			return doc[func](fields, ...args.slice(2));
+		});
+	}
 	// Field handlers
 	for (let func of ['delete', 'removeCode', 'select', 'setText', 'getText', 'setCode', 'getCode',
 			'getNoteIndex', 'isAdjacentToNextField']) {
@@ -552,6 +564,24 @@ Document.prototype = {
 		checkStatus(fn.convert(this._document_t, field_t.array()(fields),
 			fields.length, ctypes.char.array()(toFieldType),
 			ctypes.unsigned_short.array()(toNoteTypes)));
+	},
+	
+	setFieldTexts: function(fields, texts, isRich) {
+		Zotero.debug(`ZoteroMacWordIntegration: setFieldTexts ${fields.length}`, 4);
+		checkIfFreed(this._documentStatus);
+		var cTexts = texts.map(text => ctypes.char.array()(text));
+		checkStatus(fn.setFieldTexts(this._document_t,
+			field_t.array()(fields.map(field => field._field_t)),
+			ctypes.char.ptr.array()(cTexts), ctypes.bool.array()(isRich), fields.length));
+	},
+	
+	setFieldCodes: function(fields, codes) {
+		Zotero.debug(`ZoteroMacWordIntegration: setFieldCodes ${fields.length}`, 4);
+		checkIfFreed(this._documentStatus);
+		var cCodes = codes.map(code => ctypes.char.array()(code));
+		checkStatus(fn.setFieldCodes(this._document_t,
+			field_t.array()(fields.map(field => field._field_t)),
+			ctypes.char.ptr.array()(cCodes), fields.length));
 	},
 	
 	cleanup: function() {

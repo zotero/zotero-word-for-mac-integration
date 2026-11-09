@@ -364,6 +364,24 @@ statusCode setFieldAdjacency(field_t *fieldA, field_t *fieldB) {
 #define CLEAR_FIELD_DATA_MACRO @"ZoteroClearFieldData"
 #define FIELD_DATA_VARIABLE_PREFIX @"ZOTERO_BATCH_"
 #define FIELD_DATA_FORMAT_VERSION 1
+#define SET_FIELD_TEXTS_MACRO @"ZoteroSetFieldTexts"
+#define SET_FIELD_CODES_MACRO @"ZoteroSetFieldCodes"
+#define BATCH_INPUT_VARIABLE_PREFIX @"ZOTERO_INPUT_"
+#define BATCH_SEGMENT_MARKER @"ZQZSEG"
+// Document variables hold at most 65,280 characters
+#define FIELD_DATA_CHUNK_LENGTH 60000
+
+extern NSString* FIELD_PREFIXES[];
+
+// Whether the document is Word's active document, which is the one macros act on
+static statusCode isActiveDocument(document_t *doc, BOOL* returnValue) {
+	NSString* activeDocumentName = [[doc->sbApp activeDocument] name];
+	CHECK_STATUS
+	NSString* documentName = [doc->sbDoc name];
+	CHECK_STATUS
+	*returnValue = [activeDocumentName isEqualToString:documentName];
+	return STATUS_OK;
+}
 
 typedef struct FieldData {
 	short noteType;
@@ -462,12 +480,9 @@ statusCode readFieldsWithMacro(document_t *doc, listNode_t** fieldListStart,
 		return STATUS_OK;
 	}
 	
-	// The macro reads the active document
-	NSString* activeDocumentName = [[doc->sbApp activeDocument] name];
-	CHECK_STATUS
-	NSString* documentName = [doc->sbDoc name];
-	CHECK_STATUS
-	if(![activeDocumentName isEqualToString:documentName]) return STATUS_OK;
+	BOOL isActive;
+	ENSURE_OK(isActiveDocument(doc, &isActive));
+	if(!isActive) return STATUS_OK;
 	
 	ENSURE_OK(prepareReadFieldCode(doc));
 	
@@ -557,8 +572,326 @@ statusCode readFieldsWithMacro(document_t *doc, listNode_t** fieldListStart,
 		addValueToList(records[i].field, fieldListStart, fieldListEnd);
 	}
 	
+	doc->batchMacrosAvailable = YES;
 	*usedMacro = YES;
 	return STATUS_OK;
+}
+
+// Creates a document variable. Word doesn't support Scripting Bridge's
+// -[SBElementArray addObject:], so this sends "make new variable at <document>".
+static BOOL addDocumentVariable(document_t *doc, NSString* name, NSString* value) {
+	NSAppleEventDescriptor* properties = [NSAppleEventDescriptor recordDescriptor];
+	[properties setDescriptor:[NSAppleEventDescriptor descriptorWithString:name]
+				   forKeyword:'pnam'];
+	[properties setDescriptor:[NSAppleEventDescriptor descriptorWithString:value]
+				   forKeyword:'1550'];
+	[doc->sbApp sendEvent:'core' id:'crel' parameters:'kocl',
+	 [NSAppleEventDescriptor descriptorWithTypeCode:'w112'], 'insh', doc->sbDoc,
+	 'prdt', properties, nil];
+	if(errorHasOccurred()) {
+		clearError();
+		return NO;
+	}
+	return YES;
+}
+
+// Writes input for a batch macro to document variables
+static BOOL writeBatchInput(document_t *doc, NSString* data) {
+	NSUInteger length = [data length];
+	NSUInteger position = 0;
+	NSInteger chunkCount = 0;
+	while(position < length) {
+		NSUInteger chunkLength = MIN(FIELD_DATA_CHUNK_LENGTH, length - position);
+		// Don't split a surrogate pair across chunks
+		if(position + chunkLength < length
+				&& CFStringIsSurrogateHighCharacter([data characterAtIndex:
+													 position + chunkLength - 1])) {
+			chunkLength--;
+		}
+		chunkCount++;
+		NSString* name = [NSString stringWithFormat:@"%@%ld", BATCH_INPUT_VARIABLE_PREFIX,
+						  (long) chunkCount];
+		if(!addDocumentVariable(doc, name,
+				[data substringWithRange:NSMakeRange(position, chunkLength)])) {
+			return NO;
+		}
+		position += chunkLength;
+	}
+	return addDocumentVariable(doc,
+		[BATCH_INPUT_VARIABLE_PREFIX stringByAppendingString:@"COUNT"],
+		[NSString stringWithFormat:@"%ld", (long) chunkCount]);
+}
+
+// Runs a batch macro with the given input and returns its output, or nil if the
+// macro failed
+static NSString* runBatchMacro(document_t *doc, NSString* macroName, NSString* input) {
+	NSString* output = nil;
+	if(writeBatchInput(doc, input)) {
+		[doc->sbApp runVBMacroMacroName:macroName];
+		if(errorHasOccurred()) {
+			clearError();
+		} else {
+			output = readFieldDataVariables(doc);
+		}
+	}
+	IGNORING_SB_ERRORS_BEGIN
+	[doc->sbApp runVBMacroMacroName:CLEAR_FIELD_DATA_MACRO];
+	IGNORING_SB_ERRORS_END
+	return output;
+}
+
+// Whether a batch macro can address these fields by story and index
+static statusCode canBatchFields(document_t *doc, field_t* fields[],
+								 unsigned long nFields, BOOL* returnValue) {
+	*returnValue = NO;
+	if(!doc->batchMacrosAvailable) {
+		return STATUS_OK;
+	}
+	for(unsigned long i=0; i<nFields; i++) {
+		// Indices are only valid while no fields or notes have been added or removed
+		if(!fields[i]->sbField
+				|| fields[i]->fieldGeneration != doc->fieldGeneration) {
+			return STATUS_OK;
+		}
+	}
+	return isActiveDocument(doc, returnValue);
+}
+
+static NSString* encodeBatchString(NSString* string) {
+	return [NSString stringWithFormat:@"%lu:%@", (unsigned long) [string length], string];
+}
+
+// Returns the content of an RTF document of the form "{\rtf <content>}"
+static NSString* rtfContent(NSString* rtf) {
+	NSUInteger length = [rtf length];
+	if(![rtf hasPrefix:@"{\\rtf"] || ![rtf hasSuffix:@"}"]) return nil;
+	NSUInteger start = 5;
+	while(start < length - 1 && isdigit([rtf characterAtIndex:start])) start++;
+	// A space after a control word is a delimiter, not text
+	if(start < length - 1 && [rtf characterAtIndex:start] == ' ') start++;
+	return [rtf substringWithRange:NSMakeRange(start, length - 1 - start)];
+}
+
+// Updates the indices of fields that follow fields nested in updated fields, which
+// Word removes when the text of the containing field changes
+static statusCode renumberFields(document_t *doc, field_t* updatedFields[],
+								 NSInteger removedFields[], unsigned long nFields) {
+	SBElementArray* sbStoryFields[3] = {nil, nil, nil};
+	for(listNode_t* node = doc->allocatedFieldsStart; node; node = node->next) {
+		field_t* field = (field_t*) node->value;
+		if(!field->sbField) continue;
+		NSInteger shift = 0;
+		for(unsigned long i=0; i<nFields; i++) {
+			if(updatedFields[i]->noteType == field->noteType
+					&& updatedFields[i]->entryIndex < field->entryIndex) {
+				shift += removedFields[i];
+			}
+		}
+		if(!shift) continue;
+		
+		short noteType = field->noteType;
+		if(!sbStoryFields[noteType]) {
+			if(noteType == 0) {
+				sbStoryFields[0] = [doc->sbDoc fields];
+			} else {
+				sbStoryFields[noteType] = [[doc->sbDoc getStoryRangeStoryType:
+											(noteType == NOTE_FOOTNOTE
+											 ? WordWdStoryTypeFootnotesStory
+											 : WordWdStoryTypeEndnotesStory)]
+										   fields];
+			}
+			CHECK_STATUS
+		}
+		field->entryIndex -= shift;
+		[field->sbField release];
+		[field->sbCodeRange release];
+		[field->sbContentRange release];
+		field->sbField = [[sbStoryFields[noteType] objectAtIndex:(field->entryIndex - 1)]
+						  retain];
+		field->sbCodeRange = [[field->sbField fieldCode] retain];
+		field->sbContentRange = [[field->sbField resultRange] retain];
+	}
+	return STATUS_OK;
+}
+
+// Sets the text of fields one at a time. Callers may set codes only after all texts,
+// so fields that follow a field whose nested fields were removed are renumbered, and
+// each field's resulting text is read immediately.
+static statusCode setFieldTextsIndividually(document_t *doc, field_t* fields[],
+											const char* texts[], bool isRich[],
+											unsigned long nFields) {
+	SBElementArray* sbStoryFields[3] = {nil, nil, nil};
+	for(unsigned long i=0; i<nFields; i++) {
+		field_t* field = fields[i];
+		SBElementArray* sbFields = nil;
+		NSInteger fieldCount = 0;
+		if(field->sbField) {
+			short noteType = field->noteType;
+			if(!sbStoryFields[noteType]) {
+				if(noteType == 0) {
+					sbStoryFields[0] = [doc->sbDoc fields];
+				} else {
+					sbStoryFields[noteType] = [[doc->sbDoc getStoryRangeStoryType:
+												(noteType == NOTE_FOOTNOTE
+												 ? WordWdStoryTypeFootnotesStory
+												 : WordWdStoryTypeEndnotesStory)]
+											   fields];
+				}
+				CHECK_STATUS
+			}
+			sbFields = sbStoryFields[noteType];
+			fieldCount = [sbFields count];
+			CHECK_STATUS
+		}
+		
+		ENSURE_OK(setText(field, texts[i], isRich[i]))
+		char* text;
+		ENSURE_OK(getText(field, &text))
+		
+		if(sbFields) {
+			NSInteger removedFields = fieldCount - [sbFields count];
+			CHECK_STATUS
+			if(removedFields > 0) {
+				ENSURE_OK(renumberFields(doc, &field, &removedFields, 1))
+			}
+		}
+	}
+	return STATUS_OK;
+}
+
+// Sets the text of several fields with the ZoteroSetFieldTexts macro, which pastes
+// all rich text from a single RTF document. Falls back to setting fields
+// individually if the macro isn't available.
+statusCode setFieldTexts(document_t *doc, field_t* fields[], const char* texts[],
+						 bool isRich[], unsigned long nFields) {
+	HANDLE_EXCEPTIONS_BEGIN
+	[doc->lock lock];
+	
+	BOOL useMacro;
+	ENSURE_OK_LOCKED(doc, canBatchFields(doc, fields, nFields, &useMacro))
+	
+	NSMutableString* input = nil;
+	NSMutableString* rtf = nil;
+	if(useMacro && nFields) {
+		input = [NSMutableString stringWithFormat:@"%d;%lu;", FIELD_DATA_FORMAT_VERSION,
+				 nFields];
+		rtf = [NSMutableString stringWithString:@"{\\rtf1\\ansi "];
+		NSUInteger richCount = 0;
+		for(unsigned long i=0; i<nFields; i++) {
+			NSString* text = [NSString stringWithUTF8String:texts[i]];
+			BOOL isBibliography = fields[i]->code && strncmp(fields[i]->code, "BIBL", 4) == 0;
+			if(isRich[i]) {
+				NSString* content = rtfContent(text);
+				if(!content) {
+					useMacro = NO;
+					break;
+				}
+				[rtf appendFormat:@"%@%lu%@{%@}", BATCH_SEGMENT_MARKER,
+				 (unsigned long) richCount++, BATCH_SEGMENT_MARKER, content];
+				text = @"";
+			}
+			[input appendFormat:@"%hd;%ld;%d;%d;%@", fields[i]->noteType,
+			 (long) fields[i]->entryIndex, isRich[i] ? 1 : 0, isBibliography ? 1 : 0,
+			 encodeBatchString(text)];
+		}
+		[rtf appendFormat:@"%@END%@}", BATCH_SEGMENT_MARKER, BATCH_SEGMENT_MARKER];
+	}
+	
+	if(!useMacro) {
+		ENSURE_OK_LOCKED(doc, setFieldTextsIndividually(doc, fields, texts, isRich, nFields))
+		RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	}
+	
+	storePasteboardItems();
+	replacePasteboardContentsWithRTF([rtf UTF8String]);
+	NSString* output = runBatchMacro(doc, SET_FIELD_TEXTS_MACRO, input);
+	restorePasteboardContents();
+	
+	NSUInteger position = 0;
+	NSInteger version, count;
+	if(!output
+			|| !scanFieldDataNumber(output, &position, &version)
+			|| version != FIELD_DATA_FORMAT_VERSION
+			|| !scanFieldDataNumber(output, &position, &count)
+			|| count != (NSInteger) nFields) {
+		[doc->lock unlock];
+		DIE(@"Updating fields failed")
+	}
+	NSInteger* removedFields = (NSInteger*) [[NSMutableData
+											  dataWithLength:sizeof(NSInteger) * nFields]
+											 mutableBytes];
+	BOOL anyRemoved = NO;
+	for(unsigned long i=0; i<nFields; i++) {
+		NSString* text;
+		if(!scanFieldDataNumber(output, &position, &removedFields[i])
+				|| !scanFieldDataString(output, &position, &text)) {
+			[doc->lock unlock];
+			DIE(@"Updating fields failed")
+		}
+		if(removedFields[i]) anyRemoved = YES;
+		if(fields[i]->text) free(fields[i]->text);
+		fields[i]->text = copyNSString(text);
+	}
+	if(anyRemoved) {
+		ENSURE_OK_LOCKED(doc, renumberFields(doc, fields, removedFields, nFields))
+	}
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	HANDLE_EXCEPTIONS_END
+}
+
+// Sets the codes of several fields with the ZoteroSetFieldCodes macro. Falls back to
+// setting codes individually if the macro isn't available.
+statusCode setFieldCodes(document_t *doc, field_t* fields[], const char* codes[],
+						 unsigned long nFields) {
+	HANDLE_EXCEPTIONS_BEGIN
+	[doc->lock lock];
+	
+	BOOL useMacro;
+	ENSURE_OK_LOCKED(doc, canBatchFields(doc, fields, nFields, &useMacro))
+	if(!useMacro || !nFields) {
+		for(unsigned long i=0; i<nFields; i++) {
+			ENSURE_OK_LOCKED(doc, setCode(fields[i], codes[i]))
+		}
+		RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	}
+	
+	NSMutableString* input = [NSMutableString stringWithFormat:@"%d;%lu;",
+							  FIELD_DATA_FORMAT_VERSION, nFields];
+	NSMutableArray* rawCodes = [NSMutableArray arrayWithCapacity:nFields];
+	for(unsigned long i=0; i<nFields; i++) {
+		NSString* rawCode = [NSString stringWithFormat:@"%@%@ ", FIELD_PREFIXES[0],
+							 [NSString stringWithUTF8String:codes[i]]];
+		[rawCodes addObject:rawCode];
+		[input appendFormat:@"%hd;%ld;%@%@", fields[i]->noteType,
+		 (long) fields[i]->entryIndex,
+		 encodeBatchString(fields[i]->rawCode ? fields[i]->rawCode : @""),
+		 encodeBatchString(rawCode)];
+	}
+	
+	NSString* output = runBatchMacro(doc, SET_FIELD_CODES_MACRO, input);
+	NSUInteger position = 0;
+	NSInteger version, mismatch;
+	if(!output
+			|| !scanFieldDataNumber(output, &position, &version)
+			|| version != FIELD_DATA_FORMAT_VERSION
+			|| !scanFieldDataNumber(output, &position, &mismatch)) {
+		[doc->lock unlock];
+		DIE(@"Updating fields failed")
+	}
+	if(mismatch) {
+		[doc->lock unlock];
+		DIE(@"Document modified during update")
+	}
+	
+	for(unsigned long i=0; i<nFields; i++) {
+		field_t* field = fields[i];
+		[field->rawCode release];
+		field->rawCode = [rawCodes[i] retain];
+		if(field->code) free(field->code);
+		field->code = strdup(codes[i]);
+	}
+	RETURN_STATUS_LOCKED(doc, STATUS_OK)
+	HANDLE_EXCEPTIONS_END
 }
 
 // Gets fields

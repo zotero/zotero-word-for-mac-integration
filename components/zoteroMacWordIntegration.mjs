@@ -314,9 +314,11 @@ Document.prototype.convertPlaceholdersToFields = async function(...args) {
 	let fieldIds = await Messaging.sendMessage('convertPlaceholdersToFields', [this.id, ...args])
 	return fieldIds.map(id => new Field(this, id));
 }
-Document.prototype.convert = async function(fields, ...args) {
-	fields = fields.map(f => f.id);
-	return Messaging.sendMessage('convert', [this.id, fields, ...args])
+for (let method of ["convert", "setFieldTexts", "setFieldCodes"]) {
+	Document.prototype[method] = async function(fields, ...args) {
+		fields = fields.map(f => f.id);
+		return Messaging.sendMessage(method, [this.id, fields, ...args]);
+	};
 }
 
 var Field = function(doc, fieldId) {

@@ -177,6 +177,9 @@ typedef struct Document {
 	// note indices cached on fields
 	NSInteger fieldGeneration;
 	
+	// Whether the template's batch macros have run successfully for this document
+	BOOL batchMacrosAvailable;
+	
 	NSRecursiveLock* lock;
 } document_t;
 
@@ -305,6 +308,10 @@ statusCode getFieldsAsync(document_t *doc, const char fieldType[],
 						  void (*onProgress)(int progress));
 statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				   const char toFieldType[], unsigned short noteType[]);
+statusCode setFieldTexts(document_t *doc, field_t* fields[], const char* texts[],
+						 bool isRich[], unsigned long nFields);
+statusCode setFieldCodes(document_t *doc, field_t* fields[], const char* codes[],
+						 unsigned long nFields);
 statusCode setBibliographyStyle(document_t *doc, long firstLineIndent, 
 								long bodyIndent, unsigned long lineSpacing,
 								unsigned long entrySpacing, long tabStops[],
