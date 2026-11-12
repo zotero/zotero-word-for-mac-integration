@@ -447,13 +447,19 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich) {
 			
 			// Put RTF into the clipboard
 			storePasteboardItems();
-			replacePasteboardContentsWithRTF(string);
-			
-			// Paste RTF
-			ENSURE_OK_LOCKED(field->doc, pasteStupid(field->doc, insertRange))
-			
-			// Restore clipboard contents and only then check for errors
-			restorePasteboardContents();
+			statusCode pasteStatus;
+			@try {
+				replacePasteboardContentsWithRTF(string);
+
+				// Paste RTF
+				pasteStatus = pasteStupid(field->doc, insertRange);
+			}
+			@finally {
+				// Restore clipboard contents, even after an exception, and only then check for
+				// errors
+				restorePasteboardContents();
+			}
+			ENSURE_OK_LOCKED(field->doc, pasteStatus)
 			CHECK_STATUS_LOCKED(field->doc)
 		}
 		else {
@@ -500,12 +506,19 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich) {
 		if (isRich) {
 			// Put RTF into the clipboard
 			storePasteboardItems();
-			replacePasteboardContentsWithRTF(string);
-			
-			// Paste RTF
-			ENSURE_OK_LOCKED(field->doc, pasteStupid(field->doc, field->sbContentRange))
-			// Restore clipboard contents and only then check for errors
-			restorePasteboardContents();
+			statusCode pasteStatus;
+			@try {
+				replacePasteboardContentsWithRTF(string);
+
+				// Paste RTF
+				pasteStatus = pasteStupid(field->doc, field->sbContentRange);
+			}
+			@finally {
+				// Restore clipboard contents, even after an exception, and only then check for
+				// errors
+				restorePasteboardContents();
+			}
+			ENSURE_OK_LOCKED(field->doc, pasteStatus)
 			CHECK_STATUS_LOCKED(field->doc)
 		}
 		else {

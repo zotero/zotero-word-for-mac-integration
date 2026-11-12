@@ -1090,12 +1090,16 @@ statusCode insertText(document_t *doc, const char htmlString[]) {
 	
 	// Write HTML to a clipboard
 	storePasteboardItems();
-	replacePasteboardContentsWithHTML(htmlString);
-	
-	// Paste HTML
-	[selectionRange pasteObject];
-	// Restore clipboard contents and only then check for errors
-	restorePasteboardContents();
+	@try {
+		replacePasteboardContentsWithHTML(htmlString);
+
+		// Paste HTML
+		[selectionRange pasteObject];
+	}
+	@finally {
+		// Restore clipboard contents, even after an exception, and only then check for errors
+		restorePasteboardContents();
+	}
 	CHECK_STATUS_LOCKED(doc)
 	
 	// Set style
