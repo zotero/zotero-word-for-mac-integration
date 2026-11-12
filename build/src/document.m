@@ -887,11 +887,16 @@ statusCode exportDocument(document_t *doc,
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
 	
-	// Export fields
+	// Export fields, last first. Replacing a field also removes any fields nested in it, which
+	// changes the indices of the fields after it.
 	listNode_t *fields;
 	ENSURE_OK(getFields(doc, fieldType, &fields));
-	while (fields != NULL) {
-		field_t *field = (field_t *)fields->value;
+	NSMutableArray* fieldsToExport = [NSMutableArray array];
+	for (listNode_t* node = fields; node != NULL; node = node->next) {
+		[fieldsToExport insertObject:[NSValue valueWithPointer:node->value] atIndex:0];
+	}
+	for (NSValue* fieldValue in fieldsToExport) {
+		field_t *field = (field_t *)[fieldValue pointerValue];
 		// If you insert in sbField.resultRange it doesn't remove the field code
 		// and upon unlinking removes the hyperlink too.
 		// sbField.resultRange depends on the existance of sbField, so if we in any way unlink
@@ -903,7 +908,6 @@ statusCode exportDocument(document_t *doc,
 		CHECK_STATUS_LOCKED(doc);
 		[[field->sbField resultRange] setContent:[NSString stringWithUTF8String:field->code]];
 		CHECK_STATUS_LOCKED(doc);
-		fields = fields->next;
 	}
 
 	// Document data
