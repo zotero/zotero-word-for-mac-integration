@@ -22,6 +22,28 @@ This is a Firefox add-on that consists of a library written in ObjC that communi
 - Go to Debug->Compile Project to ensure there are no code errors
 - Run `build/template/unpack_templates.sh`
 
+The VBA project of Zotero.dotm is named `ZoteroTemplate` (Properties window in the Visual Basic
+Editor), and the plugin calls the macros by their full name,
+`ZoteroTemplate.ZoteroMacros.<macro>`, so that macros of the same name in other templates aren't
+used. Keep the name when rebuilding the template.
+
+### Word automation
+
+The plugin automates Word in one of two ways:
+
+- With macros in the template (`ZoteroMacros.bas`), which `resource/macroDocument.mjs` calls
+  through `build/src/macros.m`. This is preferred.
+- With Scripting Bridge (the rest of `build/src`). Word handles one Apple Event per display frame
+  (17 ms on a 60 Hz display), and most operations take many events, so this is slow.
+
+The plugin falls back to Scripting Bridge if the installed template doesn't have the macros it
+expects, for example when the template failed to update or Word hasn't been restarted since the
+update, and for documents that store citations as bookmarks.
+
+When the macro input or output format changes, increase `PROTOCOL_VERSION` in `ZoteroMacros.bas`
+and `macroDocument.mjs`, `templateVersion$` in `Zotero.bas`, and `TEMPLATE_VERSIONS.MacWord16` in
+Zotero's `integration.js`, so that Zotero asks users with an older template to update the plugin.
+
 ## Development Starter's Guide
 
 Start by opening the dotm/dot template in Word. Word templates have support for custom macros and adding UI elements

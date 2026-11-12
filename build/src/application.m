@@ -27,16 +27,12 @@
 // Cache for WordApplication objects, since initialization can take a while.
 NSMutableDictionary* wordApps = nil;
 
-statusCode getDocument(int wordVersion, const char* wordPath,
-					   const char* documentName, document_t **returnValue) {
+// Allocates a document struct for the active document of Word, without changing anything in
+// Word. Commands then run template macros on it, or call startScriptingBridgeSession().
+statusCode openDocument(int wordVersion, const char* wordPath, document_t **returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
 	clearError();
-	
-	document_t *doc = (document_t*) malloc(sizeof(document_t));
-	doc->allocatedFieldsStart = NULL;
-	doc->allocatedFieldsEnd = NULL;
-	doc->allocatedFieldListsStart = NULL;
-	doc->allocatedFieldListsEnd = NULL;
+	document_t *doc = (document_t*) calloc(1, sizeof(document_t));
 	doc->restoreNote = doc->restoreCursorEnd = doc->restoreFieldIdx = -1;
 	doc->cursorMoved = NO;
 	doc->shouldRestoreCursor = YES;
@@ -144,6 +140,18 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	
 	[doc->sbDoc retain];
 	
+	// Put path into structure
+	doc->wordPath = copyNSString(wordPathNS);
+
+	*returnValue = doc;
+	return STATUS_OK;
+	HANDLE_EXCEPTIONS_END
+}
+
+// Records and changes the Word settings for a command on a document from openDocument(), for the
+// Scripting Bridge implementation
+statusCode startScriptingBridgeSession(document_t *doc) {
+	HANDLE_EXCEPTIONS_BEGIN
 	// Retain active window so that in split-view we perform selection
 	// changes in the correct view (which are internally represented as windows
 	// opened for the same doc)
@@ -204,13 +212,9 @@ statusCode getDocument(int wordVersion, const char* wordPath,
 	doc->statusFormatChanges = doc->restoreFormatChanges;
 	doc->statusTrackRevisions = doc->restoreTrackRevisions;
 	
-	// Put path into structure
-	doc->wordPath = copyNSString(wordPathNS);
-	
 	storeCursorLocation(doc);
 	CHECK_STATUS
 	
-	*returnValue = doc;
 	return STATUS_OK;
 	HANDLE_EXCEPTIONS_END
 }

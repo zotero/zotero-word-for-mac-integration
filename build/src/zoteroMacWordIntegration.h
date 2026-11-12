@@ -68,6 +68,13 @@ enum NOTE_TYPE {
 #define IMPORT_DOC_PREFS_PREFIX @"DOCUMENT_PREFERENCES "
 #define MAIN_FIELD_PREFIX @" ADDIN ZOTERO_"
 
+// Clipboard contents for callMacro()
+enum CLIPBOARD_FORMAT {
+	CLIPBOARD_NONE = 0,
+	CLIPBOARD_RTF = 1,
+	CLIPBOARD_HTML = 2
+};
+
 
 // Checks to see that the last Scripting Bridge call succeeded. If not, returns
 // STATUS_EXCEPTION.
@@ -272,9 +279,12 @@ bool isWordArm(void);
 
 
 // application.m
-statusCode getDocument(int wordVersion, const char* wordPath,
-					   const char* documentName, document_t** returnValue);
-
+statusCode openDocument(int wordVersion, const char* wordPath, document_t **returnValue);
+statusCode startScriptingBridgeSession(document_t *doc);
+// macros.m
+statusCode callMacro(document_t *doc, const char macroName[], const char input[],
+					 const char clipboardData[], unsigned short clipboardFormat, bool probe,
+					 char **returnValue);
 // document.m
 void freeDocument(document_t *doc);
 statusCode activate(document_t *doc);

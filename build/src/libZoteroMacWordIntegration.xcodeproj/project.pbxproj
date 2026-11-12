@@ -16,6 +16,7 @@
 		7AADFEBC25B9C6F20003B71A /* utilities.m in Sources */ = {isa = PBXBuildFile; fileRef = F402FC8E14B5608600CC305F /* utilities.m */; };
 		7AADFEC025B9C6FD0003B71A /* application.m in Sources */ = {isa = PBXBuildFile; fileRef = F42F45D914B2AE7300F945DB /* application.m */; };
 		7AADFEC125B9C6FD0003B71A /* document.m in Sources */ = {isa = PBXBuildFile; fileRef = F42F45DD14B2AEFF00F945DB /* document.m */; };
+		7AE0A1C02E0000000000A002 /* macros.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AE0A1C02E0000000000A001 /* macros.m */; };
 		7AADFEC225B9C6FD0003B71A /* field.m in Sources */ = {isa = PBXBuildFile; fileRef = F402FC3F14B4126A00CC305F /* field.m */; };
 		7AADFEDB25B9C9E20003B71A /* libZoteroWordIntegration.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 7AADFEA325B9C5CE0003B71A /* libZoteroWordIntegration.dylib */; };
 		7AADFEDF25B9CA310003B71A /* install.m in Sources */ = {isa = PBXBuildFile; fileRef = F49583D214BA876800159335 /* install.m */; };
@@ -43,6 +44,7 @@
 		F402FC8E14B5608600CC305F /* utilities.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = utilities.m; sourceTree = "<group>"; };
 		F42F45D914B2AE7300F945DB /* application.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = application.m; sourceTree = "<group>"; };
 		F42F45DD14B2AEFF00F945DB /* document.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = document.m; sourceTree = "<group>"; };
+		7AE0A1C02E0000000000A001 /* macros.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = macros.m; sourceTree = "<group>"; };
 		F42F45DF14B2AF0600F945DB /* zoteroMacWordIntegration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zoteroMacWordIntegration.h; sourceTree = "<group>"; };
 		F42F45E114B2B7BF00F945DB /* Word.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Word.h; sourceTree = "<group>"; };
 		F49583D214BA876800159335 /* install.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = install.m; sourceTree = "<group>"; };
@@ -80,6 +82,7 @@
 				F402FC8E14B5608600CC305F /* utilities.m */,
 				F42F45D914B2AE7300F945DB /* application.m */,
 				F42F45DD14B2AEFF00F945DB /* document.m */,
+				7AE0A1C02E0000000000A001 /* macros.m */,
 				F402FC3F14B4126A00CC305F /* field.m */,
 				F42F45E114B2B7BF00F945DB /* Word.h */,
 				7AADFE3625A741490003B71A /* sharedUtilities.m */,
@@ -168,6 +171,7 @@
 				7AADFEDF25B9CA310003B71A /* install.m in Sources */,
 				7AADFEC025B9C6FD0003B71A /* application.m in Sources */,
 				7AADFEC125B9C6FD0003B71A /* document.m in Sources */,
+				7AE0A1C02E0000000000A002 /* macros.m in Sources */,
 				7AADFEC225B9C6FD0003B71A /* field.m in Sources */,
 				7AADFEBC25B9C6F20003B71A /* utilities.m in Sources */,
 				7AADFE9425B9C5CE0003B71A /* sharedUtilities.m in Sources */,

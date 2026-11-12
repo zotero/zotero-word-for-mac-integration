@@ -36,6 +36,7 @@
  */
 
 import { MessagingGeneric } from "./messagingGeneric.mjs";
+import { MacroDocument } from "./macroDocument.mjs";
 
 var field_t, document_t, fieldListNode_t, progressFunction_t, lib, fn, fieldPtr;
 var docs = {};
@@ -96,11 +97,25 @@ function init(libPath) {
 		// void allowAppNap(void);
 		allowAppNap: lib.declare("allowAppNap", ctypes.default_abi, ctypes.void_t),
 		
-		// statusCode getDocument(int wordVersion, const char* wordPath,
-		//					   const char* documentName, Document** returnValue);
-		getDocument: lib.declare("getDocument", ctypes.default_abi, statusCode, ctypes.int,
-			ctypes.char.ptr, ctypes.char.ptr, document_t.ptr.ptr),
-		
+		// statusCode openDocument(int wordVersion, const char* wordPath, Document** returnValue);
+		openDocument: lib.declare("openDocument", ctypes.default_abi, statusCode, ctypes.int,
+			ctypes.char.ptr, document_t.ptr.ptr),
+
+		// statusCode startScriptingBridgeSession(Document *doc);
+		// Records and changes Word settings for a command with the Scripting Bridge implementation
+		startScriptingBridgeSession: lib.declare("startScriptingBridgeSession", ctypes.default_abi,
+			statusCode, document_t.ptr),
+
+		// statusCode callMacro(Document *doc, const char macroName[], const char input[],
+		//					 const char clipboardData[], unsigned short clipboardFormat, bool probe,
+		//					 char **returnValue);
+		callMacro: lib.declare("callMacro", ctypes.default_abi, statusCode, document_t.ptr,
+			ctypes.char.ptr, ctypes.char.ptr, ctypes.char.ptr, ctypes.unsigned_short, ctypes.bool,
+			ctypes.char.ptr.ptr),
+
+		// void freeDocument(Document *doc);
+		freeDocument: lib.declare("freeDocument", ctypes.default_abi, ctypes.void_t, document_t.ptr),
+
 		// statusCode activate(Document *doc);
 		activate: lib.declare("activate", ctypes.default_abi, statusCode, document_t.ptr),
 		
@@ -410,19 +425,41 @@ function checkIfFreed(documentStatus) {
 
 
 function getDocument(version, path) {
-	var docPtr = new document_t.ptr();
-	checkStatus(fn.getDocument(version, path, null, docPtr.address()));
-	let doc = new Document(docPtr);
+	var cDoc = new document_t.ptr();
+	checkStatus(fn.openDocument(version, path, cDoc.address()));
+	let doc;
+	try {
+		doc = MacroDocument.open({
+			fn, ctypes, checkStatus, randomString, docs, Zotero,
+			openSBDocument: getSBDocument
+		}, cDoc);
+		if (!doc) {
+			doc = getSBDocument(cDoc);
+		}
+	}
+	catch (e) {
+		fn.freeDocument(cDoc);
+		throw e;
+	}
 	return doc.id;
+}
+
+/**
+ * Starts a command on a document with the Scripting Bridge implementation. The document is
+ * registered under the given id, or a new one.
+ */
+function getSBDocument(cDoc, id) {
+	checkStatus(fn.startScriptingBridgeSession(cDoc));
+	return new Document(cDoc, id);
 }
 
 /**
  * See integrationTest.js
  */
-var Document = function(cDoc) {
+var Document = function(cDoc, id) {
 	this._document_t = cDoc;
 	this._documentStatus = {active: true};
-	this.id = randomString();
+	this.id = id || randomString();
 	this.fields = {};
 	docs[this.id] = this;
 };

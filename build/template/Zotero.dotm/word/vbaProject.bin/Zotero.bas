@@ -73,7 +73,7 @@ End If
 customUrlNotSet:
 On Error GoTo -1
 nl$ = Chr$(10)
-templateVersion$ = "2"
+templateVersion$ = "3"
 wordVersion$ = "MacWord2016"
 onFailMessage$ = "Word could not communicate with Zotero. Please ensure that Zotero is open and try again."
 
