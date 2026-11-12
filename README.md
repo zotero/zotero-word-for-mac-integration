@@ -3,24 +3,32 @@
 This is a Firefox add-on that consists of a library written in ObjC that communicates with Microsoft Word out of process using AppleScript, a js-ctypes wrapper for said library, and a template that is installed into Microsoft Word to communicate with Zotero.
 
 ## ObjC Library Build Requirements
-- [MacOSX10.7.sdk](https://github.com/phracker/MacOSX-SDKs/tree/master/MacOSX10.7.sdk) symlinked to `/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs`
-- XCode 8.2+
+- Xcode
 
 ### To Build the ObjC Library
 - Launch the project in `build/src/libZoteroMacWordIntegration.xcodeproj`
 - Product -> Build For -> Profiling
 
-## Template Build Requirements
-- Templates should be built with the oldest version of Word to be supported. Otherwise older versions of Word may fail to function properly. This is currently:
-  - Word 2016 (for the ribbonized dotm template)
-  - Word 2011 (for the old dot template)
+The build copies `libZoteroWordIntegration.dylib` (universal, arm64 and x86_64) into `install/`.
 
-### To Modify/Build the Templates
-- Open the template from inside Microsoft Word
-- Go to View->Macros->View Macros (Ribbonized Word) or Tools->Macros->View Macros (Word 2016) and click "Edit" for one of the Zotero macros
-- Edit/replace code as desired
-- Go to Debug->Compile Project to ensure there are no code errors
-- Run `build/template/unpack_templates.sh`
+## Template
+
+`install/Zotero.dotm` is the template that Zotero installs into Word's startup folder. Its VBA
+source is unpacked into `build/template/Zotero.dotm/word/vbaProject.bin` so that changes can be
+reviewed.
+
+### To Modify the Template
+- Quit Word, and remove Zotero.dotm from Word's startup folder
+  (`~/Library/Group Containers/UBF8T346G9.Office/User Content/Startup/Word`) or uncheck it in
+  Tools -> Templates and Add-ins, so that the installed copy isn't loaded alongside the one being
+  edited
+- Open `install/Zotero.dotm` with File -> Open in Word. Opening it from Finder creates a new
+  document based on the template instead
+- Open Tools -> Macro -> Visual Basic Editor and edit the modules of the `ZoteroTemplate` project,
+  or remove a module and import its new version with File -> Import File
+- Go to Debug -> Compile ZoteroTemplate to ensure there are no code errors, and save
+- Run `build/template/unpack_templates.sh` (needs Python 2 for `build/tools/officeparser`) and
+  check the diff
 
 The VBA project of Zotero.dotm is named `ZoteroTemplate` (Properties window in the Visual Basic
 Editor), and the plugin calls the macros by their full name,
