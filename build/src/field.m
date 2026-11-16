@@ -27,6 +27,8 @@
 NSString* FIELD_PREFIXES[] = {MAIN_FIELD_PREFIX, @" CSL_", NULL};
 NSString* BOOKMARK_PREFIXES[] = {@"ZOTERO_", @"CSL_", NULL};
 
+statusCode getFieldCollections(document_t *doc, NSArray** fieldCollections);
+
 // Allocates a field structure based on a WordField, optionally checking to make
 // sure that the field code actually matches a Zotero field.
 statusCode initField(document_t *doc, WordField* sbField, short noteType,
@@ -121,6 +123,7 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 		field->entryIndex = entryIndex;
 		field->noteType = noteType;
 		field->adjacent = false;
+		field->fieldLayoutVersion = doc->fieldLayoutVersion;
 		
 		field->doc = doc;
 		field->sbField = sbField;
@@ -144,33 +147,22 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 	return STATUS_OK;
 }
 
-// Unfortunately after starting to update fields in reverse order in
-// https://github.com/zotero/zotero/commit/419953f478eb6181717216dcb0dcfc27c303c953
-// citations in footnotes started breaking when any in-text fields need updating
-// (such as bibliography). We'll be re-initializing the sb objects here if such breakage
-// occurs. Sigh.
-statusCode checkFieldIntegrity(field_t *field) {
-	HANDLE_EXCEPTIONS_BEGIN
-	if (field->sbBookmark || field->noteType == 0) return STATUS_OK;
-	// Field order upset. Sometimes SB returns 0 for entry index, which is invalid since
-	// all those indices are 1-indexed, indicating.. something?.. that the field is no longer in the doc?
-	NSInteger entryIndex = getEntryIndex(field->doc, field->sbField);
-	if (errorHasOccurred()) {
-		clearError();
-	}
-	else if (field->entryIndex == entryIndex) return STATUS_OK;
-	
+// Points the field at the field with the given index in its collection
+static statusCode setFieldEntry(field_t *field, long entryIndex) {
 	[field->sbField release];
 	[field->sbCodeRange release];
 	[field->sbContentRange release];
 
 	if (field->noteType == NOTE_FOOTNOTE) {
 		field->sbField = [[[field->doc->sbDoc getStoryRangeStoryType:WordWdStoryTypeFootnotesStory] fields]
-						  objectAtIndex:(field->entryIndex-1)];
-	} else {
+						  objectAtIndex:(entryIndex-1)];
+	} else if (field->noteType == NOTE_ENDNOTE) {
 		field->sbField = [[[field->doc->sbDoc getStoryRangeStoryType:WordWdStoryTypeEndnotesStory] fields]
-				   objectAtIndex:(field->entryIndex-1)];
+				   objectAtIndex:(entryIndex-1)];
+	} else {
+		field->sbField = [[field->doc->sbDoc fields] objectAtIndex:(entryIndex-1)];
 	}
+	field->entryIndex = entryIndex;
 	field->sbCodeRange = [field->sbField fieldCode];
 	field->sbContentRange = [field->sbField resultRange];
 	[field->sbField retain];
@@ -178,7 +170,90 @@ statusCode checkFieldIntegrity(field_t *field) {
 	[field->sbContentRange retain];
 	CHECK_STATUS
 	return STATUS_OK;
+}
+
+// Finds the field by its code, if it's no longer at its index
+static statusCode relocateField(field_t *field) {
+	document_t *doc = field->doc;
+	NSString* currentCode = [field->sbCodeRange content];
+	if (errorHasOccurred()) {
+		clearError();
+		currentCode = nil;
+	}
+	if (![field->rawCode isEqualTo:currentCode]) {
+		NSArray* fieldCollections[3];
+		ENSURE_OK(getFieldCollections(doc, fieldCollections));
+		NSArray* collection = fieldCollections[field->noteType];
+		long count;
+		if (field->noteType == 0) {
+			count = [collection count];
+		} else {
+			// This is necessary because the count selector always returns 0 for Word 2008
+			count = getEntryIndex(doc, [(SBElementArray *)collection objectAtLocation:
+										[NSNumber numberWithInt:-1]]);
+		}
+		CHECK_STATUS
+
+		// Try the last shift found first, then indices further and further from the old one
+		long hint = field->entryIndex + doc->fieldShift[field->noteType];
+		long found = 0;
+		for (long i = 0; i <= 2*count && !found; i++) {
+			long candidate;
+			if (i == 0) {
+				candidate = hint;
+			} else {
+				candidate = field->entryIndex + (i % 2 ? (i+1)/2 : -i/2);
+				if (candidate == hint) continue;
+			}
+			if (candidate < 1 || candidate > count) continue;
+			NSString* code = [[[collection objectAtIndex:(candidate-1)] fieldCode] content];
+			if (errorHasOccurred()) {
+				clearError();
+				continue;
+			}
+			if ([code isEqualToString:field->rawCode]) found = candidate;
+		}
+		if (!found) DIE(@"Document modified during update")
+		doc->fieldShift[field->noteType] = found - field->entryIndex;
+		ENSURE_OK(setFieldEntry(field, found));
+	}
+	field->fieldLayoutVersion = doc->fieldLayoutVersion;
+	return STATUS_OK;
+}
+
+// Unfortunately after starting to update fields in reverse order in
+// https://github.com/zotero/zotero/commit/419953f478eb6181717216dcb0dcfc27c303c953
+// citations in footnotes started breaking when any in-text fields need updating
+// (such as bibliography). We'll be re-initializing the sb objects here if such breakage
+// occurs. Sigh.
+statusCode checkFieldIntegrity(field_t *field) {
+	HANDLE_EXCEPTIONS_BEGIN
+	if (field->sbBookmark) return STATUS_OK;
+	if (field->noteType != 0) {
+		// Field order upset. Sometimes SB returns 0 for entry index, which is invalid since
+		// all those indices are 1-indexed, indicating.. something?.. that the field is no longer in the doc?
+		NSInteger entryIndex = getEntryIndex(field->doc, field->sbField);
+		BOOL broken = YES;
+		if (errorHasOccurred()) {
+			clearError();
+		} else {
+			broken = field->entryIndex != entryIndex;
+		}
+		if (broken) ENSURE_OK(setFieldEntry(field, field->entryIndex));
+	}
+	return checkFieldLayout(field);
 	HANDLE_EXCEPTIONS_END
+}
+
+// Finds the field again by its code if fields were added or removed since its index was last
+// known to be right. Field references are indices, so this happens e.g. after inserting a note's
+// citations.
+statusCode checkFieldLayout(field_t *field) {
+	if (field->sbField && field->rawCode != nil
+			&& field->fieldLayoutVersion != field->doc->fieldLayoutVersion) {
+		ENSURE_OK(relocateField(field));
+	}
+	return STATUS_OK;
 }
 
 // Allocates a field structure based on a WordBookmark
@@ -307,6 +382,7 @@ void freeField(field_t* field) {
 statusCode deleteField(field_t* field) {
 	HANDLE_EXCEPTIONS_BEGIN
 	ENSURE_OK(checkFieldIntegrity(field));
+	field->doc->fieldLayoutVersion++;
 	short offset = field->sbField ? 1 : 0;
 	if(field->noteType == NOTE_FOOTNOTE) {
 		WordFootnote* note = [[field->sbContentRange footnotes]
@@ -317,7 +393,8 @@ statusCode deleteField(field_t* field) {
 					== [field->sbContentRange endOfContent]+offset)) {
 			WordWdStoryType storyType = [[field->doc->sbWindow selection] storyType];
 			CHECK_STATUS
-			if (storyType == WordWdStoryTypeFootnotesStory) {
+			// Put the cursor after the note reference if it's in the note, or will be restored to it
+			if (storyType == WordWdStoryTypeFootnotesStory || field->doc->cursorMoved) {
 				[[field->doc->sbDoc createRangeStart:[[note noteReference] endOfContent] end:[[note noteReference] endOfContent]] sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 				CHECK_STATUS
 				storeCursorLocation(field->doc);
@@ -337,7 +414,8 @@ statusCode deleteField(field_t* field) {
 				   == [field->sbContentRange endOfContent]+offset)) {
 			WordWdStoryType storyType = [[field->doc->sbWindow selection] storyType];
 			CHECK_STATUS
-			if (storyType == WordWdStoryTypeEndnotesStory) {
+			// Put the cursor after the note reference if it's in the note, or will be restored to it
+			if (storyType == WordWdStoryTypeEndnotesStory || field->doc->cursorMoved) {
 				[[field->doc->sbDoc createRangeStart:[[note noteReference] endOfContent] end:[[note noteReference] endOfContent]] sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
 				CHECK_STATUS
 				storeCursorLocation(field->doc);
@@ -366,6 +444,7 @@ statusCode deleteField(field_t* field) {
 statusCode removeCode(field_t* field) {
 	HANDLE_EXCEPTIONS_BEGIN
 	ENSURE_OK(checkFieldIntegrity(field));
+	field->doc->fieldLayoutVersion++;
 	if(field->sbBookmark) {
 		[field->sbBookmark delete];
 	} else {
@@ -596,6 +675,7 @@ statusCode setTextRaw(field_t* field, const char string[], bool isRich) {
 statusCode getText(field_t* field, char** returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
 	if (!field->text) {
+		ENSURE_OK(checkFieldLayout(field));
 		[(field->doc)->lock lock];
 		statusCode status = prepareReadFieldCode(field->doc);
 		[(field->doc)->lock unlock];

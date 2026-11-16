@@ -520,6 +520,7 @@ statusCode convert(document_t *doc, field_t* fields[], unsigned long nFields,
 				   const char toFieldType[], unsigned short toNoteTypes[]) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
+	doc->fieldLayoutVersion++;
 	
 	statusCode status = prepareReadFieldCode(doc);
 	ENSURE_OK_LOCKED(doc, status)
@@ -886,6 +887,7 @@ statusCode exportDocument(document_t *doc,
 						  const char importInstructions[]) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
+	doc->fieldLayoutVersion++;
 	
 	// Export fields, last first. Replacing a field also removes any fields nested in it, which
 	// changes the indices of the fields after it.
@@ -951,6 +953,7 @@ statusCode exportDocument(document_t *doc,
 statusCode importDocument(document_t *doc, const char fieldType[], bool *returnValue) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
+	doc->fieldLayoutVersion++;
 	*returnValue = false;
 	
 	NSArray* fieldCollections[3];
@@ -1037,8 +1040,17 @@ statusCode importDocument(document_t *doc, const char fieldType[], bool *returnV
 statusCode insertText(document_t *doc, const char htmlString[]) {
 	HANDLE_EXCEPTIONS_BEGIN
 	[doc->lock lock];
+	doc->fieldLayoutVersion++;
 	
-	if (doc->insertTextIntoNote != 0) {
+	// Reading field codes may have moved the cursor out of a note
+	ENSURE_OK_LOCKED(doc, restoreCursor(doc))
+
+	// If the last field was inserted into a note and deleting it deleted the note, the cursor is
+	// back in the main text and the text goes into a new note there. Otherwise the text goes in at
+	// the cursor.
+	WordWdStoryType cursorStoryType = [[doc->sbWindow selection] storyType];
+	CHECK_STATUS_LOCKED(doc)
+	if (doc->insertTextIntoNote != 0 && cursorStoryType == WordWdStoryTypeMainTextStory) {
 		// Create new note
 		NSAppleEventDescriptor* noteTypeCode;
 		if (doc->insertTextIntoNote == NOTE_FOOTNOTE) {
@@ -1194,7 +1206,7 @@ statusCode convertPlaceholdersToFields(document_t *doc, const char* placeholders
 	}
 	NSArray *sortedLinks = [links sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
 		NSString *aLinkUrl = [[[[(WordField *)a resultRange] hyperlinkObjects] objectAtIndex:0] hyperlinkAddress];
-		NSString *bLinkUrl = [[[[(WordField *)a resultRange] hyperlinkObjects] objectAtIndex:0] hyperlinkAddress];
+		NSString *bLinkUrl = [[[[(WordField *)b resultRange] hyperlinkObjects] objectAtIndex:0] hyperlinkAddress];
 		NSString *aPlaceholder = [aLinkUrl substringFromIndex:[IMPORT_LINK_URL length]+1];
 		NSString *bPlaceholder = [bLinkUrl substringFromIndex:[IMPORT_LINK_URL length]+1];
 		for (long i = 0; i < nPlaceholders; i++) {
@@ -1232,6 +1244,7 @@ statusCode convertPlaceholdersToFields(document_t *doc, const char* placeholders
 			CHECK_STATUS_LOCKED(doc)
 			WordTextRange *insertRange = [doc->sbDoc createRangeStart:[codeRange startOfContent]-1 end:[codeRange startOfContent]-1];
 			CHECK_STATUS_LOCKED(doc)
+			doc->fieldLayoutVersion++;
 			[link delete];
 			CHECK_STATUS_LOCKED(doc)
 			ENSURE_OK_LOCKED(doc, insertFieldRaw(doc, fieldType, noteType, insertRange, nil, &newField));
@@ -1614,6 +1627,14 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 		noteType = NOTE_ENDNOTE;
 	}
 	
+	// Word adds a field after a non-empty range in a note, where it can't be found below, so replace
+	// the text in the range
+	if (sbNote && strcmp(fieldType, "Field") == 0
+			&& [sbWhere startOfContent] != [sbWhere endOfContent]) {
+		[sbWhere setContent:@""];
+		CHECK_STATUS
+	}
+
 	// Keep track of field start, so that we can find the field in the note
 	// after we lose it due to a Word bug
 	if(sbNote) fieldStart = [sbWhere startOfContent];
@@ -1647,6 +1668,7 @@ statusCode insertFieldRaw(document_t *doc, const char fieldType[],
 										parameters:'kocl',
 							  w170, 'insh', sbWhere, 'prdt', wFtP, nil];
 		CHECK_STATUS
+		doc->fieldLayoutVersion++;
 		
 		// We have to figure out where the field got put, because Word returns
 		// an invalid reference, and Microsoft has not fixed this for 7 years.

@@ -115,12 +115,15 @@ void storeCursorLocation(document_t* doc) {
 		WordWdStoryType storyType = [[doc->sbWindow selection] storyType];
 		if (storyType == WordWdStoryTypeEndnotesStory || storyType == WordWdStoryTypeFootnotesStory) {
 			doc->restoreNoteType = storyType;
+			WordTextRange* noteText;
 			if (storyType == WordWdStoryTypeFootnotesStory) {
 				doc->restoreNote = getEntryIndex(doc, [[[doc->sbWindow selection] footnotes] objectAtIndex:0])-1;
+				noteText = [[[doc->sbDoc footnotes] objectAtIndex:doc->restoreNote] textObject];
 			} else {
 				doc->restoreNote = getEntryIndex(doc, [[[doc->sbWindow selection] endnotes] objectAtIndex:0])-1;
+				noteText = [[[doc->sbDoc endnotes] objectAtIndex:doc->restoreNote] textObject];
 			}
-			doc->restoreCursorEnd = [[doc->sbWindow selection] selectionEnd];
+			doc->restoreCursorEnd = [noteText endOfContent] - [[doc->sbWindow selection] selectionEnd];
 		} else {
 			if ([[[doc->sbWindow selection] fields] count]) {
 				doc->restoreFieldIdx = getEntryIndex(doc, [[[doc->sbWindow selection] fields] objectAtIndex:0]);
@@ -158,14 +161,14 @@ statusCode restoreCursor(document_t* doc) {
 		return STATUS_OK;
 	}
 	if (doc->restoreNote != -1) {
+		WordTextRange* noteText;
 		if (doc->restoreNoteType == WordWdStoryTypeFootnotesStory) {
-			[[[[doc->sbDoc footnotes] objectAtIndex:doc->restoreNote] textObject]
-			 	sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+			noteText = [[[doc->sbDoc footnotes] objectAtIndex:doc->restoreNote] textObject];
 		} else {
-			[[[[doc->sbDoc endnotes] objectAtIndex:doc->restoreNote] textObject]
-			 	sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+			noteText = [[[doc->sbDoc endnotes] objectAtIndex:doc->restoreNote] textObject];
 		}
-		[[doc->sbWindow selection] setSelectionStart: doc->restoreCursorEnd];
+		[noteText sendEvent:'misc' id:'slct' parameters:'\00\00\00\00', nil];
+		[[doc->sbWindow selection] setSelectionStart:[noteText endOfContent] - doc->restoreCursorEnd];
 		[[doc->sbWindow selection] setSelectionEnd: [[doc->sbWindow selection] selectionStart]];
 	} else if (doc->restoreFieldIdx != -1) {
 		long position = [[[[doc->sbDoc fields] objectAtIndex:doc->restoreFieldIdx-1] resultRange] endOfContent]+1;

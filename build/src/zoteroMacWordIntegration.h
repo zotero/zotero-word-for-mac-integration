@@ -171,10 +171,18 @@ typedef struct Document {
 	BOOL statusTrackRevisions;
 	
 	WordWdStoryType restoreNoteType;
+	// The cursor to restore. In a note, restoreCursorEnd is the distance from the end of the note's
+	// text, which edits to fields before the cursor don't change.
 	NSInteger restoreNote, restoreCursorEnd, restoreFieldIdx;
 	BOOL cursorMoved, shouldRestoreCursor;
 	NSInteger insertTextIntoNote;
 	
+	// Field references are indices in the main text, footnotes or endnotes, so adding or removing
+	// a field shifts the fields after it. This counts such changes, and fieldShift holds the last
+	// shift found for each note type, which is where checkFieldLayout() looks first.
+	unsigned long fieldLayoutVersion;
+	long fieldShift[3];
+
 	listNode_t* allocatedFieldsStart;
 	listNode_t* allocatedFieldsEnd;
 	listNode_t* allocatedFieldListsStart;
@@ -230,6 +238,9 @@ typedef struct Field {
 	
 	// The raw field code for fields only
 	NSString* rawCode;
+
+	// The document's fieldLayoutVersion when entryIndex was last known to be right
+	unsigned long fieldLayoutVersion;
 } field_t;
 
 // utilities.m
@@ -347,6 +358,7 @@ statusCode initField(document_t *doc, WordField* sbField, short noteType,
 					 NSInteger entryIndex, BOOL ignoreCode,
 					 field_t **returnValue);
 statusCode checkFieldIntegrity(field_t *field);
+statusCode checkFieldLayout(field_t *field);
 statusCode initBookmark(document_t *doc, WordBookmark* sbBookmark, short noteType,
 						NSString* bookmarkName, BOOL ignoreCode,
 						field_t **returnValue);
