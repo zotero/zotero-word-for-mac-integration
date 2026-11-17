@@ -2,14 +2,15 @@
 
 This is a Firefox add-on that consists of a library written in ObjC that communicates with Microsoft Word out of process using AppleScript, a js-ctypes wrapper for said library, and a template that is installed into Microsoft Word to communicate with Zotero.
 
-## ObjC Library Build Requirements
-- Xcode
+## ObjC Library
 
 ### To Build the ObjC Library
-- Launch the project in `build/src/libZoteroMacWordIntegration.xcodeproj`
-- Product -> Build For -> Profiling
-
-The build copies `libZoteroWordIntegration.dylib` (universal, arm64 and x86_64) into `install/`.
+Run `scripts/build_dylib.sh` (needs Xcode). It builds `install/libZoteroWordIntegration.dylib`
+(universal, arm64 and x86_64) from `build/src/libZoteroMacWordIntegration.xcodeproj`, and checks
+that it runs on macOS 10.15, the oldest macOS that Zotero supports. Zotero crashes on older macOS
+if the dylib needs a newer one. Recent Xcode versions only accept deployment targets from macOS 12,
+so the project sets `MACOSX_DEPLOYMENT_TARGET` to 12.0 and `LLVM_TARGET_TRIPLE_OS_VERSION`, which
+the compiler and linker use, to macOS 10.15.
 
 ## Template
 
