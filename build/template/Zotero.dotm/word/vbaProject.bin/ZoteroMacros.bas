@@ -72,6 +72,9 @@ Private Const IMPORT_ITEM_PREFIX As String = "ITEM CSL_CITATION "
 Private Const IMPORT_BIBL_PREFIX As String = "BIBL "
 Private Const IMPORT_DOC_PREFS_PREFIX As String = "DOCUMENT_PREFERENCES "
 Private Const TEMP_BOOKMARK As String = "ZOTERO_TEMP_BOOKMARK"
+' Precedes each field's part of the rich text for ZoteroSetFieldTexts, followed by its number and
+' another SEGMENT_MARKER
+Private Const SEGMENT_MARKER As String = "ZQZSEG"
 ' msoPropertyTypeString
 Private Const PROPERTY_TYPE_STRING As Long = 4
 
@@ -175,6 +178,10 @@ Public Sub ZoteroCall()
                         output = ZoteroSetText()
                 Case "ZoteroSetCode"
                         output = ZoteroSetCode()
+                Case "ZoteroSetFieldTexts"
+                        output = ZoteroSetFieldTexts()
+                Case "ZoteroSetFieldCodes"
+                        output = ZoteroSetFieldCodes()
                 Case Else
                         Err.Raise ERR_ZOTERO, , "Unknown operation " & operation
         End Select
@@ -805,7 +812,7 @@ Private Function ZoteroSetText() As String
         screenUpdatingChanged = True
         Set f = ResolveField(handle)
         If isRich Then
-                SetRichText f, isBibliography
+                SetRichText f, isBibliography, Nothing
         Else
                 SetPlainText f, newText
         End If
@@ -834,6 +841,103 @@ Private Function ZoteroSetCode() As String
         ResolveField(handle).Code.Text = FIELD_PREFIX & ScanString(callArgs, callPos) & " "
         ' Points the handle at the new code
         ResolveField handle
+End Function
+
+' Sets the texts of several fields. The rich text is on the clipboard as one RTF document, with each
+' rich field's text after SEGMENT_MARKER & <number> & SEGMENT_MARKER, numbering the rich fields from
+' 0 in input order, and SEGMENT_MARKER & "END" & SEGMENT_MARKER at the end. It is pasted once into a
+' hidden document, from which each field's part is copied.
+' Input: <number of fields>; then per field <handle>;<is rich>;<is bibliography>;<text>, where the
+'   text of a rich field is empty
+' Output: <number of fields>; then the resulting text of each field
+Private Function ZoteroSetFieldTexts() As String
+        Dim fieldCount As Long
+        Dim handles() As Long
+        Dim isRich() As Boolean
+        Dim isBibliography() As Boolean
+        Dim texts() As String
+        Dim results() As String
+        Dim richCount As Long
+        Dim segment As Long
+        Dim segmentStarts() As Long
+        Dim segmentEnds() As Long
+        Dim tempDoc As Document
+        Dim f As Field
+        Dim i As Long
+        Dim previousScreenUpdating As Boolean
+        Dim screenUpdatingChanged As Boolean
+        Dim errNumber As Long
+        Dim errDescription As String
+        On Error GoTo fail
+        fieldCount = ScanNumber(callArgs, callPos)
+        If fieldCount = 0 Then
+                ZoteroSetFieldTexts = "0;"
+                Exit Function
+        End If
+        ReDim handles(1 To fieldCount)
+        ReDim isRich(1 To fieldCount)
+        ReDim isBibliography(1 To fieldCount)
+        ReDim texts(1 To fieldCount)
+        ReDim results(1 To fieldCount)
+        For i = 1 To fieldCount
+                handles(i) = ScanNumber(callArgs, callPos)
+                isRich(i) = ScanNumber(callArgs, callPos) <> 0
+                isBibliography(i) = ScanNumber(callArgs, callPos) <> 0
+                texts(i) = ScanString(callArgs, callPos)
+                If isRich(i) Then richCount = richCount + 1
+        Next i
+
+        ' Don't redraw the document for each change
+        previousScreenUpdating = Application.ScreenUpdating
+        Application.ScreenUpdating = False
+        screenUpdatingChanged = True
+        If richCount > 0 Then
+                Set tempDoc = Documents.Add(Visible:=False)
+                PasteSegments tempDoc, richCount, segmentStarts, segmentEnds
+        End If
+        For i = 1 To fieldCount
+                Set f = ResolveField(handles(i))
+                If isRich(i) Then
+                        SetRichText f, isBibliography(i), tempDoc.Range(segmentStarts(segment), segmentEnds(segment))
+                        segment = segment + 1
+                Else
+                        SetPlainText f, texts(i)
+                End If
+                results(i) = EncodeString(ResolveField(handles(i)).Result.Text)
+        Next i
+        DiscardDocument tempDoc
+        SetScreenUpdating previousScreenUpdating
+        ZoteroSetFieldTexts = fieldCount & ";" & Join(results, "")
+        Exit Function
+fail:
+        errNumber = Err.Number
+        errDescription = Err.Description
+        DiscardDocument tempDoc
+        If screenUpdatingChanged Then SetScreenUpdating previousScreenUpdating
+        Err.Raise errNumber, , errDescription
+End Function
+
+' Sets the codes of several fields.
+' Input: <number of fields>; then per field <handle>;<Zotero code>
+' Output: none
+Private Function ZoteroSetFieldCodes() As String
+        Dim fieldCount As Long
+        Dim handles() As Long
+        Dim codes() As String
+        Dim i As Long
+        fieldCount = ScanNumber(callArgs, callPos)
+        If fieldCount = 0 Then Exit Function
+        ReDim handles(1 To fieldCount)
+        ReDim codes(1 To fieldCount)
+        For i = 1 To fieldCount
+                handles(i) = ScanNumber(callArgs, callPos)
+                codes(i) = ScanString(callArgs, callPos)
+        Next i
+        For i = 1 To fieldCount
+                ResolveField(handles(i)).Code.Text = FIELD_PREFIX & codes(i) & " "
+                ' Points the handle at the new code
+                ResolveField handles(i)
+        Next i
 End Function
 
 ' ---------------------------------------------------------------------------------------------
@@ -1310,8 +1414,9 @@ Private Sub SetPlainText(f As Field, newText As String)
         f.Result.Text = newText
 End Sub
 
-' Pastes the RTF on the clipboard into a field, keeping the font of the existing text
-Private Sub SetRichText(f As Field, isBibliography As Boolean)
+' Sets the text of a field to rich text, keeping the font of the existing text: pastes the RTF on the
+' clipboard if source is Nothing, and copies source otherwise
+Private Sub SetRichText(f As Field, isBibliography As Boolean, source As Range)
         Dim fontSize As Single
         Dim fontName As String
         Dim fontNameOther As String
@@ -1332,7 +1437,11 @@ Private Sub SetRichText(f As Field, isBibliography As Boolean)
         On Error GoTo restore
 
         Set resultRange = f.Result
-        resultRange.Paste
+        If source Is Nothing Then
+                resultRange.Paste
+        Else
+                resultRange.FormattedText = source.FormattedText
+        End If
 
         On Error Resume Next
         Options.PasteAdjustWordSpacing = adjustWordSpacing
@@ -1352,6 +1461,57 @@ restore:
         Options.PasteAdjustWordSpacing = adjustWordSpacing
         On Error GoTo 0
         Err.Raise errNumber, , errDescription
+End Sub
+
+' Pastes the RTF document on the clipboard into tempDoc for ZoteroSetFieldTexts, and sets where the
+' text of each rich field starts and ends in it
+Private Sub PasteSegments(tempDoc As Document, richCount As Long, segmentStarts() As Long, _
+                segmentEnds() As Long)
+        Dim adjustWordSpacing As Boolean
+        Dim pastedText As String
+        Dim marker As String
+        Dim markerPos As Long
+        Dim k As Long
+        Dim errNumber As Long
+        Dim errDescription As String
+
+        adjustWordSpacing = Options.PasteAdjustWordSpacing
+        Options.PasteAdjustWordSpacing = False
+        On Error Resume Next
+        tempDoc.Content.Paste
+        errNumber = Err.Number
+        errDescription = Err.Description
+        Options.PasteAdjustWordSpacing = adjustWordSpacing
+        On Error GoTo 0
+        If errNumber <> 0 Then Err.Raise errNumber, , errDescription
+
+        ' Positions in the text are positions in the document only if it is all text
+        pastedText = tempDoc.Content.Text
+        If Len(pastedText) <> tempDoc.Content.End - tempDoc.Content.Start Then
+                Err.Raise ERR_ZOTERO, , "The rich text has content that can't be split into fields"
+        End If
+        ReDim segmentStarts(0 To richCount - 1)
+        ReDim segmentEnds(0 To richCount - 1)
+        markerPos = 1
+        For k = 0 To richCount
+                If k = richCount Then
+                        marker = SEGMENT_MARKER & "END" & SEGMENT_MARKER
+                Else
+                        marker = SEGMENT_MARKER & k & SEGMENT_MARKER
+                End If
+                markerPos = InStr(markerPos, pastedText, marker)
+                If markerPos = 0 Then Err.Raise ERR_ZOTERO, , "The rich text is missing a segment marker"
+                ' Positions in the text start at 1, and positions in the document at 0
+                If k > 0 Then segmentEnds(k - 1) = tempDoc.Content.Start + markerPos - 1
+                If k < richCount Then segmentStarts(k) = tempDoc.Content.Start + markerPos - 1 + Len(marker)
+                markerPos = markerPos + Len(marker)
+        Next k
+End Sub
+
+' Closes a document without saving it, if there is one
+Private Sub DiscardDocument(d As Document)
+        On Error Resume Next
+        If Not d Is Nothing Then d.Close SaveChanges:=wdDoNotSaveChanges
 End Sub
 
 Private Sub DeleteTempBookmark()
